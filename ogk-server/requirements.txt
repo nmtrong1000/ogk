@@ -6,3 +6,4 @@ alembic>=1.14
 pydantic-settings>=2.6
 pytest>=8.3
 httpx>=0.28
+passlib[argon2]>=1.7.4
