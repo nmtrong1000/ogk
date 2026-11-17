@@ -27,6 +27,19 @@ def main() -> None:
 
     print(f"httpx {httpx.__version__}")
 
+    import aiohttp
+
+    print(f"aiohttp {aiohttp.__version__}")
+
+    import tkinter
+
+    print(f"tkinter {tkinter.TkVersion}")
+
+    import PIL
+    import pystray
+
+    print(f"pystray {version('pystray')}, pillow {PIL.__version__}")
+
     if sys.platform == "win32":
         import PyInstaller
         import servicemanager

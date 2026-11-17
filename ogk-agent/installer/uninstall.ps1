@@ -5,6 +5,8 @@ $ServiceName = "OGKAgent"
 $InstallDir = Join-Path $env:ProgramFiles "OGK"
 $DataDir = Join-Path $env:ProgramData "OGK"
 
+Stop-Process -Name "ogk-tray" -Force -ErrorAction SilentlyContinue
+
 $service = Get-Service $ServiceName -ErrorAction SilentlyContinue
 if ($service) {
     if ($service.Status -ne "Stopped") {

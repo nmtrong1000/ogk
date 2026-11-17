@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 CONFIG_FILE = "config.json"
+DEFAULT_IPC_PORT = 47800
 
 
 class ConfigError(Exception):
@@ -14,6 +15,7 @@ class Config:
     server_url: str
     ca_cert: Path
     health_interval: float = 30.0
+    ipc_port: int = DEFAULT_IPC_PORT
 
 
 def load_config(data_dir: Path) -> Config:
@@ -37,6 +39,9 @@ def load_config(data_dir: Path) -> Config:
     interval = raw.get("health_interval", 30)
     if isinstance(interval, bool) or not isinstance(interval, (int, float)) or interval <= 0:
         bad.append("health_interval")
+    ipc_port = raw.get("ipc_port", DEFAULT_IPC_PORT)
+    if isinstance(ipc_port, bool) or not isinstance(ipc_port, int) or not 1 <= ipc_port <= 65535:
+        bad.append("ipc_port")
     if bad:
         raise ConfigError(f"Thiếu hoặc sai trường cấu hình: {', '.join(bad)}")
 
@@ -44,4 +49,5 @@ def load_config(data_dir: Path) -> Config:
         server_url=server_url.rstrip("/"),
         ca_cert=data_dir / ca_cert,
         health_interval=float(interval),
+        ipc_port=ipc_port,
     )

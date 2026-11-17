@@ -2,6 +2,9 @@ httpx>=0.28
 psutil>=6.1
 cryptography>=44
 dnslib>=0.9.25
+aiohttp>=3.11
+pystray>=0.19
+Pillow>=11
 pytest>=8.3
 pywin32>=308; sys_platform == "win32"
 pyinstaller>=6.11; sys_platform == "win32"

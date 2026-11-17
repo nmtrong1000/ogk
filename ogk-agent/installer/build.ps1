@@ -7,7 +7,12 @@ try {
         --hidden-import win32timezone `
         --distpath dist --workpath build `
         ogk_service.py
-    if ($LASTEXITCODE -ne 0) { throw "PyInstaller that bai" }
+    if ($LASTEXITCODE -ne 0) { throw "PyInstaller ogk-service that bai" }
+
+    python -m PyInstaller --noconfirm --onefile --windowed --name ogk-tray `
+        --distpath dist --workpath build `
+        ogk_tray.py
+    if ($LASTEXITCODE -ne 0) { throw "PyInstaller ogk-tray that bai" }
 } finally {
     Pop-Location
 }
