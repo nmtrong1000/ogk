@@ -45,3 +45,4 @@ dist/
 *.sqlite
 *.log
 logs/
+.ogk-data/

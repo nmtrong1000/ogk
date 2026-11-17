@@ -1,0 +1,7 @@
+httpx>=0.28
+psutil>=6.1
+cryptography>=44
+dnslib>=0.9.25
+pytest>=8.3
+pywin32>=308; sys_platform == "win32"
+pyinstaller>=6.11; sys_platform == "win32"
