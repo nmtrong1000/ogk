@@ -1,0 +1,44 @@
+# Chạy OGK-Server và OGK-Dashboard: docker compose up --build
+# Cần chứng chỉ trước: ogk-server/certs/gen_certs.sh
+# Agent Service và Tray UI chạy trực tiếp trên Mac, không chạy trong Docker.
+
+services:
+  dashboard:
+    build: ./ogk-dashboard
+    volumes:
+      - dashboard-dist:/out
+
+  server:
+    build: ./ogk-server
+    depends_on:
+      dashboard:
+        condition: service_completed_successfully
+    environment:
+      OGK_DATABASE_URL: sqlite+aiosqlite:////data/ogk.db
+      OGK_TLS_CERT: /certs/server.crt
+      OGK_TLS_KEY: /certs/server.key
+      OGK_HOST: 0.0.0.0
+      OGK_PORT: "8443"
+      OGK_DASHBOARD_DIST: /dashboard
+    volumes:
+      - server-data:/data
+      - dashboard-dist:/dashboard:ro
+      - ./ogk-server/certs/out/server.crt:/certs/server.crt:ro
+      - ./ogk-server/certs/out/server.key:/certs/server.key:ro
+      - ./ogk-server/certs/out/ca.crt:/certs/ca.crt:ro
+    ports:
+      - "8443:8443"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import ssl, urllib.request; urllib.request.urlopen('https://localhost:8443/api/health', context=ssl.create_default_context(cafile='/certs/ca.crt'), timeout=3)"
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+volumes:
+  dashboard-dist:
+  server-data:
