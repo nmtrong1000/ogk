@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
+import { Button } from '../../shared/components/index.ts'
 import { logout } from './api.ts'
 import { switchSession } from './useMe.ts'
 
@@ -15,8 +16,8 @@ export default function LogoutButton() {
     },
   })
   return (
-    <button type="button" className="button button-link" onClick={() => mutation.mutate()} disabled={mutation.isPending}>
+    <Button variant="secondary" size="sm" loading={mutation.isPending} onClick={() => mutation.mutate()}>
       Đăng xuất
-    </button>
+    </Button>
   )
 }

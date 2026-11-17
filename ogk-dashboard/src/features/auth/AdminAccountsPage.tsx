@@ -1,10 +1,24 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
+import {
+  Alert,
+  Badge,
+  Button,
+  Card,
+  Checkbox,
+  Spinner,
+  Table,
+  TableBody,
+  TableHead,
+  TableRow,
+  Td,
+  Th,
+} from '../../shared/components/index.ts'
 import { listAccounts, unlockAccount } from './api.ts'
 import { errorMessage } from './messages.ts'
 
-function formatDateTime(iso: string | null): string {
-  return iso ? new Date(iso).toLocaleString('vi-VN') : '—'
+function formatDateTime(iso: string): string {
+  return new Date(iso).toLocaleString('vi-VN')
 }
 
 export default function AdminAccountsPage() {
@@ -20,52 +34,83 @@ export default function AdminAccountsPage() {
   })
 
   return (
-    <section>
-      <h1>Tài khoản phụ huynh</h1>
-      <label className="checkbox">
-        <input type="checkbox" checked={lockedOnly} onChange={(e) => setLockedOnly(e.target.checked)} />
-        Chỉ hiện tài khoản đang bị khóa
-      </label>
-      {unlock.isError && <p className="error">{errorMessage(unlock.error)}</p>}
-      {accounts.isPending && <p>Đang tải...</p>}
-      {accounts.isError && <p className="error">{errorMessage(accounts.error)}</p>}
-      {accounts.data?.length === 0 && <p>Không có tài khoản nào.</p>}
-      {accounts.data && accounts.data.length > 0 && (
-        <div className="table-wrap">
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Email</th>
-                <th>Khóa đến</th>
-                <th />
-              </tr>
-            </thead>
-            <tbody>
-              {accounts.data.map((account) => {
-                const locked = account.locked_until !== null && new Date(account.locked_until) > new Date()
-                return (
-                  <tr key={account.id}>
-                    <td>{account.email}</td>
-                    <td>{locked ? formatDateTime(account.locked_until) : 'Không khóa'}</td>
-                    <td>
-                      {locked && (
-                        <button
-                          type="button"
-                          className="button"
-                          disabled={unlock.isPending}
-                          onClick={() => unlock.mutate(account.id)}
-                        >
-                          Mở khóa
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
+    <div className="flex flex-col gap-6">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight text-ink sm:text-3xl">Tài khoản phụ huynh</h1>
+        <p className="mt-1 text-ink-muted">Mở khóa tài khoản bị khóa do nhập sai mật khẩu nhiều lần.</p>
+      </div>
+      <Card
+        title="Danh sách"
+        actions={
+          <Checkbox
+            label="Chỉ tài khoản đang khóa"
+            checked={lockedOnly}
+            onChange={(e) => setLockedOnly(e.target.checked)}
+          />
+        }
+      >
+        <div className="flex flex-col gap-4">
+          {unlock.isError && <Alert tone="error">{errorMessage(unlock.error)}</Alert>}
+          {accounts.isPending && (
+            <div className="grid place-items-center py-8">
+              <Spinner />
+            </div>
+          )}
+          {accounts.isError && <Alert tone="error">{errorMessage(accounts.error)}</Alert>}
+          {accounts.data?.length === 0 && (
+            <p className="py-8 text-center text-sm text-ink-muted">
+              {lockedOnly ? 'Không có tài khoản nào đang bị khóa.' : 'Chưa có tài khoản phụ huynh nào.'}
+            </p>
+          )}
+          {accounts.data && accounts.data.length > 0 && (
+            <Table>
+              <TableHead>
+                <tr>
+                  <Th>Email</Th>
+                  <Th>Trạng thái</Th>
+                  <Th>
+                    <span className="sr-only">Thao tác</span>
+                  </Th>
+                </tr>
+              </TableHead>
+              <TableBody>
+                {accounts.data.map((account) => {
+                  const lockedUntil = account.locked_until
+                  const locked = lockedUntil !== null && new Date(lockedUntil) > new Date()
+                  return (
+                    <TableRow key={account.id}>
+                      <Td className="font-medium">{account.email}</Td>
+                      <Td>
+                        {locked ? (
+                          <div className="flex flex-col items-start gap-1">
+                            <Badge tone="danger">Đang khóa</Badge>
+                            <span className="text-xs text-ink-muted">đến {formatDateTime(lockedUntil)}</span>
+                          </div>
+                        ) : (
+                          <Badge tone="success">Hoạt động</Badge>
+                        )}
+                      </Td>
+                      <Td className="text-right">
+                        {locked && (
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            loading={unlock.isPending && unlock.variables === account.id}
+                            disabled={unlock.isPending}
+                            onClick={() => unlock.mutate(account.id)}
+                          >
+                            Mở khóa
+                          </Button>
+                        )}
+                      </Td>
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+            </Table>
+          )}
         </div>
-      )}
-    </section>
+      </Card>
+    </div>
   )
 }

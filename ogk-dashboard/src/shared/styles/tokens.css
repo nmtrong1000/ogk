@@ -1,0 +1,77 @@
+/*
+ * Design token của OGK Dashboard: phong cách kính mờ (glassmorphism), tông xanh dương nhạt.
+ * Mỗi biến trong @theme sinh ra class Tailwind tương ứng, ví dụ --color-brand-500 -> bg-brand-500.
+ */
+
+@theme {
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+
+  /* Màu chính: xanh dương nhạt */
+  --color-brand-50: #f0f7ff;
+  --color-brand-100: #e0efff;
+  --color-brand-200: #bae0ff;
+  --color-brand-300: #7cc6ff;
+  --color-brand-400: #38a9f8;
+  --color-brand-500: #0e8de9;
+  --color-brand-600: #026fc7;
+  --color-brand-700: #0358a1;
+  --color-brand-800: #074b85;
+  --color-brand-900: #0c3f6e;
+
+  /* Chữ: slate đậm để đủ tương phản trên nền kính */
+  --color-ink: #0f2942;
+  --color-ink-muted: #4a6580;
+  --color-ink-subtle: #7890a8;
+
+  --radius-glass: 1.25rem;
+  --radius-control: 0.75rem;
+
+  --shadow-glass: 0 8px 32px rgb(14 141 233 / 0.12), inset 0 1px 0 rgb(255 255 255 / 0.7);
+  --shadow-control: 0 2px 8px rgb(14 141 233 / 0.18);
+  --shadow-control-hover: 0 6px 18px rgb(14 141 233 / 0.28);
+}
+
+/* Bề mặt kính thường: thẻ, header */
+@utility glass {
+  background-color: rgb(255 255 255 / 0.55);
+  border: 1px solid rgb(255 255 255 / 0.65);
+  box-shadow: var(--shadow-glass);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  backdrop-filter: blur(18px) saturate(160%);
+}
+
+/* Bề mặt kính đậm hơn: form đăng nhập, khối cần đọc kỹ */
+@utility glass-strong {
+  background-color: rgb(255 255 255 / 0.72);
+  border: 1px solid rgb(255 255 255 / 0.8);
+  box-shadow: var(--shadow-glass);
+  -webkit-backdrop-filter: blur(24px) saturate(170%);
+  backdrop-filter: blur(24px) saturate(170%);
+}
+
+/* Ô nhập liệu dạng kính */
+@utility glass-input {
+  background-color: rgb(255 255 255 / 0.7);
+  border: 1px solid rgb(14 141 233 / 0.18);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+/* Trình duyệt không làm mờ được hoặc người dùng muốn giảm trong suốt: dùng nền gần đục để chữ vẫn dễ đọc */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass,
+  .glass-strong,
+  .glass-input {
+    background-color: rgb(255 255 255 / 0.94);
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .glass,
+  .glass-strong,
+  .glass-input {
+    background-color: rgb(255 255 255 / 0.96);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
