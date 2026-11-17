@@ -35,7 +35,7 @@
 
 | Vấn đề | Lựa chọn | Lý do |
 | :---- | :---- | :---- |
-| Môi trường phát triển | Server và dashboard viết trên macOS (Apple Silicon); agent phát triển, kiểm thử và demo trên máy ảo Windows 11 ARM (UTM hoặc Parallels) | Agent cần pywin32 và quyền SYSTEM; Mac dùng chip ARM nên máy ảo chỉ chạy được Windows 11 ARM; báo cáo nêu rõ agent chưa được kiểm thử trên Windows 10 và máy x64 thật |
+| Môi trường phát triển | Cả 4 app viết và chạy trên macOS (Apple Silicon); agent dùng bản giả của `platform/` khi chạy trên Mac; P20 kiểm thử agent trên máy ảo Windows 11 ARM (UTM hoặc Parallels); demo trên máy ảo | Phát triển nhanh, không phụ thuộc máy ảo; agent cần pywin32 và quyền SYSTEM nên phần gọi API Windows chỉ kiểm tra được trên Windows; Mac dùng chip ARM nên máy ảo chỉ chạy được Windows 11 ARM; báo cáo nêu rõ agent chưa được kiểm thử trên Windows 10 và máy x64 thật |
 | Phiên bản Python | Python 3.12 cho cả server và agent | Đáp ứng yêu cầu 3.11+; pywin32, psutil, PyInstaller, argon2 có bản dựng sẵn |
 | Kiến trúc bản build agent | x64, chạy trên Windows 11 ARM qua giả lập x64 | Đúng nền tảng x64 của đề; thư viện có đủ bản dựng x64 |
 | Quản lý mã nguồn | Một git repo chung cho cả 3 app | Đổi giao thức thì sửa server và agent trong cùng một commit |
@@ -154,6 +154,7 @@ doan/
     tray/                          Feature-based
       main.py
       ipc_client.py
+      platform/                    Nơi duy nhất của tray gọi API Windows: thời gian rảnh, cửa sổ trước, khóa máy
       features/
         presence/                  Biểu tượng khay, thông báo khởi động
         screentime/                Đồng hồ còn lại, cảnh báo, báo thời gian rảnh, khóa máy
@@ -184,8 +185,8 @@ doan/
 | :---- | :---- |
 | ogk-server | Mỗi module sở hữu bảng của mình. Module khác muốn dùng thì gọi qua `service.py` của module đó, không truy vấn thẳng bảng. Mỗi module gồm `router.py`, `service.py`, `models.py`, `schemas.py` |
 | ogk-dashboard | Mỗi feature tự chứa trang, component và hàm gọi API của nó. Feature không import lẫn nhau, chỉ dùng chung qua `shared/` |
-| ogk-agent/service | Các module không import lẫn nhau, chỉ trao đổi qua `core/`. Chỉ `platform/` được import pywin32 |
-| ogk-agent/tray | Mỗi feature là một màn hình. Mọi xử lý đều gọi sang service qua `ipc_client.py` |
+| ogk-agent/service | Các module không import lẫn nhau, chỉ trao đổi qua `core/`. Chỉ `platform/` được import pywin32; `platform/` có bản giả để chạy trên Mac |
+| ogk-agent/tray | Mỗi feature là một màn hình. Mọi xử lý đều gọi sang service qua `ipc_client.py`. Chỉ `platform/` được gọi API Windows; `platform/` có bản giả để chạy trên Mac |
 
 Module cùng tên ở các app thuộc cùng một phase.
 
@@ -203,7 +204,7 @@ Server đọc vị trí bản build dashboard từ biến cấu hình `DASHBOARD
 
 ## 4. Các phase
 
-P1 đến P4 dựng khung cho 4 app, chưa có chức năng nào. P5 đến P18, mỗi phase là một module chức năng của đề bài. P19 là phase tùy chọn cho mục NÊN CÓ. P20 đóng gói, nghiệm thu, viết báo cáo và chuẩn bị vấn đáp.
+P1 đến P4 dựng khung cho 4 app, chưa có chức năng nào. P5 đến P18, mỗi phase là một module chức năng của đề bài. P19 là phase tùy chọn cho mục NÊN CÓ. P1 đến P19 chạy và kiểm tra trên Mac. P20 kiểm thử agent trên Windows. P21 đóng gói, nghiệm thu, viết báo cáo và chuẩn bị vấn đáp.
 
 Mỗi phase nằm trong một file riêng ở thư mục `plan/`, gồm mục tiêu, kiểm tra nghiệm thu, kết quả, phase con và task.
 
@@ -217,7 +218,7 @@ Mỗi phase nằm trong một file riêng ở thư mục `plan/`, gồm mục ti
 | :---- | :---- | :---- | :---- | :---- |
 | P1 | [Scaffold OGK-Server](plan/P1.md) | | server | curl `/api/health` qua HTTPS trả mã 200 |
 | P2 | [Scaffold Dashboard](plan/P2.md) | P1 | server, dashboard | Mở trang trống qua HTTPS của OGK-Server |
-| P3 | [Scaffold Agent Service](plan/P3.md) | P1 | service | Service chạy trên máy ảo và gọi được server |
+| P3 | [Scaffold Agent Service](plan/P3.md) | P1 | service | Service chạy trên Mac và gọi được server |
 | P4 | [Scaffold Tray UI](plan/P4.md) | P3 | service, tray | Biểu tượng khay hiện và gọi được service |
 | P5 | [Xác thực và phân quyền](plan/P5.md) | P2 | server, dashboard | Phụ huynh đăng nhập qua HTTPS, khóa sau 5 lần sai |
 | P6 | [Gia đình và thiết bị](plan/P6.md) | P5 | server, dashboard | Phụ huynh A không đọc được trẻ của phụ huynh B |
@@ -234,7 +235,8 @@ Mỗi phase nằm trong một file riêng ở thư mục `plan/`, gồm mục ti
 | P17 | [Báo cáo](plan/P17.md) | P13, P14, P16 | server, dashboard, service, tray | Dashboard đủ biểu đồ; trẻ xem được báo cáo và nhật ký thay đổi luật |
 | P18 | [Lưu trữ và xóa dữ liệu](plan/P18.md) | P17 | server, dashboard, service | Xóa toàn bộ dữ liệu của con thì sạch cả server và agent |
 | P19 | [Ngân sách theo nhóm ứng dụng](plan/P19.md) | P12, P13 | server, dashboard, service, tray | Hai bộ đếm theo nhóm chạy độc lập |
-| P20 | [Nghiệm thu, báo cáo và vấn đáp](plan/P20.md) | P18 | server, dashboard, service, tray | Mỗi tiêu chí có bằng chứng; cài và gỡ agent sạch |
+| P20 | [Kiểm thử trên Windows](plan/P20.md) | P18 | service, tray | Agent chạy đúng trên máy ảo Windows như trên Mac |
+| P21 | [Nghiệm thu, báo cáo và vấn đáp](plan/P21.md) | P20 | server, dashboard, service, tray | Mỗi tiêu chí có bằng chứng; cài và gỡ agent sạch |
 
 ## 5. Rủi ro và cách xử lý
 
@@ -243,6 +245,7 @@ Mỗi phase nằm trong một file riêng ở thư mục `plan/`, gồm mục ti
 | Một người không kịp khối lượng của ba người | Làm theo thứ tự BẮT BUỘC trước; giữ giao diện đơn giản |
 | Service không tương tác được với màn hình | Mọi thao tác giao diện đi qua Tray UI |
 | Cổng 53 bị chiếm hoặc trình duyệt dùng DoH | Kiểm tra cổng khi khởi động, ghi log rõ ràng; tắt DoH bằng chính sách trình duyệt |
-| Thư viện lỗi hoặc chậm khi chạy Python x64 trên Windows 11 ARM qua giả lập | Kiểm tra cài đặt thư viện và build PyInstaller ngay ở P3 |
+| Thư viện lỗi hoặc chậm khi chạy Python x64 trên Windows 11 ARM qua giả lập | Chỉ dùng thư viện có bản dựng x64; kiểm tra cài đặt thư viện và build PyInstaller ở P20 |
+| Lỗi chỉ xuất hiện trên Windows bị phát hiện muộn | Giữ mọi lệnh gọi API Windows trong `platform/` và giữ `platform/` mỏng; P20 dành thời gian sửa lỗi |
 | Khóa nhầm làm hỏng máy ảo | Chụp snapshot máy ảo trước mỗi lần thử; luôn có script gỡ cài đặt |
 | Trễ tiến độ | Xong mỗi phase thì đối chiếu mốc kiểm tra; trễ thì cắt mục NÊN CÓ trước |
