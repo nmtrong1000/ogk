@@ -1,12 +1,13 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { Agent } from 'node:https'
+import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 
 const caPath = new URL('../ogk-server/certs/out/ca.crt', import.meta.url)
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), tailwindcss()],
   server: {
     proxy: {
       '/api': {

@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState, type FormEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Alert, Button, TextField } from '../../shared/components/index.ts'
 import type { Account } from '../../shared/types/auth.ts'
 import type { Credentials } from './api.ts'
 import { errorMessage } from './messages.ts'
@@ -49,42 +50,39 @@ export default function AuthForm({ mode, submit }: Props) {
   const error = localError ?? (mutation.isError ? errorMessage(mutation.error) : null)
 
   return (
-    <form className="form" onSubmit={onSubmit} noValidate>
-      <label>
-        Email
-        <input type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
-      </label>
-      <label>
-        Mật khẩu
-        <input
-          type="password"
-          autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-          required
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-      </label>
+    <form className="flex flex-col gap-4" onSubmit={onSubmit} noValidate>
+      <TextField
+        label="Email"
+        type="email"
+        autoComplete="email"
+        required
+        placeholder="ban@example.com"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+      />
+      <TextField
+        label="Mật khẩu"
+        type="password"
+        autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+        required
+        hint={mode === 'register' ? `Ít nhất ${MIN_PASSWORD_LENGTH} ký tự.` : undefined}
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+      />
       {mode === 'register' && (
-        <label>
-          Nhập lại mật khẩu
-          <input
-            type="password"
-            autoComplete="new-password"
-            required
-            value={confirm}
-            onChange={(e) => setConfirm(e.target.value)}
-          />
-          <small>Ít nhất {MIN_PASSWORD_LENGTH} ký tự.</small>
-        </label>
+        <TextField
+          label="Nhập lại mật khẩu"
+          type="password"
+          autoComplete="new-password"
+          required
+          value={confirm}
+          onChange={(e) => setConfirm(e.target.value)}
+        />
       )}
-      {error && (
-        <p className="error" role="alert">
-          {error}
-        </p>
-      )}
-      <button type="submit" className="button" disabled={mutation.isPending}>
-        {mode === 'login' ? 'Đăng nhập' : 'Đăng ký'}
-      </button>
+      {error && <Alert tone="error">{error}</Alert>}
+      <Button type="submit" size="lg" block loading={mutation.isPending} className="mt-1">
+        {mode === 'login' ? 'Đăng nhập' : 'Tạo tài khoản'}
+      </Button>
     </form>
   )
 }
