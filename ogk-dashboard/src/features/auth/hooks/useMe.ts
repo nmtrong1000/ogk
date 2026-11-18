@@ -1,6 +1,6 @@
 import { useQuery, type QueryClient } from '@tanstack/react-query'
-import type { Account } from '../../shared/types/auth.ts'
-import { getMe } from './api.ts'
+import type { Account } from '../../../shared/types/auth.ts'
+import { getMe } from '../api.ts'
 
 export const ME_KEY = ['me'] as const
 

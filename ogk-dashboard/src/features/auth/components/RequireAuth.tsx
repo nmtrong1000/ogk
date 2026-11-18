@@ -1,8 +1,8 @@
 import { Link, Navigate, Outlet, useLocation } from 'react-router-dom'
-import { Alert, Card, Spinner } from '../../shared/components/index.ts'
-import type { Role } from '../../shared/types/auth.ts'
-import { errorMessage } from './messages.ts'
-import { useMe } from './useMe.ts'
+import { Alert, Card, Spinner } from '../../../shared/components/index.ts'
+import type { Role } from '../../../shared/types/auth.ts'
+import { errorMessage } from '../utils/messages.ts'
+import { useMe } from '../hooks/useMe.ts'
 
 type Props = { roles?: Role[] }
 

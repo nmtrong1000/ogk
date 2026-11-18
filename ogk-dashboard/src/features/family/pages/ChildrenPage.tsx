@@ -1,12 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Alert, Card, Spinner, Table, TableBody, TableHead, TableRow, Td, Th } from '../../shared/components/index.ts'
-import { childrenKey, createChild, deleteChild, listChildren } from './api.ts'
-import ChildForm from './ChildForm.tsx'
-import ConfirmDelete from './ConfirmDelete.tsx'
-import { errorMessage } from './messages.ts'
-import { ageFrom } from './year.ts'
+import { Alert, Card, Spinner, Table, TableBody, TableHead, TableRow, Td, Th } from '../../../shared/components/index.ts'
+import { childrenKey, createChild, deleteChild, listChildren } from '../api.ts'
+import ChildForm from '../components/ChildForm.tsx'
+import ConfirmDelete from '../components/ConfirmDelete.tsx'
+import { errorMessage } from '../utils/messages.ts'
+import { ageFrom } from '../utils/year.ts'
 
 export default function ChildrenPage() {
   const queryClient = useQueryClient()
