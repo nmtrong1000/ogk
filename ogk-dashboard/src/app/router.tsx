@@ -1,7 +1,8 @@
 import { createBrowserRouter, type RouteObject } from 'react-router-dom'
 import { AuditPage } from '@/features/audit/index.ts'
 import { AdminAccountsPage, LoginPage, RegisterPage, RequireAuth } from '@/features/auth/index.ts'
-import { ChildDetailPage, ChildrenPage } from '@/features/family/index.ts'
+import { AddDevicePage } from '@/features/enrollment/index.ts'
+import { ChildDetailPage, ChildrenPage, DevicesPage } from '@/features/family/index.ts'
 import ErrorPage from '@/app/ErrorPage.tsx'
 import HomePage from '@/app/HomePage.tsx'
 import Layout from '@/app/Layout.tsx'
@@ -27,6 +28,8 @@ export const router = createBrowserRouter([
         children: [
           { path: '/children', element: <ChildrenPage /> },
           { path: '/children/:id', element: <ChildDetailPage /> },
+          { path: '/devices', element: <DevicesPage /> },
+          { path: '/devices/add', element: <AddDevicePage /> },
         ],
       },
       {

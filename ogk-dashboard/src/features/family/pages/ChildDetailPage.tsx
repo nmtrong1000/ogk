@@ -8,6 +8,7 @@ import { ApiError } from '@/shared/api/client.ts'
 import { Alert, Button, Card, Dialog, Spinner } from '@/shared/components/index.ts'
 import type { Child, ChildInput } from '@/shared/types/family.ts'
 import { childKey, childrenKey, deleteChild, getChild, updateChild } from '@/features/family/api.ts'
+import ChildDevices from '@/features/family/components/ChildDevices.tsx'
 import ChildForm from '@/features/family/components/ChildForm.tsx'
 import { errorMessage } from '@/features/family/utils/messages.ts'
 import { ageFrom } from '@/features/family/utils/year.ts'
@@ -110,6 +111,8 @@ function ChildDetail({ id }: { id: number }) {
           />
         </div>
       </Card>
+
+      <ChildDevices childId={id} />
 
       <Dialog
         open={confirming}

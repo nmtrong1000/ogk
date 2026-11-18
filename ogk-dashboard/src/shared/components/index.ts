@@ -1,3 +1,4 @@
+export { AccountAssignments } from '@/shared/components/AccountAssignments.tsx'
 export { Alert } from '@/shared/components/Alert.tsx'
 export { Badge } from '@/shared/components/Badge.tsx'
 export { Button } from '@/shared/components/Button.tsx'

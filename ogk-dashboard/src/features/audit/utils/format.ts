@@ -1,12 +1,23 @@
 import type { AuditAction, AuditEntry, AuditValue } from '@/shared/types/audit.ts'
 
-const TARGET_LABELS: Record<string, string> = { child: 'con' }
+const TARGET_LABELS: Record<string, string> = {
+  child: 'con',
+  device: 'thiết bị',
+  windows_account: 'tài khoản Windows',
+}
 
 const FIELD_LABELS: Record<string, Record<string, string>> = {
   child: { name: 'Tên', birth_year: 'Năm sinh' },
+  device: { name: 'Tên máy' },
+  windows_account: { child_id: 'Con được gán (mã số)' },
 }
 
 const ACTION_VERBS: Record<AuditAction, string> = { create: 'Thêm', update: 'Sửa', delete: 'Xóa' }
+
+const TARGET_VERBS: Record<string, Partial<Record<AuditAction, string>>> = {
+  device: { create: 'Ghép đôi', delete: 'Gỡ' },
+  windows_account: { update: 'Gán' },
+}
 
 export const ACTION_TONES = { create: 'success', update: 'brand', delete: 'danger' } as const
 
@@ -15,7 +26,8 @@ export function targetLabel(type: string): string {
 }
 
 export function actionLabel(entry: Pick<AuditEntry, 'action' | 'target_type'>): string {
-  return `${ACTION_VERBS[entry.action] ?? entry.action} ${targetLabel(entry.target_type)}`
+  const verb = TARGET_VERBS[entry.target_type]?.[entry.action] ?? ACTION_VERBS[entry.action] ?? entry.action
+  return `${verb} ${targetLabel(entry.target_type)}`
 }
 
 export function fieldLabel(targetType: string, field: string): string {
