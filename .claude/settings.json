@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/lint_format.py\"",
+            "timeout": 120,
+            "statusMessage": "Lint and format changed files"
+          }
+        ]
+      }
+    ]
+  }
+}
