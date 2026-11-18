@@ -25,3 +25,24 @@ class ChildOut(BaseModel):
     birth_year: int
     created_at: datetime
     updated_at: datetime
+
+
+class WindowsAccountOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    sid: str
+    username: str
+    child_id: int | None
+
+
+class DeviceOut(BaseModel):
+    id: int
+    name: str
+    created_at: datetime
+    last_seen_at: datetime | None
+    accounts: list[WindowsAccountOut]
+
+
+class AssignIn(BaseModel):
+    child_id: int | None

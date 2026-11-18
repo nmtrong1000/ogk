@@ -18,7 +18,7 @@ if (Get-Service $ServiceName -ErrorAction SilentlyContinue) {
 }
 
 New-Item -ItemType Directory -Force -Path $InstallDir, $DataDir | Out-Null
-icacls $DataDir /inheritance:r /grant:r "*S-1-5-18:(OI)(CI)F" "*S-1-5-32-544:(OI)(CI)F" "*S-1-5-32-545:(OI)(CI)RX" | Out-Null
+icacls $DataDir /inheritance:r /grant:r "*S-1-5-18:(OI)(CI)F" "*S-1-5-32-544:(OI)(CI)F" | Out-Null
 
 Copy-Item $Exe $ServiceExe -Force
 Copy-Item $TrayExe $TrayTarget -Force
@@ -35,3 +35,4 @@ sc.exe failureflag $ServiceName 1 | Out-Null
 
 Start-Service $ServiceName
 Get-Service $ServiceName
+Write-Host "Next: create a pairing code on the dashboard, then run: & '$ServiceExe' enroll"

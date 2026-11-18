@@ -1,20 +1,33 @@
 """Names are encrypted in the DB and cannot be ORDER BY'd, so the list is sorted after decryption.
 create flushes to get the child id, then the child and its audit entry commit in one transaction.
 An update that changes nothing writes no audit entry and keeps updated_at.
+create_device and revoke_device do not commit: enrollment commits them together with tokens and consent.
+A revoked device is hidden from every parent query, so it behaves as removed.
 """
 
+from dataclasses import dataclass
 from datetime import datetime
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_owned, select_owned, utcnow
 from app.core.errors import AppError
 from app.modules.audit import service as audit
-from app.modules.family.models import Child
+from app.modules.family.models import Child, Device, WindowsAccount
 
 MAX_NAME_LENGTH = 64
 MIN_BIRTH_YEAR = 2000
 AUDIT_TARGET = "child"
+AUDIT_DEVICE = "device"
+AUDIT_WINDOWS_ACCOUNT = "windows_account"
+MAX_DEVICE_NAME_LENGTH = 64
+
+
+@dataclass(frozen=True)
+class NewWindowsAccount:
+    sid: str
+    username: str
 
 
 def now() -> datetime:
@@ -104,3 +117,110 @@ async def delete_child(db: AsyncSession, child_id: int, owner_id: int, *, actor:
     audit.record(db, actor, "delete", AUDIT_TARGET, child.id, snapshot(child), None)
     await db.delete(child)
     await db.commit()
+
+
+def _device_out(device: Device, accounts: list[WindowsAccount]) -> dict:
+    return {
+        "id": device.id,
+        "name": device.name,
+        "created_at": device.created_at,
+        "last_seen_at": device.last_seen_at,
+        "accounts": sorted(accounts, key=lambda a: (a.username.casefold(), a.id)),
+    }
+
+
+async def _with_accounts(db: AsyncSession, devices: list[Device]) -> list[dict]:
+    if not devices:
+        return []
+    ids = [d.id for d in devices]
+    rows = (await db.execute(select(WindowsAccount).where(WindowsAccount.device_id.in_(ids)))).scalars()
+    by_device: dict[int, list[WindowsAccount]] = {i: [] for i in ids}
+    for account in rows:
+        by_device[account.device_id].append(account)
+    return [_device_out(d, by_device[d.id]) for d in sorted(devices, key=lambda d: (d.created_at, d.id))]
+
+
+def _active_devices(owner_id: int):
+    return select_owned(Device, owner_id).where(Device.revoked_at.is_(None))
+
+
+async def list_devices(db: AsyncSession, owner_id: int) -> list[dict]:
+    return await _with_accounts(db, list((await db.execute(_active_devices(owner_id))).scalars()))
+
+
+async def list_child_devices(db: AsyncSession, child_id: int, owner_id: int) -> list[dict]:
+    await get_child_for_owner(db, child_id, owner_id)
+    stmt = _active_devices(owner_id).where(
+        Device.id.in_(select(WindowsAccount.device_id).where(WindowsAccount.child_id == child_id))
+    )
+    return await _with_accounts(db, list((await db.execute(stmt)).scalars()))
+
+
+async def get_active_device_for_owner(db: AsyncSession, device_id: int, owner_id: int) -> Device:
+    device = (await db.execute(_active_devices(owner_id).where(Device.id == device_id))).scalar_one_or_none()
+    if device is None:
+        raise AppError(404, "not_found")
+    return device
+
+
+async def get_device(db: AsyncSession, device_id: int) -> Device | None:
+    return await db.get(Device, device_id)
+
+
+def device_name(name: str) -> str:
+    name = name.strip()[:MAX_DEVICE_NAME_LENGTH]
+    return name or "Windows PC"
+
+
+async def create_device(
+    db: AsyncSession,
+    owner_id: int,
+    name: str,
+    fingerprint_hash: str,
+    secret_hash: str,
+    accounts: list[NewWindowsAccount],
+    *,
+    actor: audit.Actor,
+) -> Device:
+    device = Device(
+        owner_id=owner_id,
+        name=device_name(name),
+        created_at=now(),
+        fingerprint_hash=fingerprint_hash,
+        secret_hash=secret_hash,
+    )
+    db.add(device)
+    await db.flush()
+    seen: set[str] = set()
+    for account in accounts:
+        if account.sid in seen:
+            continue
+        seen.add(account.sid)
+        db.add(WindowsAccount(device_id=device.id, child_id=None, sid=account.sid, username=account.username))
+    audit.record(db, actor, "create", AUDIT_DEVICE, device.id, None, {"name": device.name})
+    return device
+
+
+async def revoke_device(db: AsyncSession, device_id: int, owner_id: int, *, actor: audit.Actor) -> Device:
+    device = await get_active_device_for_owner(db, device_id, owner_id)
+    device.revoked_at = now()
+    audit.record(db, actor, "delete", AUDIT_DEVICE, device.id, {"name": device.name}, None)
+    return device
+
+
+async def assign_account(
+    db: AsyncSession, device_id: int, account_id: int, child_id: int | None, owner_id: int, *, actor: audit.Actor
+) -> WindowsAccount:
+    await get_active_device_for_owner(db, device_id, owner_id)
+    account = await db.get(WindowsAccount, account_id)
+    if account is None or account.device_id != device_id:
+        raise AppError(404, "not_found")
+    if child_id is not None and await get_owned(db, Child, child_id, owner_id) is None:
+        raise AppError(404, "child_not_found")
+    if account.child_id == child_id:
+        return account
+    old = account.child_id
+    account.child_id = child_id
+    audit.record(db, actor, "update", AUDIT_WINDOWS_ACCOUNT, account.id, {"child_id": old}, {"child_id": child_id})
+    await db.commit()
+    return account

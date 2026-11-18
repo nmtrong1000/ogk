@@ -6,9 +6,13 @@ from app.core.security import CSRFMiddleware, RateLimiter
 from app.modules.audit.router import router as audit_router
 from app.modules.auth.router import admin_router as auth_admin_router
 from app.modules.auth.router import router as auth_router
+from app.modules.enrollment.router import DEVICE_PREFIXES
+from app.modules.enrollment.router import device_router as enrollment_device_router
+from app.modules.enrollment.router import router as enrollment_router
+from app.modules.family.router import devices_router as family_devices_router
 from app.modules.family.router import router as family_router
 
-CSRF_EXEMPT_PREFIXES: tuple[str, ...] = ()
+CSRF_EXEMPT_PREFIXES: tuple[str, ...] = DEVICE_PREFIXES
 
 
 def create_app() -> FastAPI:
@@ -20,6 +24,9 @@ def create_app() -> FastAPI:
     app.include_router(auth_router)
     app.include_router(auth_admin_router)
     app.include_router(family_router)
+    app.include_router(family_devices_router)
+    app.include_router(enrollment_router)
+    app.include_router(enrollment_device_router)
     app.include_router(audit_router)
     dist = get_settings().dashboard_dist
     if dist and (dist / "index.html").is_file():

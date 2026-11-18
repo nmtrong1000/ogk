@@ -62,3 +62,45 @@ async def test_unexpected_error_stops_agent(tmp_path):
         await asyncio.wait_for(Agent(_config(), client, tmp_path).run(asyncio.Event()), 1)
     assert client.closed
     assert not (tmp_path / "ipc.json").exists()
+
+
+class FakeSession:
+    def __init__(self, results):
+        self.results = list(results)
+        self.state = "active"
+        self.closed = False
+
+    async def me(self):
+        result = self.results.pop(0)
+        if isinstance(result, Exception):
+            raise result
+        return result
+
+    async def aclose(self):
+        self.closed = True
+
+
+@pytest.mark.anyio
+async def test_device_check_logs_changes_once(caplog, tmp_path):
+    from service.core.device_session import DeviceRevoked, NotEnrolled
+    from service.core.server_client import CertificatePinError
+
+    caplog.set_level(logging.INFO)
+    session = FakeSession(
+        [
+            NotEnrolled(),
+            NotEnrolled(),
+            {"id": 1, "name": "PC"},
+            CertificatePinError("server certificate x does not match pinned y"),
+            DeviceRevoked(),
+            DeviceRevoked(),
+        ]
+    )
+    agent = Agent(_config(), FakeClient({"status": "ok"}), tmp_path, session)
+    results = [await agent.check_device() for _ in range(6)]
+    assert results == [False, False, True, False, False, False]
+    assert caplog.text.count("device not enrolled") == 1
+    assert "device 1 authenticated as PC" in caplog.text
+    assert "refusing to connect: server certificate x does not match pinned y" in caplog.text
+    assert caplog.text.count("device is revoked; API calls stopped") == 1
+    assert agent.status()["enrollment"] == "active"

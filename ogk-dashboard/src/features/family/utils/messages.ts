@@ -15,6 +15,14 @@ export function fieldError(error: unknown): { name?: string; birthYear?: string 
   return {}
 }
 
+export function deviceErrorMessage(error: unknown): string {
+  if (error instanceof ApiError) {
+    if (error.code === 'not_found') return 'Không tìm thấy thiết bị. Có thể đã bị gỡ.'
+    if (error.code === 'child_not_found') return 'Không tìm thấy con này. Có thể đã bị xóa.'
+  }
+  return commonErrorMessage(error)
+}
+
 export function errorMessage(error: unknown): string {
   if (error instanceof ApiError) {
     if (error.code === 'invalid_name') return NAME_ERROR

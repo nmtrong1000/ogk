@@ -1,3 +1,7 @@
+"""ipc.json is the one file in the locked data directory that the Tray UI, running as the child, must read,
+so it is the only file given a user-readable ACL.
+"""
+
 import hmac
 import json
 import logging
@@ -8,6 +12,8 @@ from pathlib import Path
 from typing import Any
 
 from aiohttp import web
+
+from service.platform import get_platform
 
 log = logging.getLogger("ogk.ipc")
 
@@ -52,8 +58,7 @@ class IpcServer:
         self._file.parent.mkdir(parents=True, exist_ok=True)
         tmp = self._file.with_name(self._file.name + ".tmp")
         tmp.write_text(json.dumps({"port": self._port, "token": self._token}), encoding="utf-8")
-        if os.name == "posix":
-            os.chmod(tmp, 0o644)
+        get_platform().secure_path(tmp, user_readable=True)
         os.replace(tmp, self._file)
 
     @web.middleware

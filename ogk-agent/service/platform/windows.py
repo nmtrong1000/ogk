@@ -1,11 +1,24 @@
+"""secure_path replaces the DACL with a protected one (no inherited ACEs): SYSTEM and Administrators get
+full control. user_readable adds read for BUILTIN\\Users on that one file; users can still open it inside
+the locked directory because Windows grants traverse checking bypass to everyone by default.
+MachineGuid is read from the 64-bit registry view so a 32-bit build sees the same value.
+"""
+
 import asyncio
+import hashlib
 import logging
 import os
+import winreg
 from pathlib import Path
 
+import ntsecuritycon
 import servicemanager
+import win32net
+import win32netcon
+import win32security
 import win32service
 import win32serviceutil
+from win32com.shell import shell
 
 from service.core.logging_setup import setup_logging
 from service.platform import Entry
@@ -19,6 +32,61 @@ _entry: Entry | None = None
 
 def data_dir() -> Path:
     return Path(os.environ.get("PROGRAMDATA", r"C:\ProgramData")) / "OGK"
+
+
+SID_SYSTEM = "S-1-5-18"
+SID_ADMINISTRATORS = "S-1-5-32-544"
+SID_USERS = "S-1-5-32-545"
+
+
+def is_admin() -> bool:
+    return bool(shell.IsUserAnAdmin())
+
+
+def machine_fingerprint() -> str:
+    access = winreg.KEY_READ | winreg.KEY_WOW64_64KEY
+    with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Microsoft\Cryptography", 0, access) as key:
+        guid, _ = winreg.QueryValueEx(key, "MachineGuid")
+    return hashlib.sha256(str(guid).encode()).hexdigest()
+
+
+def list_windows_accounts() -> list[tuple[str, str]]:
+    accounts = []
+    resume = 0
+    while True:
+        users, _, resume = win32net.NetUserEnum(None, 1, win32netcon.FILTER_NORMAL_ACCOUNT, resume)
+        for user in users:
+            if user["flags"] & win32netcon.UF_ACCOUNTDISABLE:
+                continue
+            sid, _, _ = win32security.LookupAccountName(None, user["name"])
+            accounts.append((user["name"], win32security.ConvertSidToStringSid(sid)))
+        if not resume:
+            return accounts
+
+
+def secure_path(path: Path, user_readable: bool = False) -> None:
+    inherit = ntsecuritycon.OBJECT_INHERIT_ACE | ntsecuritycon.CONTAINER_INHERIT_ACE if path.is_dir() else 0
+    dacl = win32security.ACL()
+    for sid in (SID_SYSTEM, SID_ADMINISTRATORS):
+        dacl.AddAccessAllowedAceEx(
+            win32security.ACL_REVISION, inherit, ntsecuritycon.FILE_ALL_ACCESS, win32security.ConvertStringSidToSid(sid)
+        )
+    if user_readable:
+        dacl.AddAccessAllowedAceEx(
+            win32security.ACL_REVISION,
+            0,
+            ntsecuritycon.FILE_GENERIC_READ,
+            win32security.ConvertStringSidToSid(SID_USERS),
+        )
+    win32security.SetNamedSecurityInfo(
+        str(path),
+        win32security.SE_FILE_OBJECT,
+        win32security.DACL_SECURITY_INFORMATION | win32security.PROTECTED_DACL_SECURITY_INFORMATION,
+        None,
+        None,
+        dacl,
+        None,
+    )
 
 
 class OGKService(win32serviceutil.ServiceFramework):
