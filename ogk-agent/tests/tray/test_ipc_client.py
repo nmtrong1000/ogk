@@ -1,5 +1,6 @@
 import asyncio
 import json
+import os
 import threading
 
 import pytest
@@ -58,3 +59,26 @@ def test_corrupt_file_is_reported(tmp_path):
     with pytest.raises(IpcError, match="Invalid IPC file") as info:
         IpcClient(tmp_path).status()
     assert info.value.code == "bad_ipc_file"
+
+
+def test_heartbeat_reaches_service(tmp_path):
+    loop = asyncio.new_event_loop()
+    thread = threading.Thread(target=loop.run_forever, daemon=True)
+    thread.start()
+    pids = []
+    server = IpcServer(tmp_path, 0, dict, pids.append)
+    asyncio.run_coroutine_threadsafe(server.start(), loop).result(5)
+    try:
+        IpcClient(tmp_path).heartbeat()
+    finally:
+        asyncio.run_coroutine_threadsafe(server.stop(), loop).result(5)
+        loop.call_soon_threadsafe(loop.stop)
+        thread.join(5)
+        loop.close()
+    assert pids == [os.getpid()]
+
+
+def test_heartbeat_without_service_raises(tmp_path):
+    with pytest.raises(IpcError) as info:
+        IpcClient(tmp_path).heartbeat()
+    assert info.value.code == "not_running"

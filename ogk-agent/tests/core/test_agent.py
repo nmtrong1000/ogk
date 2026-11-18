@@ -1,11 +1,14 @@
 import asyncio
+import json
 import logging
 
 import httpx
 import pytest
 
 from service.core.agent import Agent
+from service.core.bus import TRAY_HEARTBEAT, Bus
 from service.core.config import Config
+from service.core.enforcement import Enforcement
 
 
 class FakeClient:
@@ -104,3 +107,60 @@ async def test_device_check_logs_changes_once(caplog, tmp_path):
     assert "refusing to connect: server certificate x does not match pinned y" in caplog.text
     assert caplog.text.count("device is revoked; API calls stopped") == 1
     assert agent.status()["enrollment"] == "active"
+
+
+@pytest.mark.anyio
+async def test_status_includes_enforcement(tmp_path):
+    enforcement = Enforcement()
+    agent = Agent(_config(), FakeClient({"status": "ok"}), tmp_path, enforcement=enforcement)
+    assert agent.status()["enforcement"]["enabled"] is True
+    enforcement.disable("tray_unavailable")
+    assert agent.status()["enforcement"] == enforcement.snapshot()
+
+
+class FakeModule:
+    def __init__(self):
+        self.started = asyncio.Event()
+        self.cancelled = False
+
+    async def run(self):
+        self.started.set()
+        try:
+            await asyncio.Event().wait()
+        except asyncio.CancelledError:
+            self.cancelled = True
+            raise
+
+
+@pytest.mark.anyio
+async def test_modules_run_and_stop_with_agent(tmp_path):
+    module = FakeModule()
+    stop_event = asyncio.Event()
+    agent = Agent(_config(), FakeClient({"status": "ok"}), tmp_path, modules=[module])
+    run = asyncio.create_task(agent.run(stop_event))
+    await asyncio.wait_for(module.started.wait(), 1)
+    stop_event.set()
+    await asyncio.wait_for(run, 1)
+    assert module.cancelled
+
+
+@pytest.mark.anyio
+async def test_ipc_heartbeat_is_published_on_bus(tmp_path):
+    bus = Bus()
+    pids = []
+    bus.subscribe(TRAY_HEARTBEAT, pids.append)
+    client = FakeClient({"status": "ok"})
+    stop_event = asyncio.Event()
+    run = asyncio.create_task(Agent(_config(), client, tmp_path, bus=bus).run(stop_event))
+    await asyncio.wait_for(client.called.wait(), 1)
+    info = json.loads((tmp_path / "ipc.json").read_text(encoding="utf-8"))
+    async with httpx.AsyncClient() as http:
+        response = await http.post(
+            f"http://127.0.0.1:{info['port']}/ipc/heartbeat",
+            json={"pid": 7},
+            headers={"Authorization": f"Bearer {info['token']}"},
+        )
+    stop_event.set()
+    await asyncio.wait_for(run, 1)
+    assert response.status_code == 200
+    assert pids == [7]

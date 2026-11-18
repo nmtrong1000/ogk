@@ -21,9 +21,12 @@ def describe_error(exc: IpcError) -> str:
 
 def describe(status: dict[str, Any]) -> str:
     server = {True: "kết nối được", False: "không kết nối được", None: "chưa kiểm tra"}
+    enforcement = status.get("enforcement") or {}
+    supervision = {True: "đang bật", False: "đã tắt"}
     return (
         f"Service: đang chạy ({status.get('uptime', 0):.0f} giây)\n"
-        f"Server: {server.get(status.get('server_reachable'), 'không rõ')}"
+        f"Server: {server.get(status.get('server_reachable'), 'không rõ')}\n"
+        f"Giám sát: {supervision.get(enforcement.get('enabled'), 'không rõ')}"
     )
 
 
@@ -42,7 +45,7 @@ class StatusWindow:
         else:
             self._window = tk.Toplevel(self._root)
             self._window.title("OGK")
-            self._window.geometry("360x160")
+            self._window.geometry("360x180")
             self._label = tk.Label(self._window, justify="left", padx=20, pady=20)
             self._label.pack(anchor="w")
             tk.Button(self._window, text="Làm mới", command=self.refresh).pack()

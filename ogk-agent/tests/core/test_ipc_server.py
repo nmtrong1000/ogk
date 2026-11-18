@@ -70,3 +70,46 @@ async def test_new_token_each_start_and_file_removed_on_stop(tmp_path):
         assert not (tmp_path / IPC_FILE).exists()
     assert tokens[0] != tokens[1]
     assert len(tokens[0]) >= 40
+
+
+@pytest.fixture
+async def ipc_with_heartbeat(tmp_path):
+    pids = []
+    server = IpcServer(tmp_path, 0, dict, pids.append)
+    await server.start()
+    yield server, pids
+    await server.stop()
+
+
+async def _post(port, body, headers):
+    async with httpx.AsyncClient() as client:
+        return await client.post(f"http://127.0.0.1:{port}/ipc/heartbeat", json=body, headers=headers)
+
+
+@pytest.mark.anyio
+async def test_heartbeat_with_token_reaches_handler(ipc_with_heartbeat, tmp_path):
+    server, pids = ipc_with_heartbeat
+    token = _read(tmp_path)["token"]
+    response = await _post(server.port, {"pid": 4242}, {"Authorization": f"Bearer {token}"})
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}
+    assert pids == [4242]
+
+
+@pytest.mark.anyio
+async def test_heartbeat_without_token_rejected(ipc_with_heartbeat):
+    server, pids = ipc_with_heartbeat
+    response = await _post(server.port, {"pid": 4242}, None)
+    assert response.status_code == 401
+    assert pids == []
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("body", [None, [], {}, {"pid": "1"}, {"pid": True}, {"pid": 0}])
+async def test_heartbeat_bad_body_rejected(ipc_with_heartbeat, tmp_path, body):
+    server, pids = ipc_with_heartbeat
+    token = _read(tmp_path)["token"]
+    response = await _post(server.port, body, {"Authorization": f"Bearer {token}"})
+    assert response.status_code == 400
+    assert response.json() == {"error": "bad_request"}
+    assert pids == []

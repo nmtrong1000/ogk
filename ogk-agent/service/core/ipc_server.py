@@ -21,13 +21,21 @@ IPC_HOST = "127.0.0.1"
 IPC_FILE = "ipc.json"
 
 StatusProvider = Callable[[], dict[str, Any]]
+HeartbeatHandler = Callable[[int], None]
 
 
 class IpcServer:
-    def __init__(self, data_dir: Path, port: int, status_provider: StatusProvider) -> None:
+    def __init__(
+        self,
+        data_dir: Path,
+        port: int,
+        status_provider: StatusProvider,
+        heartbeat_handler: HeartbeatHandler | None = None,
+    ) -> None:
         self._file = data_dir / IPC_FILE
         self._port = port
         self._status = status_provider
+        self._heartbeat = heartbeat_handler
         self._token = ""
         self._runner: web.AppRunner | None = None
 
@@ -39,6 +47,7 @@ class IpcServer:
         self._token = secrets.token_urlsafe(32)
         app = web.Application(middlewares=[self._auth])
         app.router.add_get("/ipc/status", self._handle_status)
+        app.router.add_post("/ipc/heartbeat", self._handle_heartbeat)
         self._runner = web.AppRunner(app, access_log=None)
         await self._runner.setup()
         site = web.TCPSite(self._runner, IPC_HOST, self._port)
@@ -71,3 +80,15 @@ class IpcServer:
 
     async def _handle_status(self, request: web.Request) -> web.Response:
         return web.json_response({"status": "ok", **self._status()})
+
+    async def _handle_heartbeat(self, request: web.Request) -> web.Response:
+        try:
+            body = await request.json()
+        except ValueError:
+            body = None
+        pid = body.get("pid") if isinstance(body, dict) else None
+        if isinstance(pid, bool) or not isinstance(pid, int) or pid <= 0:
+            return web.json_response({"error": "bad_request"}, status=400)
+        if self._heartbeat is not None:
+            self._heartbeat(pid)
+        return web.json_response({"status": "ok"})

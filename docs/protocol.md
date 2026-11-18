@@ -494,3 +494,26 @@ Vai trò `parent`. Cần CSRF. Gỡ thiết bị: đặt `revoked_at`, thu hồi
 | 404 | `not_found` (không có, của người khác, hoặc đã gỡ) |
 | 401 | `not_authenticated` |
 | 403 | `forbidden`, `csrf_failed` |
+
+## Kênh IPC giữa service và Tray UI
+
+HTTP tại `127.0.0.1`, chỉ phục vụ Tray UI trên cùng máy. Service sinh token mới mỗi lần khởi động và ghi `{ "port": ..., "token": "..." }` vào `ipc.json` trong thư mục dữ liệu. Chỉ tệp này cho người dùng thường đọc được. Mọi request mang header `Authorization: Bearer <token>`; thiếu hoặc sai token thì trả 401 `{ "error": "unauthorized" }`.
+
+### `GET /ipc/status`
+
+| HTTP | Body |
+| :---- | :---- |
+| 200 | `{ "status": "ok", "uptime": 12.3, "server_reachable": true, "enrollment": "active", "enforcement": { "enabled": true, "reason": null, "since": "2026-11-18T08:00:00Z" } }` |
+
+`enforcement.enabled` là `false` khi service đã tắt cưỡng chế. Khi đó `reason` cho biết lý do: `tray_unavailable` nghĩa là bật lại Tray UI thất bại 3 lần liên tiếp. Cưỡng chế bật lại ngay khi nhận được tín hiệu sống từ Tray UI.
+
+### `POST /ipc/heartbeat`
+
+Tray UI gửi mỗi 5 giây. Body: `{ "pid": 4242 }`.
+
+| HTTP | Body |
+| :---- | :---- |
+| 200 | `{ "status": "ok" }` |
+| 400 | `{ "error": "bad_request" }` (body không phải JSON hoặc `pid` không phải số nguyên dương) |
+
+Service tự bật Tray UI trong phiên người dùng đang hoạt động. Nếu không có tín hiệu sống trong 15 giây sau khi bật, hoặc tiến trình thoát trước tín hiệu sống đầu tiên, thì tính là một lần thất bại.
