@@ -1,5 +1,6 @@
 import hashlib
 import hmac
+import ipaddress
 import math
 import secrets
 import time
@@ -10,6 +11,7 @@ from fastapi import Depends, Request, Response
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 
+from app.core.config import get_settings
 from app.core.errors import AppError
 
 SESSION_COOKIE = "ogk_session"
@@ -91,8 +93,34 @@ class RateLimiter:
         return None
 
 
+FORWARDED_FOR_HEADER = "x-forwarded-for"
+
+
+def _valid_ip(value: str) -> str | None:
+    try:
+        return str(ipaddress.ip_address(value.strip()))
+    except ValueError:
+        return None
+
+
 def client_ip(request: Request) -> str:
-    return request.client.host if request.client else "unknown"
+    """IP của client. Chỉ tin X-Forwarded-For khi kết nối đến từ proxy tin cậy (OGK_TRUSTED_PROXIES).
+
+    Lấy từ phải sang: bỏ qua các hop là proxy tin cậy, hop đầu tiên còn lại là client thật.
+    Client gọi thẳng tự thêm header thì bị bỏ qua vì IP socket không phải proxy tin cậy.
+    """
+    peer = request.client.host if request.client else "unknown"
+    trusted = get_settings().trusted_proxy_set
+    header = request.headers.get(FORWARDED_FOR_HEADER)
+    if peer not in trusted or not header:
+        return peer
+    hops = [_valid_ip(h) for h in header.split(",")]
+    if None in hops:
+        return peer
+    for hop in reversed(hops):
+        if hop not in trusted:
+            return hop
+    return hops[0]
 
 
 def rate_limit(scope: str, limit: int, window: float = 60):

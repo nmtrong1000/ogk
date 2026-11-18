@@ -15,6 +15,8 @@ from app.core.db import Base, UTCDateTime
 
 class Child(Base):
     __tablename__ = "children"
+    # AUTOINCREMENT: id của trẻ đã xóa không được cấp lại, để nhật ký kiểm toán (target_id) không trỏ nhầm trẻ khác.
+    __table_args__ = {"sqlite_autoincrement": True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     owner_id: Mapped[int] = mapped_column(ForeignKey("accounts.id", ondelete="CASCADE"), index=True)

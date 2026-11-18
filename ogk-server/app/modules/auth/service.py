@@ -184,6 +184,14 @@ require_parent = require_role(ROLE_PARENT)
 require_admin = require_role(ROLE_ADMIN)
 
 
+async def emails_by_ids(db: AsyncSession, ids: set[int]) -> dict[int, str]:
+    """Email theo id tài khoản, cho module khác hiển thị người thực hiện."""
+    if not ids:
+        return {}
+    rows = await db.execute(select(Account.id, Account.email).where(Account.id.in_(ids)))
+    return {account_id: email for account_id, email in rows}
+
+
 async def list_parent_accounts(db: AsyncSession, locked_only: bool = False) -> list[Account]:
     stmt = select(Account).where(Account.role == ROLE_PARENT).order_by(Account.email)
     if locked_only:

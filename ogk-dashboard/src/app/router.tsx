@@ -1,4 +1,5 @@
 import { createBrowserRouter, type RouteObject } from 'react-router-dom'
+import { AuditPage } from '../features/audit/index.ts'
 import { AdminAccountsPage, LoginPage, RegisterPage, RequireAuth } from '../features/auth/index.ts'
 import { ChildDetailPage, ChildrenPage } from '../features/family/index.ts'
 import ErrorPage from './ErrorPage.tsx'
@@ -32,6 +33,10 @@ export const router = createBrowserRouter([
       {
         element: <RequireAuth roles={['admin']} />,
         children: [{ path: '/admin/accounts', element: <AdminAccountsPage /> }],
+      },
+      {
+        element: <RequireAuth roles={['parent', 'admin']} />,
+        children: [{ path: '/audit', element: <AuditPage /> }],
       },
       ...devRoutes,
       { path: '*', element: <NotFoundPage /> },

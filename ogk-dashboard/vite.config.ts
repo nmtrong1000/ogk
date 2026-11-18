@@ -13,6 +13,8 @@ export default defineConfig({
       '/api': {
         target: process.env.OGK_SERVER_URL ?? 'https://localhost:8443',
         changeOrigin: true,
+        // Gửi X-Forwarded-For để server ghi IP thật của trình duyệt vào nhật ký kiểm toán.
+        xfwd: true,
         secure: true,
         agent: existsSync(caPath) ? new Agent({ ca: readFileSync(caPath) }) : undefined,
       },

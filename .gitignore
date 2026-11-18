@@ -46,3 +46,6 @@ dist/
 *.log
 logs/
 .ogk-data/
+
+# Ghi chú tài khoản chạy thử trên máy
+tmp.txt
