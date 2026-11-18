@@ -5,6 +5,7 @@ import uvicorn
 
 from app.core.config import ConfigError, get_settings
 from app.core.crypto import get_cipher
+from app.core.signing import get_signing_key
 from app.main import create_app
 
 
@@ -12,6 +13,7 @@ def main() -> None:
     try:
         settings = get_settings()
         get_cipher()
+        get_signing_key()
     except ConfigError as exc:
         sys.exit(str(exc))
 

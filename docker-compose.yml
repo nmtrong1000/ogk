@@ -1,7 +1,8 @@
 # Runs OGK-Server and OGK-Dashboard: docker compose up --build
 # Every setting comes from .env next to this file (copy .env.example); a missing variable stops compose with its name.
-# Certificates must exist first: ogk-server/certs/gen_certs.sh
-# Only server.crt, server.key and ca.crt are mounted, never ca.key.
+# Certificates and the policy key must exist first: ogk-server/certs/gen_certs.sh and
+# python -m app.cli gen-policy-key (in ogk-server).
+# Only server.crt, server.key, ca.crt and policy_signing.pem are mounted, never ca.key.
 # The Agent Service and Tray UI run directly on the Mac, not in Docker.
 
 services:
@@ -24,12 +25,14 @@ services:
       OGK_TLS_CERT: ${OGK_TLS_CERT:?OGK_TLS_CERT is missing}
       OGK_TLS_KEY: ${OGK_TLS_KEY:?OGK_TLS_KEY is missing}
       OGK_DASHBOARD_DIST: ${OGK_DASHBOARD_DIST:?OGK_DASHBOARD_DIST is missing}
+      OGK_POLICY_SIGNING_KEY: ${OGK_POLICY_SIGNING_KEY:?OGK_POLICY_SIGNING_KEY is missing}
     volumes:
       - server-data:${OGK_CONTAINER_DATA_DIR:?OGK_CONTAINER_DATA_DIR is missing}
       - dashboard-dist:${OGK_DASHBOARD_DIST}:ro
       - ${OGK_CERT_DIR:?OGK_CERT_DIR is missing}/server.crt:${OGK_TLS_CERT}:ro
       - ${OGK_CERT_DIR}/server.key:${OGK_TLS_KEY}:ro
       - ${OGK_CERT_DIR}/ca.crt:${OGK_CA_CERT:?OGK_CA_CERT is missing}:ro
+      - ${OGK_CERT_DIR}/policy_signing.pem:${OGK_POLICY_SIGNING_KEY}:ro
     ports:
       - "${OGK_PORT}:${OGK_PORT}"
     healthcheck:

@@ -167,6 +167,16 @@ async def get_device(db: AsyncSession, device_id: int) -> Device | None:
     return await db.get(Device, device_id)
 
 
+async def child_ids_on_device(db: AsyncSession, device_id: int) -> list[int]:
+    stmt = (
+        select(WindowsAccount.child_id)
+        .where(WindowsAccount.device_id == device_id, WindowsAccount.child_id.is_not(None))
+        .distinct()
+        .order_by(WindowsAccount.child_id)
+    )
+    return list((await db.execute(stmt)).scalars())
+
+
 def device_name(name: str) -> str:
     name = name.strip()[:MAX_DEVICE_NAME_LENGTH]
     return name or "Windows PC"

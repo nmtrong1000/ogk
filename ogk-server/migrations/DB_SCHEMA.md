@@ -20,6 +20,7 @@ erDiagram
     devices ||--o{ device_tokens : "có"
     accounts ||--o{ consent_records : "đồng ý"
     devices ||--o{ consent_records : "được đồng ý"
+    children ||--o| policies : "có"
     accounts {
         integer id PK
         text email UK
@@ -97,6 +98,12 @@ erDiagram
         datetime consented_at
         text ip
         text consent_version
+    }
+    policies {
+        integer child_id PK, FK
+        integer version
+        integer daily_quota_minutes
+        datetime updated_at
     }
 ```
 
@@ -224,6 +231,17 @@ erDiagram
 | consented_at | Thời điểm phụ huynh đồng ý, bằng `pairing_codes.created_at` của mã đã dùng. | Thời điểm UTC | No | None |
 | ip | IP của phụ huynh lúc đồng ý, bằng `pairing_codes.consent_ip`. | Văn bản, tối đa 45 ký tự | No | None |
 | consent_version | Phiên bản nội dung đồng ý hiển thị trên dashboard. | Văn bản, tối đa 16 ký tự | No | None |
+
+### policies
+
+**Purpose:** Chính sách hiện hành của một trẻ. Server dựng tài liệu chính sách từ dòng này và ký Ed25519 mỗi khi agent tải; chữ ký không lưu trong DB. Dòng được tạo với giá trị mặc định lần đầu chính sách của trẻ được đọc.
+
+| Column | Description | Data type | Nullable? | Default |
+|---|---|---|---|---|
+| child_id | Trẻ sở hữu chính sách, tham chiếu `children.id`; cũng là khóa chính nên mỗi trẻ có tối đa một chính sách. | Số nguyên | No | None |
+| version | `policy_version`; tăng 1 mỗi lần chính sách đổi giá trị. | Số nguyên từ 1 | No | 1 khi tạo |
+| daily_quota_minutes | Trường mẫu: số phút dùng máy mỗi ngày. | Số nguyên từ 0 đến 1440 | No | 120 khi tạo |
+| updated_at | Thời điểm tạo hoặc đổi chính sách gần nhất; dùng làm `issued_at` trong tài liệu đã ký. | Thời điểm UTC | No | None |
 
 ## Integrity Constraints
 
@@ -687,3 +705,56 @@ $$
 - `device_tokens`
 - `devices`
 - Relevant attributes: `pairing_codes.code_hash`, `device_tokens.token_hash`, `devices.secret_hash`, `devices.fingerprint_hash`
+
+### IC-027: Mỗi trẻ có tối đa một chính sách
+
+**Statement:** Một chính sách thuộc đúng một trẻ tồn tại; một trẻ có tối đa một chính sách. Xóa trẻ thì xóa chính sách của trẻ.
+
+**Formal Expression:**
+
+$$
+\forall p \in policies\ \exists! c \in children:\ p.child\_id = c.id \quad \land \quad \forall p_1, p_2 \in policies:\ p_1.child\_id = p_2.child\_id \Rightarrow p_1 = p_2
+$$
+
+**Context:** DB kiểm tra bằng khóa chính `child_id` và khóa ngoại tới `children.id` với `ON DELETE CASCADE`. Server tạo dòng bằng `INSERT ... ON CONFLICT DO NOTHING` nên hai request đồng thời không tạo trùng.
+
+**Impacted Data Objects:**
+
+- `policies`
+- `children`
+- Relevant attributes: `policies.child_id`, `children.id`
+
+### IC-028: Phiên bản chính sách chỉ tăng
+
+**Statement:** `version` bắt đầu từ 1 và tăng đúng 1 mỗi lần giá trị chính sách thay đổi; sửa mà giá trị không đổi thì giữ nguyên version. Mỗi lần tăng có đúng một dòng nhật ký kiểm toán.
+
+**Formal Expression:**
+
+$$
+p.version \geq 1 \quad \land \quad p' \neq p \Rightarrow p'.version = p.version + 1 \land \exists! a \in audit\_logs:\ a.target\_type = \text{'policy'} \land a.target\_id = p.child\_id \land a.new\_value.policy\_version = p'.version
+$$
+
+**Context:** $p$ là dòng trước khi sửa, $p'$ là dòng sau khi sửa. DB chỉ kiểm tra `version >= 1` bằng `ck_policies_version`. Server tăng version ngay trong câu `UPDATE` (`version = version + 1`) nên hai lần sửa đồng thời không trùng version, và ghi nhật ký trong cùng giao dịch. Agent dựa vào điều này để từ chối chính sách có version thấp hơn bản đang giữ.
+
+**Impacted Data Objects:**
+
+- `policies`
+- `audit_logs`
+- Relevant attributes: `policies.version`, `audit_logs.target_type`, `audit_logs.target_id`, `audit_logs.new_value`
+
+### IC-029: Phút dùng mỗi ngày trong giới hạn
+
+**Statement:** `daily_quota_minutes` nằm trong khoảng 0 đến 1440.
+
+**Formal Expression:**
+
+$$
+\forall p \in policies:\ 0 \leq p.daily\_quota\_minutes \leq 1440
+$$
+
+**Context:** DB kiểm tra bằng `ck_policies_daily_quota_minutes`; server kiểm tra trước và trả `422 invalid_quota`.
+
+**Impacted Data Objects:**
+
+- `policies`
+- Relevant attributes: `policies.daily_quota_minutes`

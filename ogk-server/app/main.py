@@ -11,6 +11,8 @@ from app.modules.enrollment.router import device_router as enrollment_device_rou
 from app.modules.enrollment.router import router as enrollment_router
 from app.modules.family.router import devices_router as family_devices_router
 from app.modules.family.router import router as family_router
+from app.modules.policy.router import device_router as policy_device_router
+from app.modules.policy.router import router as policy_router
 
 CSRF_EXEMPT_PREFIXES: tuple[str, ...] = DEVICE_PREFIXES
 
@@ -28,6 +30,8 @@ def create_app() -> FastAPI:
     app.include_router(enrollment_router)
     app.include_router(enrollment_device_router)
     app.include_router(audit_router)
+    app.include_router(policy_router)
+    app.include_router(policy_device_router)
     dist = get_settings().dashboard_dist
     if dist and (dist / "index.html").is_file():
         dashboard.register(app, dist)
