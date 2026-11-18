@@ -1,8 +1,8 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { Button } from '../../shared/components/index.ts'
-import { logout } from './api.ts'
-import { switchSession } from './useMe.ts'
+import { Button } from '../../../shared/components/index.ts'
+import { logout } from '../api.ts'
+import { switchSession } from '../hooks/useMe.ts'
 
 export default function LogoutButton() {
   const queryClient = useQueryClient()

@@ -13,9 +13,9 @@ import {
   TableRow,
   Td,
   Th,
-} from '../../shared/components/index.ts'
-import { listAccounts, unlockAccount } from './api.ts'
-import { errorMessage } from './messages.ts'
+} from '../../../shared/components/index.ts'
+import { listAccounts, unlockAccount } from '../api.ts'
+import { errorMessage } from '../utils/messages.ts'
 
 function formatDateTime(iso: string): string {
   return new Date(iso).toLocaleString('vi-VN')

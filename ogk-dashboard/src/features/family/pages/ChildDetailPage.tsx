@@ -1,13 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ApiError } from '../../shared/api/client.ts'
-import { Alert, Button, Card, Dialog, Spinner } from '../../shared/components/index.ts'
-import type { Child, ChildInput } from '../../shared/types/family.ts'
-import { childKey, childrenKey, deleteChild, getChild, updateChild } from './api.ts'
-import ChildForm from './ChildForm.tsx'
-import { errorMessage } from './messages.ts'
-import { ageFrom } from './year.ts'
+import { ApiError } from '../../../shared/api/client.ts'
+import { Alert, Button, Card, Dialog, Spinner } from '../../../shared/components/index.ts'
+import type { Child, ChildInput } from '../../../shared/types/family.ts'
+import { childKey, childrenKey, deleteChild, getChild, updateChild } from '../api.ts'
+import ChildForm from '../components/ChildForm.tsx'
+import { errorMessage } from '../utils/messages.ts'
+import { ageFrom } from '../utils/year.ts'
 
 function NotFound() {
   return (

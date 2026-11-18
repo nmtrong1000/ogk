@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { Card } from '../../shared/components/index.ts'
+import { Card } from '../../../shared/components/index.ts'
 
 type Props = { title: string; subtitle: string; footer: ReactNode; children: ReactNode }
 
