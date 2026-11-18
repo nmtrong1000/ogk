@@ -40,6 +40,9 @@ export default function Layout() {
                     Tài khoản
                   </NavLink>
                 )}
+                <NavLink to="/audit" className={navClass}>
+                  Nhật ký
+                </NavLink>
               </nav>
               <div className="ml-auto flex min-w-0 items-center gap-2">
                 <span className="hidden truncate text-sm text-ink-muted sm:inline" title={me.email}>
