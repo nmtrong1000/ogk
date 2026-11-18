@@ -14,6 +14,7 @@ erDiagram
     accounts ||--o{ devices : "sở hữu"
     devices ||--o{ windows_accounts : "có"
     children |o--o{ windows_accounts : "được gán"
+    accounts ||--o{ audit_logs : "thực hiện"
     accounts {
         integer id PK
         text email UK
@@ -50,6 +51,17 @@ erDiagram
         text sid
         blob username
     }
+    audit_logs {
+        integer id PK
+        integer actor_id FK
+        datetime at
+        text ip
+        text action
+        text target_type
+        integer target_id
+        blob old_value
+        blob new_value
+    }
 ```
 
 ## Table Definitions
@@ -85,7 +97,7 @@ erDiagram
 
 | Column | Description | Data type | Nullable? | Default |
 |---|---|---|---|---|
-| id | Định danh trẻ. | Số nguyên, tự tăng | No | Tự sinh |
+| id | Định danh trẻ; AUTOINCREMENT nên id của trẻ đã xóa không được cấp lại (nhật ký kiểm toán tham chiếu id này). | Số nguyên, tự tăng | No | Tự sinh |
 | owner_id | Phụ huynh sở hữu trẻ, tham chiếu `accounts.id`. | Số nguyên | No | None |
 | name | Bản mã AES-GCM của tên trẻ; AAD là `children.name`. | Bản mã của văn bản 1 đến 64 ký tự | No | None |
 | birth_year | Bản mã AES-GCM của năm sinh; AAD là `children.birth_year`. | Bản mã của số nguyên từ 2000 đến năm hiện tại | No | None |
@@ -114,6 +126,22 @@ erDiagram
 | child_id | Trẻ dùng tài khoản này, tham chiếu `children.id`; rỗng khi chưa gán. | Số nguyên | Yes | None |
 | sid | Security Identifier của tài khoản Windows trên thiết bị. | Văn bản, tối đa 184 ký tự | No | None |
 | username | Bản mã AES-GCM của tên đăng nhập Windows; AAD là `windows_accounts.username`. | Bản mã của văn bản | No | None |
+
+### audit_logs
+
+**Purpose:** Nhật ký kiểm toán: một dòng cho mỗi thay đổi do phụ huynh thực hiện. Chỉ cho thêm, không sửa, không xóa.
+
+| Column | Description | Data type | Nullable? | Default |
+|---|---|---|---|---|
+| id | Định danh dòng nhật ký. | Số nguyên, tự tăng | No | Tự sinh |
+| actor_id | Người thực hiện thay đổi, tham chiếu `accounts.id`. | Số nguyên | No | None |
+| at | Thời điểm thay đổi. | Thời điểm UTC | No | None |
+| ip | IP của client: IP socket, hoặc hop cuối không phải proxy tin cậy trong `X-Forwarded-For` khi request đến từ proxy tin cậy (`OGK_TRUSTED_PROXIES`). | Văn bản, tối đa 45 ký tự | No | None |
+| action | Loại thay đổi: `create`, `update` hoặc `delete`. | Văn bản, tối đa 16 ký tự | No | None |
+| target_type | Loại đối tượng bị thay đổi, hiện chỉ có `child`. | Văn bản, tối đa 32 ký tự | No | None |
+| target_id | Định danh đối tượng; không phải khóa ngoại để giữ nhật ký sau khi đối tượng bị xóa. | Số nguyên | No | None |
+| old_value | Bản mã AES-GCM của JSON các trường trước khi đổi; AAD là `audit_logs.old_value`. Rỗng khi `create`. | Bản mã của văn bản JSON | Yes | None |
+| new_value | Bản mã AES-GCM của JSON các trường sau khi đổi; AAD là `audit_logs.new_value`. Rỗng khi `delete`. | Bản mã của văn bản JSON | Yes | None |
 
 ## Integrity Constraints
 
@@ -363,3 +391,55 @@ $$
 - `devices`
 - `children`
 - Relevant attributes: `windows_accounts.device_id`, `windows_accounts.child_id`, `devices.id`, `devices.owner_id`, `children.id`, `children.owner_id`
+
+### IC-015: Người thực hiện tồn tại
+
+**Statement:** Mỗi dòng nhật ký phải thuộc một tài khoản tồn tại; không xóa được tài khoản còn dòng nhật ký.
+
+**Formal Expression:**
+
+$$
+\forall l \in audit\_logs\ \exists a \in accounts:\ l.actor\_id = a.id
+$$
+
+**Context:** DB kiểm tra bằng khóa ngoại không có hành động khi xóa (NO ACTION), nên xóa tài khoản còn nhật ký bị từ chối thay vì làm mất nhật ký. Hiện chưa có API xóa tài khoản.
+
+**Impacted Data Objects:**
+
+- `audit_logs`
+- `accounts`
+- Relevant attributes: `audit_logs.actor_id`, `accounts.id`
+
+### IC-016: Nhật ký chỉ cho thêm
+
+**Statement:** Dòng nhật ký đã ghi không được sửa hoặc xóa.
+
+**Formal Expression:**
+
+$$
+\forall l \in audit\_logs:\ l_{t+1} = l_t
+$$
+
+**Context:** DB kiểm tra bằng trigger `audit_logs_no_update` và `audit_logs_no_delete` (`RAISE(ABORT)`). Thêm vào đó, sự kiện ORM `before_update`/`before_delete` của `AuditLog` ném lỗi và API `/api/audit` chỉ có GET.
+
+**Impacted Data Objects:**
+
+- `audit_logs`
+- Relevant attributes: mọi cột
+
+### IC-017: Loại thay đổi hợp lệ
+
+**Statement:** Loại thay đổi chỉ được là `create`, `update` hoặc `delete`, và giá trị cũ/mới khớp loại thay đổi.
+
+**Formal Expression:**
+
+$$
+\forall l \in audit\_logs:\ l.action \in \{create, update, delete\} \land (l.action = create \Rightarrow l.old\_value = null) \land (l.action = delete \Rightarrow l.new\_value = null)
+$$
+
+**Context:** DB kiểm tra tập giá trị của `action` bằng CHECK `ck_audit_logs_action`. Quan hệ giữa `action` và giá trị rỗng do module gọi `audit/service.py` bảo đảm (hiện là `family/service.py`); DB không kiểm tra vì giá trị đã mã hóa.
+
+**Impacted Data Objects:**
+
+- `audit_logs`
+- Relevant attributes: `audit_logs.action`, `audit_logs.old_value`, `audit_logs.new_value`

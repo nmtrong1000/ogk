@@ -20,6 +20,12 @@ class Settings(BaseSettings):
     dashboard_dist: Path | None = None
     # Khóa AES-256-GCM cho trường nhạy cảm: base64url của 32 byte (python -m app.cli gen-data-key).
     data_key: SecretStr
+    # Proxy được tin header X-Forwarded-For (proxy của Vite khi dev), phân cách bằng dấu phẩy.
+    trusted_proxies: str = "127.0.0.1,::1"
+
+    @property
+    def trusted_proxy_set(self) -> frozenset[str]:
+        return frozenset(p.strip() for p in self.trusted_proxies.split(",") if p.strip())
 
 
 @lru_cache
