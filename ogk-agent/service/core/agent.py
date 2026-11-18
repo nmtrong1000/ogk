@@ -20,6 +20,7 @@ from service.core.device_session import DeviceRevoked, DeviceSession, NotEnrolle
 from service.core.enforcement import Enforcement
 from service.core.ipc_server import IpcServer
 from service.core.local_db import LocalDb
+from service.core.policy_store import PolicyStore
 from service.core.server_client import ApiError, CertificatePinError, ServerClient
 from service.platform import get_platform
 
@@ -32,6 +33,8 @@ class ModuleContext:
     enforcement: Enforcement
     platform: ModuleType
     data_dir: Path
+    policy_store: PolicyStore
+    session: DeviceSession | None = None
 
 
 class Module(Protocol):
@@ -51,6 +54,7 @@ class Agent:
         *,
         bus: Bus | None = None,
         enforcement: Enforcement | None = None,
+        policy_store: PolicyStore | None = None,
         modules: Sequence[Module] = (),
     ) -> None:
         self._config = config
@@ -59,6 +63,7 @@ class Agent:
         self._device_outcome: str | None = None
         self._bus = bus or Bus()
         self._enforcement = enforcement or Enforcement()
+        self._policy_store = policy_store
         self._modules = list(modules)
         self._ipc = IpcServer(
             data_dir, config.ipc_port, self.status, lambda pid: self._bus.publish(TRAY_HEARTBEAT, pid)
@@ -72,6 +77,7 @@ class Agent:
             "server_reachable": self._server_reachable,
             "enrollment": None if self._session is None else self._session.state,
             "enforcement": self._enforcement.snapshot(),
+            "policies": {} if self._policy_store is None else self._policy_store.versions(),
         }
 
     async def run(self, stop_event: asyncio.Event) -> None:
@@ -156,10 +162,19 @@ async def run_agent(data_dir: Path, stop_event: asyncio.Event, modules: Sequence
     bus = Bus()
     enforcement = Enforcement()
     platform = get_platform()
-    context = ModuleContext(bus, enforcement, platform, data_dir)
+    session = DeviceSession(config, db)
+    policy_store = PolicyStore(db, config.policy_public_key)
+    context = ModuleContext(bus, enforcement, platform, data_dir, policy_store, session)
     instances = [factory(context) for factory in modules]
     platform.set_session_listener(lambda event: bus.publish(SESSION, event))
     agent = Agent(
-        config, client, data_dir, DeviceSession(config, db), bus=bus, enforcement=enforcement, modules=instances
+        config,
+        client,
+        data_dir,
+        session,
+        bus=bus,
+        enforcement=enforcement,
+        policy_store=policy_store,
+        modules=instances,
     )
     await agent.run(stop_event)

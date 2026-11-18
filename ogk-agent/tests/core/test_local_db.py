@@ -1,6 +1,8 @@
+import sqlite3
+from contextlib import closing
 from datetime import UTC, datetime, timedelta
 
-from service.core.local_db import DB_FILE, SCHEMA, Credentials, LocalDb
+from service.core.local_db import DB_FILE, SCHEMA, Credentials, LocalDb, PolicyRow
 
 
 def creds(**overrides) -> Credentials:
@@ -60,3 +62,22 @@ def test_dir_and_db_are_owner_only(data_dir):
 
 def test_schema_version(data_dir):
     assert LocalDb(data_dir).schema_version() == len(SCHEMA)
+
+
+def test_replace_policies_swaps_the_whole_set(data_dir):
+    at = datetime(2026, 11, 18, 10, 0, tzinfo=UTC)
+    db = LocalDb(data_dir)
+    db.replace_policies([PolicyRow(7, 1, "{}", "s1"), PolicyRow(8, 1, "{}", "s2")], at)
+    db.replace_policies([PolicyRow(8, 2, "{}", "s3")], at)
+    assert db.load_policies() == [PolicyRow(8, 2, "{}", "s3")]
+
+
+def test_upgrade_from_version_1_keeps_credentials(data_dir):
+    with closing(sqlite3.connect(data_dir / DB_FILE)) as conn, conn:
+        conn.execute(SCHEMA[0])
+        conn.execute("PRAGMA user_version = 1")
+    db = LocalDb(data_dir)
+    db.save(creds())
+    assert db.schema_version() == 2
+    assert db.load() == creds()
+    assert db.load_policies() == []

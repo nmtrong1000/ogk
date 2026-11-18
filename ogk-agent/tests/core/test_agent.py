@@ -9,6 +9,9 @@ from service.core.agent import Agent
 from service.core.bus import TRAY_HEARTBEAT, Bus
 from service.core.config import Config
 from service.core.enforcement import Enforcement
+from service.core.local_db import LocalDb
+from service.core.policy_store import PolicyStore
+from tests.policy_vectors import body, document, write_public_key
 
 
 class FakeClient:
@@ -164,3 +167,12 @@ async def test_ipc_heartbeat_is_published_on_bus(tmp_path):
     await asyncio.wait_for(run, 1)
     assert response.status_code == 200
     assert pids == [7]
+
+
+@pytest.mark.anyio
+async def test_status_includes_policy_versions(data_dir):
+    store = PolicyStore(LocalDb(data_dir), write_public_key(data_dir))
+    agent = Agent(_config(), FakeClient({"status": "ok"}), data_dir, policy_store=store)
+    assert agent.status()["policies"] == {}
+    store.save(body(document(7, 2)))
+    assert agent.status()["policies"] == {7: 2}

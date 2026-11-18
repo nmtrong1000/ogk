@@ -2,6 +2,7 @@
 param(
     [Parameter(Mandatory = $true)] [string]$ServerUrl,
     [Parameter(Mandatory = $true)] [string]$CaCert,
+    [Parameter(Mandatory = $true)] [string]$PolicyPublicKey,
     [string]$Exe = (Join-Path $PSScriptRoot "..\dist\ogk-service.exe"),
     [string]$TrayExe = (Join-Path $PSScriptRoot "..\dist\ogk-tray.exe")
 )
@@ -23,7 +24,8 @@ icacls $DataDir /inheritance:r /grant:r "*S-1-5-18:(OI)(CI)F" "*S-1-5-32-544:(OI
 Copy-Item $Exe $ServiceExe -Force
 Copy-Item $TrayExe $TrayTarget -Force
 Copy-Item $CaCert (Join-Path $DataDir "ca.crt") -Force
-@{ server_url = $ServerUrl; ca_cert = "ca.crt"; health_interval = 30 } |
+Copy-Item $PolicyPublicKey (Join-Path $DataDir "policy_public.pem") -Force
+@{ server_url = $ServerUrl; ca_cert = "ca.crt"; policy_public_key = "policy_public.pem"; health_interval = 30 } |
     ConvertTo-Json | Set-Content -Encoding UTF8 (Join-Path $DataDir "config.json")
 
 & $ServiceExe --startup auto install

@@ -2,10 +2,12 @@ import argparse
 import asyncio
 import getpass
 import sys
+from pathlib import Path
 
 from app.core.crypto import generate_key
 from app.core.db import get_engine, get_sessionmaker
 from app.core.errors import AppError
+from app.core.signing import generate_key_pair
 from app.modules.auth import service
 from app.modules.auth.models import ROLE_ADMIN
 
@@ -32,10 +34,22 @@ def main(argv: list[str] | None = None) -> int:
     create = commands.add_parser("create-admin", help="Create an admin account")
     create.add_argument("email")
     commands.add_parser("gen-data-key", help="Generate a new AES-GCM key for OGK_DATA_KEY")
+    policy_key = commands.add_parser("gen-policy-key", help="Generate the Ed25519 key pair that signs policies")
+    policy_key.add_argument("--out", type=Path, default=Path("certs/out"))
     args = parser.parse_args(argv)
 
     if args.command == "gen-data-key":
         print(generate_key())
+        return 0
+
+    if args.command == "gen-policy-key":
+        try:
+            private_path, public_path = generate_key_pair(args.out)
+        except FileExistsError as exc:
+            print(exc, file=sys.stderr)
+            return 1
+        print(f"Private key: {private_path} (set OGK_POLICY_SIGNING_KEY to this path)")
+        print(f"Public key: {public_path} (give to the agent installer)")
         return 0
 
     password = getpass.getpass("Password: ")

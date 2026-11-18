@@ -146,6 +146,9 @@ class DeviceSession:
     async def me(self) -> dict[str, Any]:
         return await self.call(lambda client, token: client.device_me(token))
 
+    async def policy(self) -> Any:
+        return await self.call(lambda client, token: client.device_policy(token))
+
     async def _close_client(self) -> None:
         if self._client is not None:
             await self._client.aclose()

@@ -1,0 +1,108 @@
+{
+  "description": "Shared by ogk-server and ogk-agent tests. The key below is a TEST-ONLY key, never used to sign real policies.",
+  "key": {
+    "test_only_private_seed_hex": "636b5a1c5cc04b6621f26734fda2e17d5d92e8d4ec5fcb1a6fd4a5d3d4728a20",
+    "public_key_pem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEANoy5DJ/Fx81Z19ckDHXSCaDcRdQBB8ygKu53YQ9n880=\n-----END PUBLIC KEY-----\n",
+    "key_id": "1bf6796e61f6125c"
+  },
+  "canonical": [
+    {
+      "input": {
+        "z": [
+          3,
+          {
+            "b": true,
+            "a": null
+          }
+        ],
+        "a": "Bé An ✓ \"q\"\n",
+        "m": -5
+      },
+      "canonical": "{\"a\":\"Bé An ✓ \\\"q\\\"\\n\",\"m\":-5,\"z\":[3,{\"a\":null,\"b\":true}]}"
+    }
+  ],
+  "valid": [
+    {
+      "name": "quota_120",
+      "policy": {
+        "child_id": 7,
+        "format": 1,
+        "issued_at": "2026-11-18T08:00:00Z",
+        "policy_version": 3,
+        "rules": {
+          "daily_quota_minutes": 120
+        }
+      },
+      "canonical": "{\"child_id\":7,\"format\":1,\"issued_at\":\"2026-11-18T08:00:00Z\",\"policy_version\":3,\"rules\":{\"daily_quota_minutes\":120}}",
+      "signature": "l7KnMqRawBB2XD-6ab-tRQV9X4A5c-4tRK59mkacCyI-LfOm6UNE3FuwS6oKvBZwrmlyh5b9gm5JThlP_wo2Bw"
+    },
+    {
+      "name": "quota_0",
+      "policy": {
+        "child_id": 8,
+        "format": 1,
+        "issued_at": "2026-11-18T09:30:15Z",
+        "policy_version": 1,
+        "rules": {
+          "daily_quota_minutes": 0
+        }
+      },
+      "canonical": "{\"child_id\":8,\"format\":1,\"issued_at\":\"2026-11-18T09:30:15Z\",\"policy_version\":1,\"rules\":{\"daily_quota_minutes\":0}}",
+      "signature": "7wkmHuOMxamXjEjxSjJ4FX2jhqmcF2QIp16W400oMYasUD7TOeNfkwxGTE71oZN1HxOlZgMDqBGZlCqnBZ8WDw"
+    }
+  ],
+  "invalid": [
+    {
+      "name": "tampered_byte",
+      "policy": {
+        "child_id": 7,
+        "format": 1,
+        "issued_at": "2026-11-18T08:00:00Z",
+        "policy_version": 3,
+        "rules": {
+          "daily_quota_minutes": 121
+        }
+      },
+      "signature": "l7KnMqRawBB2XD-6ab-tRQV9X4A5c-4tRK59mkacCyI-LfOm6UNE3FuwS6oKvBZwrmlyh5b9gm5JThlP_wo2Bw"
+    },
+    {
+      "name": "altered_version",
+      "policy": {
+        "child_id": 7,
+        "format": 1,
+        "issued_at": "2026-11-18T08:00:00Z",
+        "policy_version": 4,
+        "rules": {
+          "daily_quota_minutes": 120
+        }
+      },
+      "signature": "l7KnMqRawBB2XD-6ab-tRQV9X4A5c-4tRK59mkacCyI-LfOm6UNE3FuwS6oKvBZwrmlyh5b9gm5JThlP_wo2Bw"
+    },
+    {
+      "name": "wrong_key",
+      "policy": {
+        "child_id": 7,
+        "format": 1,
+        "issued_at": "2026-11-18T08:00:00Z",
+        "policy_version": 3,
+        "rules": {
+          "daily_quota_minutes": 120
+        }
+      },
+      "signature": "0_RlH1zHM8UAlEuh5VoPyQpvIr-4iTWjEnbeEq12OAVXmwpANu8Au3ZiOfMxXMepWfy77HgF3uLQCDqbuCreDw"
+    },
+    {
+      "name": "malformed_signature",
+      "policy": {
+        "child_id": 7,
+        "format": 1,
+        "issued_at": "2026-11-18T08:00:00Z",
+        "policy_version": 3,
+        "rules": {
+          "daily_quota_minutes": 120
+        }
+      },
+      "signature": "not-a-signature"
+    }
+  ]
+}

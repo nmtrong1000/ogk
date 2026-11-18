@@ -10,6 +10,7 @@ from app.core.config import get_settings
 from app.core.crypto import get_cipher
 from app.core.db import Base, get_engine, get_sessionmaker
 from app.core.security import CSRF_COOKIE
+from app.core.signing import generate_key_pair, get_signing_key
 from app.main import create_app
 from app.modules.auth import service as auth_service
 from app.modules.auth.models import ROLE_ADMIN
@@ -20,6 +21,7 @@ def _clear_caches() -> None:
     get_engine.cache_clear()
     get_sessionmaker.cache_clear()
     get_cipher.cache_clear()
+    get_signing_key.cache_clear()
 
 
 @pytest.fixture
@@ -34,6 +36,8 @@ def settings_env(monkeypatch, tmp_path):
     monkeypatch.setenv("OGK_TLS_CERT", str(tmp_path / "server.crt"))
     monkeypatch.setenv("OGK_TLS_KEY", str(tmp_path / "server.key"))
     monkeypatch.setenv("OGK_DATA_KEY", base64.urlsafe_b64encode(os.urandom(32)).decode())
+    signing_key, _ = generate_key_pair(tmp_path / "keys")
+    monkeypatch.setenv("OGK_POLICY_SIGNING_KEY", str(signing_key))
     _clear_caches()
     yield
     _clear_caches()

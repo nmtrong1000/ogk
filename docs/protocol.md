@@ -495,6 +495,132 @@ Vai trò `parent`. Cần CSRF. Gỡ thiết bị: đặt `revoked_at`, thu hồi
 | 401 | `not_authenticated` |
 | 403 | `forbidden`, `csrf_failed` |
 
+## Chính sách
+
+Mỗi trẻ có một chính sách. Server ký chính sách bằng Ed25519; agent chỉ áp dụng chính sách có chữ ký đúng. Phase này có một trường mẫu `daily_quota_minutes`; các phase sau thêm luật vào `rules`.
+
+### Tài liệu chính sách
+
+```json
+{
+  "child_id": 7,
+  "format": 1,
+  "issued_at": "2026-11-18T08:00:00Z",
+  "policy_version": 3,
+  "rules": { "daily_quota_minutes": 120 }
+}
+```
+
+| Trường | Ý nghĩa |
+| :---- | :---- |
+| `child_id` | Trẻ được áp chính sách |
+| `format` | Phiên bản định dạng tài liệu, hiện là `1` |
+| `issued_at` | Thời điểm tạo hoặc đổi chính sách gần nhất; cùng version luôn cùng giá trị nên cùng chữ ký |
+| `policy_version` | Bắt đầu từ 1, tăng đúng 1 mỗi lần chính sách đổi giá trị |
+| `rules.daily_quota_minutes` | Số phút dùng máy mỗi ngày, 0 đến 1440, mặc định 120 |
+
+### JSON chuẩn hóa
+
+Chữ ký tính trên bytes của tài liệu ở dạng chuẩn hóa:
+
+- Khóa của mọi object sắp xếp tăng dần theo code point.
+- Không có khoảng trắng: phân cách là `,` và `:`.
+- Chuỗi giữ nguyên ký tự ngoài ASCII; chỉ escape `"`, `\` và ký tự điều khiển theo JSON.
+- Chỉ có số nguyên, chuỗi, `true`, `false`, `null`, mảng và object. Số thực bị từ chối vì mỗi thư viện in số thực khác nhau.
+- Mã hóa UTF-8.
+
+Trong Python, cách chuẩn hóa này tương đương `json.dumps(obj, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False).encode()` cộng với bước từ chối số thực. Tài liệu ở ví dụ trên chuẩn hóa thành:
+
+```text
+{"child_id":7,"format":1,"issued_at":"2026-11-18T08:00:00Z","policy_version":3,"rules":{"daily_quota_minutes":120}}
+```
+
+### Chữ ký và khóa
+
+- Chữ ký là Ed25519 trên bytes chuẩn hóa, mã hóa base64url không có `=`.
+- `key_id` là 16 ký tự hex đầu của SHA-256 trên 32 byte khóa công khai thô. Agent dùng nó để ghi log, không dùng để chọn khóa.
+- Khóa bí mật là tệp PEM PKCS8 do `python -m app.cli gen-policy-key` tạo, đường dẫn trong `OGK_POLICY_SIGNING_KEY`. Server từ chối khởi động nếu thiếu tệp hoặc nhóm và người khác đọc được tệp (cần `chmod 600`).
+- Khóa công khai `policy_public.pem` đi cùng bộ cài agent: `install.ps1 -PolicyPublicKey` chép vào thư mục dữ liệu và ghi `policy_public_key` trong `config.json`.
+- `docs/test_vectors.json` có khóa chỉ dùng cho test, tài liệu mẫu, dạng chuẩn hóa và chữ ký đúng, cùng các ca sai. Test của server và agent cùng đọc tệp này. Với khóa test, tài liệu ở ví dụ trên có chữ ký `l7KnMqRawBB2XD-6ab-tRQV9X4A5c-4tRK59mkacCyI-LfOm6UNE3FuwS6oKvBZwrmlyh5b9gm5JThlP_wo2Bw`.
+
+### Agent kiểm tra và lưu
+
+- Agent kiểm tra chữ ký từng chính sách trước khi lưu. Một chính sách sai chữ ký làm cả lô bị từ chối, agent giữ bản đang có.
+- Agent từ chối chính sách có `policy_version` thấp hơn bản đang giữ của cùng trẻ.
+- Agent lưu tài liệu chuẩn hóa và chữ ký trong DB cục bộ, kiểm tra lại chữ ký mỗi lần nạp. Dòng bị sửa thì bị bỏ qua và ghi log.
+- Trẻ không còn trong response thì agent xóa chính sách của trẻ đó.
+
+### Nhật ký kiểm toán chính sách
+
+| Thao tác | `action` | `target_type` | Giá trị ghi |
+| :---- | :---- | :---- | :---- |
+| Sửa chính sách | `update` | `policy` | `{daily_quota_minutes, policy_version}` cũ và mới; `target_id` là id của trẻ; sửa mà giá trị không đổi thì không ghi |
+
+### Đối tượng Policy
+
+```json
+{
+  "child_id": 7,
+  "policy_version": 3,
+  "daily_quota_minutes": 120,
+  "updated_at": "2026-11-18T08:00:00Z"
+}
+```
+
+### `GET /api/children/{id}/policy`
+
+Vai trò `parent`. Trẻ chưa có chính sách thì server tạo chính sách mặc định, version 1.
+
+| HTTP | Body |
+| :---- | :---- |
+| 200 | Policy |
+| 404 | `not_found` |
+| 401 | `not_authenticated` |
+| 403 | `forbidden` |
+
+### `PATCH /api/children/{id}/policy`
+
+Vai trò `parent`. Giá trị khác hiện tại thì version tăng 1 và có một dòng nhật ký kiểm toán.
+
+```json
+{ "daily_quota_minutes": 90 }
+```
+
+| HTTP | Body |
+| :---- | :---- |
+| 200 | Policy sau khi sửa |
+| 404 | `not_found` |
+| 422 | `invalid_quota` |
+| 401 | `not_authenticated` |
+| 403 | `forbidden`, `csrf_failed` |
+
+### `GET /api/device/policy`
+
+Access token thiết bị. Trả chính sách đã ký của mọi trẻ được gán cho ít nhất một tài khoản Windows trên thiết bị, mỗi trẻ một lần, sắp theo `child_id`. Thiết bị chưa gán trẻ nào nhận danh sách rỗng.
+
+```json
+{
+  "policies": [
+    {
+      "policy": {
+        "child_id": 7,
+        "format": 1,
+        "issued_at": "2026-11-18T08:00:00Z",
+        "policy_version": 3,
+        "rules": { "daily_quota_minutes": 120 }
+      },
+      "signature": "l7KnMqRawBB2XD-6ab-tRQV9X4A5c-4tRK59mkacCyI-LfOm6UNE3FuwS6oKvBZwrmlyh5b9gm5JThlP_wo2Bw",
+      "key_id": "1bf6796e61f6125c"
+    }
+  ]
+}
+```
+
+| HTTP | Body |
+| :---- | :---- |
+| 200 | Như trên |
+| 401 | `invalid_token`, `token_expired`, `device_revoked` |
+
 ## Kênh IPC giữa service và Tray UI
 
 HTTP tại `127.0.0.1`, chỉ phục vụ Tray UI trên cùng máy. Service sinh token mới mỗi lần khởi động và ghi `{ "port": ..., "token": "..." }` vào `ipc.json` trong thư mục dữ liệu. Chỉ tệp này cho người dùng thường đọc được. Mọi request mang header `Authorization: Bearer <token>`; thiếu hoặc sai token thì trả 401 `{ "error": "unauthorized" }`.

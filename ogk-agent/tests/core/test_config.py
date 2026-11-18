@@ -62,3 +62,20 @@ def test_bad_ipc_port_rejected(tmp_path, write_config, port):
     write_config({"server_url": "https://h:1", "ca_cert": "ca.crt", "ipc_port": port})
     with pytest.raises(ConfigError, match="ipc_port"):
         load_config(tmp_path)
+
+
+def test_policy_public_key_defaults_to_data_dir(tmp_path, write_config):
+    write_config({"server_url": "https://h:1", "ca_cert": "ca.crt"})
+    assert load_config(tmp_path).policy_public_key == tmp_path / "policy_public.pem"
+
+
+def test_policy_public_key_from_config(tmp_path, write_config):
+    write_config({"server_url": "https://h:1", "ca_cert": "ca.crt", "policy_public_key": "keys/p.pem"})
+    assert load_config(tmp_path).policy_public_key == tmp_path / "keys" / "p.pem"
+
+
+@pytest.mark.parametrize("value", ["", 5, None])
+def test_bad_policy_public_key_rejected(tmp_path, write_config, value):
+    write_config({"server_url": "https://h:1", "ca_cert": "ca.crt", "policy_public_key": value})
+    with pytest.raises(ConfigError, match="policy_public_key"):
+        load_config(tmp_path)

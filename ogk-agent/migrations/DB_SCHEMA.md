@@ -23,6 +23,13 @@ erDiagram
         text enrolled_at
         text revoked_at
     }
+    policies {
+        integer child_id PK
+        integer version
+        text payload
+        text signature
+        text received_at
+    }
 ```
 
 ## Table Definitions
@@ -43,6 +50,18 @@ erDiagram
 | refresh_token | Bản mã DPAPI của refresh token hiện hành; đổi sau mỗi lần làm mới. | Bản mã DPAPI | No | None |
 | enrolled_at | Thời điểm ghép đôi trên máy này. | Chuỗi ISO 8601 UTC | No | None |
 | revoked_at | Thời điểm agent biết thiết bị bị gỡ hoặc refresh token bị từ chối; rỗng khi còn hiệu lực. | Chuỗi ISO 8601 UTC | Yes | None |
+
+### policies
+
+**Purpose:** Chính sách hợp lệ gần nhất của từng trẻ gắn với máy này, dùng khi mất kết nối server. Không có liên kết với `credentials`; `child_id` là id trẻ trên server. Dòng không được tin khi đọc: mỗi lần nạp, agent kiểm tra lại chữ ký.
+
+| Column | Description | Data type | Nullable? | Default |
+|---|---|---|---|---|
+| child_id | Trẻ được áp chính sách; bằng `child_id` trong tài liệu đã ký. | Số nguyên | No | None |
+| version | `policy_version`; bằng giá trị trong tài liệu đã ký. | Số nguyên từ 1 | No | None |
+| payload | Tài liệu chính sách ở dạng JSON chuẩn hóa, đúng bytes mà server đã ký. | Văn bản UTF-8 | No | None |
+| signature | Chữ ký Ed25519 của `payload`, base64url không có `=`. | Văn bản | No | None |
+| received_at | Thời điểm agent nhận và lưu lô chính sách này. | Văn bản ISO 8601 UTC | No | None |
 
 ## Integrity Constraints
 
@@ -96,3 +115,38 @@ $$
 
 - `credentials`
 - Relevant attributes: `credentials.revoked_at`, `credentials.device_id`
+
+
+### IC-004: Chỉ áp chính sách có chữ ký đúng
+
+**Statement:** Một dòng `policies` chỉ được dùng khi chữ ký Ed25519 của `payload` đúng với khóa công khai của server, và `child_id`, `version` khớp tài liệu đã ký. Thiếu khóa công khai thì không dòng nào được dùng.
+
+**Formal Expression:**
+
+$$
+\forall p \in policies:\ used(p) \Rightarrow Verify(pk, p.payload, p.signature) \land doc(p).child\_id = p.child\_id \land doc(p).policy\_version = p.version
+$$
+
+**Context:** $pk$ là khóa trong tệp `policy_public_key` của `config.json`; $doc(p)$ là JSON trong `payload`. `core/policy_store.py` kiểm tra khi nhận từ server và mỗi lần nạp từ DB; dòng sai bị bỏ qua và ghi log. DB không kiểm tra.
+
+**Impacted Data Objects:**
+
+- `policies`
+- Relevant attributes: `policies.payload`, `policies.signature`, `policies.child_id`, `policies.version`
+
+### IC-005: Phiên bản chính sách không lùi
+
+**Statement:** Agent không thay chính sách của một trẻ bằng bản có `policy_version` thấp hơn bản đang giữ. Lô chính sách được thay cả bộ trong một giao dịch: trẻ không còn trong lô thì bị xóa.
+
+**Formal Expression:**
+
+$$
+\forall p \in policies,\ p' \in policies':\ p.child\_id = p'.child\_id \Rightarrow p'.version \geq p.version
+$$
+
+**Context:** $policies$ là tập trước khi lưu, $policies'$ là tập sau khi lưu. `PolicyStore.save` kiểm tra trước khi ghi; một vi phạm làm cả lô bị từ chối. DB không kiểm tra.
+
+**Impacted Data Objects:**
+
+- `policies`
+- Relevant attributes: `policies.child_id`, `policies.version`

@@ -2,6 +2,7 @@
 the certificate pin are plain. open() locks the data directory and the DB file to SYSTEM and Administrators
 every time, because the installer or an older version may have left wider permissions.
 The schema version lives in PRAGMA user_version; migrate() applies steps above the stored version.
+policies rows are not trusted on read: policy_store re-verifies each signature, so this layer stores raw text.
 Methods are synchronous; async callers run them in a worker thread.
 """
 
@@ -30,7 +31,24 @@ SCHEMA = [
         revoked_at TEXT
     )
     """,
+    """
+    CREATE TABLE policies (
+        child_id INTEGER PRIMARY KEY,
+        version INTEGER NOT NULL,
+        payload TEXT NOT NULL,
+        signature TEXT NOT NULL,
+        received_at TEXT NOT NULL
+    )
+    """,
 ]
+
+
+@dataclass(frozen=True)
+class PolicyRow:
+    child_id: int
+    version: int
+    payload: str
+    signature: str
 
 
 @dataclass(frozen=True)
@@ -140,3 +158,16 @@ class LocalDb:
         updated = replace(creds, revoked_at=at)
         self.save(updated)
         return updated
+
+    def load_policies(self) -> list[PolicyRow]:
+        with closing(self._connect()) as conn:
+            rows = conn.execute("SELECT child_id, version, payload, signature FROM policies ORDER BY child_id")
+            return [PolicyRow(*row) for row in rows]
+
+    def replace_policies(self, rows: list[PolicyRow], received_at: datetime) -> None:
+        with closing(self._connect()) as conn, conn:
+            conn.execute("DELETE FROM policies")
+            conn.executemany(
+                "INSERT INTO policies (child_id, version, payload, signature, received_at) VALUES (?, ?, ?, ?, ?)",
+                [(r.child_id, r.version, r.payload, r.signature, _iso(received_at)) for r in rows],
+            )

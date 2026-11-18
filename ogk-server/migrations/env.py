@@ -12,6 +12,7 @@ from app.modules.audit import models as _audit_models
 from app.modules.auth import models as _auth_models
 from app.modules.enrollment import models as _enrollment_models
 from app.modules.family import models as _family_models
+from app.modules.policy import models as _policy_models
 
 config = context.config
 

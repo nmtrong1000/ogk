@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     dashboard_dist: Path | None = None
     data_key: SecretStr
     trusted_proxies: str = "127.0.0.1,::1"
+    policy_signing_key: Path | None = None
 
     @property
     def trusted_proxy_set(self) -> frozenset[str]:
