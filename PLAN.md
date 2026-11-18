@@ -91,6 +91,7 @@ doan/
         requests/                  Yêu cầu của trẻ
         reports/                   Báo cáo phụ huynh và child-view
         retention/                 Xóa sau 90 ngày, xóa toàn bộ dữ liệu của con
+    migrations/                    Alembic; DB_SCHEMA.md là hợp đồng lược đồ DB server
     certs/                         Script tạo CA tự ký
     tests/                         Chia thư mục theo module
     requirements.txt
