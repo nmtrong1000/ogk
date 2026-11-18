@@ -10,29 +10,27 @@ PRAGMA foreign_keys has no effect inside a transaction, so it runs in an autocom
 Children deleted before this revision may have ids above every remaining id; those ids live in audit_logs,
 so the sequence is raised above every id ever seen.
 """
-from typing import Sequence, Union
+
+from collections.abc import Sequence
 
 from alembic import op
 
-
-revision: str = '0005'
-down_revision: Union[str, Sequence[str], None] = '0004'
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+revision: str = "0005"
+down_revision: str | Sequence[str] | None = "0004"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def _recreate_children(autoincrement: bool) -> None:
     with op.get_context().autocommit_block():
-        op.execute('PRAGMA foreign_keys=OFF')
-    with op.batch_alter_table(
-        'children', recreate='always', table_kwargs={'sqlite_autoincrement': autoincrement}
-    ):
+        op.execute("PRAGMA foreign_keys=OFF")
+    with op.batch_alter_table("children", recreate="always", table_kwargs={"sqlite_autoincrement": autoincrement}):
         pass
     with op.get_context().autocommit_block():
-        op.execute('PRAGMA foreign_keys=ON')
-    violations = op.get_bind().exec_driver_sql('PRAGMA foreign_key_check').fetchall()
+        op.execute("PRAGMA foreign_keys=ON")
+    violations = op.get_bind().exec_driver_sql("PRAGMA foreign_key_check").fetchall()
     if violations:
-        raise RuntimeError(f'Foreign key violations after rebuilding children: {violations}')
+        raise RuntimeError(f"Foreign key violations after rebuilding children: {violations}")
 
 
 def upgrade() -> None:

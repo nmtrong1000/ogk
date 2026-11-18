@@ -20,9 +20,7 @@ class ServerClient:
         timeout: float = 10.0,
     ) -> None:
         verify: ssl.SSLContext | bool = make_ssl_context(ca_cert) if ca_cert else True
-        self._client = httpx.AsyncClient(
-            base_url=base_url, verify=verify, transport=transport, timeout=timeout
-        )
+        self._client = httpx.AsyncClient(base_url=base_url, verify=verify, transport=transport, timeout=timeout)
 
     async def health(self) -> Any:
         response = await self._client.get("/api/health")

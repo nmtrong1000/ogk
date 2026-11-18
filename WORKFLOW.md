@@ -11,7 +11,7 @@ PLANNING -> DESIGN -> IMPLEMENTATION -> TESTING -> REVIEW -> RESOLVE FEEDBACK ->
 | PLANNING | Tạo branch của phase từ `main`; đọc file phase trong `plan/`, xác định phạm vi, task và câu hỏi còn mở | Kế hoạch chạy phase | User duyệt kế hoạch |
 | DESIGN | Thiết kế API, lược đồ DB, module và giao thức cho phase | Thiết kế; cập nhật `docs/protocol.md` khi giao thức thay đổi; cập nhật `DB_SCHEMA.md` trong thư mục migrations của app khi lược đồ DB thay đổi | Thiết kế khớp kế hoạch đã duyệt |
 | IMPLEMENTATION | Viết code theo task ID, đúng quy tắc module trong PLAN.md | Code và test của phase | Làm xong mọi task của phase |
-| TESTING | Chạy test tự động và mọi mục kiểm tra nghiệm thu của phase | Kết quả từng mục, kèm lỗi nếu có | Mọi test và mục nghiệm thu qua |
+| TESTING | Chạy test tự động và mọi mục kiểm tra nghiệm thu của phase; lint và format qua (mục 6) | Kết quả từng mục, kèm lỗi nếu có | Mọi test, mục nghiệm thu, lint và format qua |
 | REVIEW | Tự review thay đổi: đúng yêu cầu, bảo mật, quy tắc module, quy định comment và ngôn ngữ, quy định import, không có tệp bí mật, `DB_SCHEMA.md` khớp model và migration | Danh sách vấn đề | Đã có danh sách vấn đề, kể cả khi rỗng |
 | RESOLVE FEEDBACK | Sửa từng vấn đề, chạy lại TESTING | Code đã sửa, kết quả test mới | Không còn vấn đề và test qua |
 | HUMAN REVIEW | Trình bày cho user: thay đổi, kết quả test, chỗ lệch so với kế hoạch | Quyết định của user | User approve. Nếu user yêu cầu sửa thì quay lại RESOLVE FEEDBACK |
@@ -61,7 +61,18 @@ PLANNING -> DESIGN -> IMPLEMENTATION -> TESTING -> REVIEW -> RESOLVE FEEDBACK ->
 - Alias `@/` trỏ tới `src/`, khai ở `paths` trong `tsconfig.app.json` và `resolve.alias` trong `vite.config.ts`; hai chỗ phải khớp nhau.
 - ogk-server và ogk-agent: dùng import tuyệt đối từ gốc package (`app.`, `service.`, `tray.`, `tests.`). Không dùng import tương đối `from .` hoặc `from ..`, không sửa `sys.path`.
 
-## 6. Phạm vi áp dụng
+## 6. Lint và format
+
+| App | Lint | Format | Cấu hình |
+| :---- | :---- | :---- | :---- |
+| ogk-server, ogk-agent | `ruff check` | `ruff format` | `ruff.toml` trong từng app; cài bằng `pip install -r requirements-dev.txt` |
+| ogk-dashboard | `npm run lint` (oxlint); kiểm tra kiểu bằng `tsc -b` trong `npm run build` | `npm run format` (Prettier) | `.oxlintrc.json`, `.prettierrc.json`, `.prettierignore` |
+
+- Hook Stop của Claude Code (`.claude/settings.json`, script `.claude/hooks/lint_format.py`) tự chạy khi agent xong một lượt: sửa lint và format các tệp đang thay đổi trong git.
+- Agent không tự chạy lint hay format trong lúc viết code; hook làm việc này ở cuối. Lỗi lint không tự sửa được thì hook trả lại cho agent sửa một lần, sau đó chỉ báo cho user.
+- Tệp `.md` không chạy formatter.
+
+## 7. Phạm vi áp dụng
 
 - Áp dụng từ P2 trở đi.
 - P1 được commit trước khi có quy trình này nên không áp dụng.

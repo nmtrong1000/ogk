@@ -19,9 +19,7 @@ def test_absolute_ca_path_kept(tmp_path, write_config):
 
 
 def test_utf8_bom_accepted(tmp_path):
-    (tmp_path / "config.json").write_text(
-        '{"server_url": "https://h:1", "ca_cert": "ca.crt"}', encoding="utf-8-sig"
-    )
+    (tmp_path / "config.json").write_text('{"server_url": "https://h:1", "ca_cert": "ca.crt"}', encoding="utf-8-sig")
     assert load_config(tmp_path).health_interval == 30.0
 
 

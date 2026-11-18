@@ -71,7 +71,9 @@ async def test_invalid_birth_year(parent, year):
 
 async def test_update_validates(parent):
     child = (await create_child(parent)).json()
-    response = await parent.patch(f"/api/children/{child['id']}", json={"name": " "}, headers=await csrf_headers(parent))
+    response = await parent.patch(
+        f"/api/children/{child['id']}", json={"name": " "}, headers=await csrf_headers(parent)
+    )
     assert response.json() == {"detail": "invalid_name"}
     assert (await parent.get(f"/api/children/{child['id']}")).json()["name"] == child["name"]
 
@@ -82,7 +84,9 @@ async def test_missing_child_is_404(parent):
 
 async def test_anonymous_gets_401(client):
     assert (await client.get("/api/children")).status_code == 401
-    response = await client.post("/api/children", json={"name": "An", "birth_year": birth_year()}, headers=await csrf_headers(client))
+    response = await client.post(
+        "/api/children", json={"name": "An", "birth_year": birth_year()}, headers=await csrf_headers(client)
+    )
     assert response.status_code == 401
 
 

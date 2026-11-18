@@ -1,4 +1,6 @@
-"""children uses AUTOINCREMENT so a deleted child's id is never reused and audit entries never point at another child."""
+"""children uses AUTOINCREMENT so a deleted child's id is never reused
+and audit entries never point at another child.
+"""
 
 from datetime import datetime
 

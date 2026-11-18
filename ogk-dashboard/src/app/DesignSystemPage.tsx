@@ -17,7 +17,6 @@ import {
   TextField,
 } from '@/shared/components/index.ts'
 
-
 const BRAND = ['50', '100', '200', '300', '400', '500', '600', '700', '800', '900']
 const INK = [
   ['ink', 'Chữ chính'],
@@ -159,7 +158,11 @@ export default function DesignSystemPage() {
         </div>
       </Section>
 
-      <Card title="Bảng" description="Card có tiêu đề, mô tả và vùng thao tác." actions={<Button size="sm">Thêm</Button>}>
+      <Card
+        title="Bảng"
+        description="Card có tiêu đề, mô tả và vùng thao tác."
+        actions={<Button size="sm">Thêm</Button>}
+      >
         <Table>
           <TableHead>
             <tr>

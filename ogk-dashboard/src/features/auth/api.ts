@@ -14,8 +14,7 @@ export async function getMe(): Promise<Account | null> {
 
 export const login = (body: Credentials) => apiFetch<Account>('/api/auth/login', { method: 'POST', json: body })
 
-export const register = (body: Credentials) =>
-  apiFetch<Account>('/api/auth/register', { method: 'POST', json: body })
+export const register = (body: Credentials) => apiFetch<Account>('/api/auth/register', { method: 'POST', json: body })
 
 export const logout = () => apiFetch<void>('/api/auth/logout', { method: 'POST' })
 

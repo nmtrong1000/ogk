@@ -18,7 +18,11 @@ export default function ConfirmDelete({ name, pending, onConfirm, size = 'sm' }:
     )
   }
   return (
-    <span className="inline-flex flex-wrap items-center justify-end gap-2" role="group" aria-label={`Xác nhận xóa ${name}`}>
+    <span
+      className="inline-flex flex-wrap items-center justify-end gap-2"
+      role="group"
+      aria-label={`Xác nhận xóa ${name}`}
+    >
       <span className="text-sm text-ink-muted">Xóa {name}?</span>
       <Button size={size} variant="danger" loading={pending} onClick={onConfirm}>
         Xóa

@@ -1,7 +1,14 @@
 import { useState, type FormEvent, type ReactNode } from 'react'
 import { Alert, Button, Select, TextField } from '@/shared/components/index.ts'
 import type { ChildInput } from '@/shared/types/family.ts'
-import { BIRTH_YEAR_ERROR, MAX_NAME_LENGTH, MIN_BIRTH_YEAR, NAME_ERROR, errorMessage, fieldError } from '@/features/family/utils/messages.ts'
+import {
+  BIRTH_YEAR_ERROR,
+  MAX_NAME_LENGTH,
+  MIN_BIRTH_YEAR,
+  NAME_ERROR,
+  errorMessage,
+  fieldError,
+} from '@/features/family/utils/messages.ts'
 import { currentYear } from '@/features/family/utils/year.ts'
 
 type Props = {
@@ -16,11 +23,20 @@ type Props = {
 
 function yearOptions() {
   const options = []
-  for (let year = currentYear(); year >= MIN_BIRTH_YEAR; year--) options.push({ value: String(year), label: String(year) })
+  for (let year = currentYear(); year >= MIN_BIRTH_YEAR; year--)
+    options.push({ value: String(year), label: String(year) })
   return options
 }
 
-export default function ChildForm({ initial, submitLabel, pending, error, onSubmit, onCancel, secondaryAction }: Props) {
+export default function ChildForm({
+  initial,
+  submitLabel,
+  pending,
+  error,
+  onSubmit,
+  onCancel,
+  secondaryAction,
+}: Props) {
   const [name, setName] = useState(initial?.name ?? '')
   const [birthYear, setBirthYear] = useState(initial ? String(initial.birth_year) : '')
   const [local, setLocal] = useState<{ name?: string; birthYear?: string }>({})

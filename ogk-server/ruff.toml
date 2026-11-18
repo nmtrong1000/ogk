@@ -1,0 +1,15 @@
+# Ruff lint and format for ogk-server. migrations/env.py imports model modules only to register their tables,
+# so F401 is off there. FastAPI Depends/Query in default arguments are the framework's normal pattern.
+line-length = 120
+target-version = "py312"
+src = ["."]
+extend-exclude = [".venv", "dist", "build"]
+
+[lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM"]
+
+[lint.per-file-ignores]
+"migrations/env.py" = ["F401"]
+
+[lint.flake8-bugbear]
+extend-immutable-calls = ["fastapi.Depends", "fastapi.Query"]
