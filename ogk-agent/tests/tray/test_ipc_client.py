@@ -5,7 +5,7 @@ import threading
 import pytest
 
 from service.core.ipc_server import IpcServer
-from tray.features.presence.window import describe
+from tray.features.presence.window import describe, describe_error
 from tray.ipc_client import IpcClient, IpcError
 
 
@@ -30,25 +30,31 @@ def test_status_from_service(service, tmp_path):
 
 
 def test_missing_file_means_service_not_running(tmp_path):
-    with pytest.raises(IpcError, match="chưa chạy"):
+    with pytest.raises(IpcError, match="not running") as info:
         IpcClient(tmp_path).status()
+    assert info.value.code == "not_running"
+    assert describe_error(info.value) == "Service chưa chạy"
 
 
 def test_wrong_token_rejected(service, tmp_path):
     path = tmp_path / "ipc.json"
     info = json.loads(path.read_text(encoding="utf-8"))
     path.write_text(json.dumps({**info, "token": "wrong"}), encoding="utf-8")
-    with pytest.raises(IpcError, match="từ chối"):
+    with pytest.raises(IpcError, match="rejected") as info:
         IpcClient(tmp_path).status()
+    assert info.value.code == "unauthorized"
 
 
 def test_service_gone_is_reported(tmp_path):
     (tmp_path / "ipc.json").write_text(json.dumps({"port": 1, "token": "t"}), encoding="utf-8")
-    with pytest.raises(IpcError, match="Không kết nối"):
+    with pytest.raises(IpcError, match="Cannot connect") as info:
         IpcClient(tmp_path, timeout=1).status()
+    assert info.value.code == "unreachable"
+    assert describe_error(info.value) == "Không kết nối được service"
 
 
 def test_corrupt_file_is_reported(tmp_path):
     (tmp_path / "ipc.json").write_text("{", encoding="utf-8")
-    with pytest.raises(IpcError, match="không hợp lệ"):
+    with pytest.raises(IpcError, match="Invalid IPC file") as info:
         IpcClient(tmp_path).status()
+    assert info.value.code == "bad_ipc_file"

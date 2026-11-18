@@ -1,8 +1,4 @@
-"""Gia đình: 1 phụ huynh : n trẻ : m thiết bị.
-
-Trẻ gắn với thiết bị qua tài khoản Windows: mỗi tài khoản Windows trên một thiết bị gán cho tối đa một trẻ,
-nên một trẻ dùng được nhiều thiết bị và nhiều trẻ dùng chung được một thiết bị.
-"""
+"""children uses AUTOINCREMENT so a deleted child's id is never reused and audit entries never point at another child."""
 
 from datetime import datetime
 
@@ -15,7 +11,6 @@ from app.core.db import Base, UTCDateTime
 
 class Child(Base):
     __tablename__ = "children"
-    # AUTOINCREMENT: id của trẻ đã xóa không được cấp lại, để nhật ký kiểm toán (target_id) không trỏ nhầm trẻ khác.
     __table_args__ = {"sqlite_autoincrement": True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -27,8 +22,6 @@ class Child(Base):
 
 
 class Device(Base):
-    """Máy tính đã ghép đôi. P8 bổ sung fingerprint, token và thu hồi."""
-
     __tablename__ = "devices"
 
     id: Mapped[int] = mapped_column(primary_key=True)

@@ -18,9 +18,7 @@ class Settings(BaseSettings):
     host: str = "0.0.0.0"
     port: int = 8443
     dashboard_dist: Path | None = None
-    # Khóa AES-256-GCM cho trường nhạy cảm: base64url của 32 byte (python -m app.cli gen-data-key).
     data_key: SecretStr
-    # Proxy được tin header X-Forwarded-For (proxy của Vite khi dev), phân cách bằng dấu phẩy.
     trusted_proxies: str = "127.0.0.1,::1"
 
     @property
@@ -34,4 +32,4 @@ def get_settings() -> Settings:
         return Settings()
     except ValidationError as exc:
         names = ", ".join(f"OGK_{str(err['loc'][0]).upper()}" for err in exc.errors())
-        raise ConfigError(f"Thiếu hoặc sai biến cấu hình: {names}") from None
+        raise ConfigError(f"Missing or invalid config variables: {names}") from None

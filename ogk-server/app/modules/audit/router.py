@@ -7,7 +7,6 @@ from app.modules.audit.schemas import AuditPageOut
 from app.modules.auth.models import ROLE_ADMIN, ROLE_PARENT, Account
 from app.modules.auth.service import require_role
 
-# Chỉ có GET: nhật ký không sửa, không xóa qua API.
 router = APIRouter(prefix="/api/audit", tags=["audit"])
 
 require_viewer = require_role(ROLE_PARENT, ROLE_ADMIN)

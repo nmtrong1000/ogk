@@ -24,7 +24,7 @@ def data_dir() -> Path:
 class OGKService(win32serviceutil.ServiceFramework):
     _svc_name_ = SERVICE_NAME
     _svc_display_name_ = "OGK Agent Service"
-    _svc_description_ = "OGK: hỗ trợ quản lý việc sử dụng máy tính của trẻ em"
+    _svc_description_ = "OGK: helps parents manage their children's computer use"
 
     def __init__(self, args) -> None:
         super().__init__(args)

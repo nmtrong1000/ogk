@@ -42,7 +42,6 @@ async def test_fifth_failure_locks_for_15_minutes(client, account, monkeypatch):
     assert fifth.json()["detail"] == "account_locked"
     assert fifth.json()["locked_until"].endswith("Z")
 
-    # Đang khóa thì đúng mật khẩu vẫn bị từ chối.
     assert (await login(client, EMAIL)).status_code == 423
 
     monkeypatch.setattr(service, "now", lambda: start + timedelta(minutes=14, seconds=59))

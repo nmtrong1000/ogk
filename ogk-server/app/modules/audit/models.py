@@ -1,6 +1,8 @@
-"""Nhật ký kiểm toán: chỉ cho thêm.
+"""Audit log, append-only.
 
-Ba lớp chặn sửa/xóa: không có API, sự kiện ORM ném lỗi, trigger SQLite ABORT.
+Three layers block updates and deletes: no API route, ORM events that raise, and SQLite triggers that ABORT.
+The triggers are attached to create_all as well, so test and fresh databases match migration 0004.
+old_value/new_value hold JSON of the affected fields, encrypted because they may contain children data.
 """
 
 from datetime import datetime
@@ -38,12 +40,10 @@ class AuditLog(Base):
     action: Mapped[str] = mapped_column(String(16))
     target_type: Mapped[str] = mapped_column(String(32))
     target_id: Mapped[int]
-    # JSON của các trường bị ảnh hưởng; mã hóa vì có thể chứa dữ liệu của trẻ.
     old_value: Mapped[str | None] = mapped_column(EncryptedString("audit_logs.old_value"))
     new_value: Mapped[str | None] = mapped_column(EncryptedString("audit_logs.new_value"))
 
 
-# create_all (test, DB mới) cũng có trigger như migration 0004.
 event.listen(AuditLog.__table__, "after_create", DDL(NO_UPDATE_TRIGGER))
 event.listen(AuditLog.__table__, "after_create", DDL(NO_DELETE_TRIGGER))
 

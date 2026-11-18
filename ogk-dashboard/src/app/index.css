@@ -1,3 +1,6 @@
+/*
+ * Global styles. Two blurred color blobs sit behind the page so the glass effect has something to blur.
+ */
 @import 'tailwindcss';
 @import '../shared/styles/tokens.css';
 
@@ -15,7 +18,6 @@
     background: linear-gradient(160deg, #f4faff 0%, #e3f1ff 45%, #d4e9ff 100%) fixed;
   }
 
-  /* Hai mảng màu mờ phía sau để hiệu ứng kính có thứ để làm mờ */
   body::before,
   body::after {
     position: fixed;

@@ -8,7 +8,6 @@ type Props = {
   size?: 'sm' | 'md'
 }
 
-/** Nút xóa hỏi lại ngay tại chỗ, không dùng hộp thoại của trình duyệt. */
 export default function ConfirmDelete({ name, pending, onConfirm, size = 'sm' }: Props) {
   const [asking, setAsking] = useState(false)
   if (!asking) {

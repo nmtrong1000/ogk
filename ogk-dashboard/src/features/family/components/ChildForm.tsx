@@ -11,7 +11,6 @@ type Props = {
   error: unknown
   onSubmit: (body: ChildInput) => void
   onCancel?: () => void
-  /** Nút phụ đặt ngay bên trái nút chính, ví dụ nút Xóa. */
   secondaryAction?: ReactNode
 }
 
@@ -38,7 +37,6 @@ export default function ChildForm({ initial, submitLabel, pending, error, onSubm
   }
 
   const server = fieldError(error)
-  // Lỗi không thuộc ô nhập nào (mất kết nối, hết quyền...) hiện thành thông báo chung.
   const showAlert = error != null && !server.name && !server.birthYear && !local.name && !local.birthYear
 
   return (

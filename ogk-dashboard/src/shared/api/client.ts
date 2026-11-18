@@ -1,3 +1,7 @@
+/*
+ * A 401 on /api/auth/me, /login and /register is a normal result, not an expired session.
+ * When the ogk_csrf cookie is missing, a GET is sent first because the server sets the cookie on any response.
+ */
 export class ApiError extends Error {
   status: number
   code: string
@@ -14,12 +18,10 @@ export class ApiError extends Error {
 
 const CSRF_COOKIE = 'ogk_csrf'
 const UNSAFE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE'])
-// 401 ở các đường này là kết quả bình thường, không phải hết phiên.
 const NO_REDIRECT_ON_401 = new Set(['/api/auth/me', '/api/auth/login', '/api/auth/register'])
 
 let onUnauthorized: (() => void) | null = null
 
-/** app/ đăng ký hàm xử lý khi phiên hết hạn (xóa cache, về trang đăng nhập). */
 export function setUnauthorizedHandler(handler: (() => void) | null) {
   onUnauthorized = handler
 }
@@ -35,7 +37,6 @@ function readCookie(name: string): string | null {
 async function csrfToken(): Promise<string> {
   let token = readCookie(CSRF_COOKIE)
   if (!token) {
-    // Server đặt cookie ogk_csrf cho mọi response khi request chưa có.
     await fetch('/api/health', { credentials: 'same-origin' }).catch(() => undefined)
     token = readCookie(CSRF_COOKIE)
   }

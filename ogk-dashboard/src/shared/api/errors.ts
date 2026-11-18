@@ -1,6 +1,8 @@
+/*
+ * FastAPI 422 responses have an array detail, so their code is http_422.
+ */
 import { ApiError } from './client.ts'
 
-/** Câu báo lỗi tiếng Việt cho các mã lỗi chung của mọi API. Feature tự xử lý mã riêng rồi gọi hàm này. */
 export function commonErrorMessage(error: unknown): string {
   if (!(error instanceof ApiError)) return 'Có lỗi xảy ra, vui lòng thử lại'
   switch (error.code) {
@@ -17,7 +19,6 @@ export function commonErrorMessage(error: unknown): string {
     case 'network_error':
       return 'Không kết nối được server'
   }
-  // 422 của FastAPI có detail dạng mảng nên code là http_422.
   if (error.status === 422) return 'Dữ liệu nhập chưa hợp lệ'
   if (error.status >= 500) return 'Server đang gặp lỗi, vui lòng thử lại sau'
   return `Lỗi ${error.status}`

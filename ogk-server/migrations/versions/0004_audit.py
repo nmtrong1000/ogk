@@ -4,6 +4,7 @@ Revision ID: 0004
 Revises: 0003
 Create Date: 2026-11-18 10:00:00.000000
 
+The trigger SQL is copied here instead of imported from app, so this migration never changes with the code.
 """
 from typing import Sequence, Union
 
@@ -16,7 +17,6 @@ down_revision: Union[str, Sequence[str], None] = '0003'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
-# Viết lại tại đây, không import từ app: migration giữ nguyên dù code đổi.
 NO_UPDATE_TRIGGER = (
     "CREATE TRIGGER audit_logs_no_update BEFORE UPDATE ON audit_logs "
     "BEGIN SELECT RAISE(ABORT, 'audit_logs is append-only'); END"
@@ -28,7 +28,6 @@ NO_DELETE_TRIGGER = (
 
 
 def upgrade() -> None:
-    # old_value/new_value là bản mã AES-GCM của JSON (app.core.crypto).
     op.create_table(
         'audit_logs',
         sa.Column('id', sa.Integer(), nullable=False),

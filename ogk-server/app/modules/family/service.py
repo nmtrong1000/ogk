@@ -1,3 +1,8 @@
+"""Names are encrypted in the DB and cannot be ORDER BY'd, so the list is sorted after decryption.
+create flushes to get the child id, then the child and its audit entry commit in one transaction.
+An update that changes nothing writes no audit entry and keeps updated_at.
+"""
+
 from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,12 +18,10 @@ AUDIT_TARGET = "child"
 
 
 def now() -> datetime:
-    """Đồng hồ của module; test thay hàm này để giả lập thời gian."""
     return utcnow()
 
 
 def snapshot(child: Child) -> dict:
-    """Giá trị của trẻ ghi vào nhật ký kiểm toán."""
     return {"name": child.name, "birth_year": child.birth_year}
 
 
@@ -37,12 +40,10 @@ def validate_birth_year(birth_year: int) -> int:
 
 async def list_children(db: AsyncSession, owner_id: int) -> list[Child]:
     children = list((await db.execute(select_owned(Child, owner_id))).scalars())
-    # Tên đã mã hóa trong DB nên không ORDER BY được; sắp sau khi giải mã.
     return sorted(children, key=lambda c: (c.name.casefold(), c.id))
 
 
 async def get_child_for_owner(db: AsyncSession, child_id: int, owner_id: int) -> Child:
-    """Trẻ của đúng phụ huynh; của người khác hoặc không tồn tại đều trả 404."""
     child = await get_owned(db, Child, child_id, owner_id)
     if child is None:
         raise AppError(404, "not_found")
@@ -59,7 +60,7 @@ async def create_child(db: AsyncSession, owner_id: int, name: str, birth_year: i
         updated_at=at,
     )
     db.add(child)
-    await db.flush()  # lấy id cho nhật ký; trẻ và nhật ký commit cùng một giao dịch
+    await db.flush()
     audit.record(db, actor, "create", AUDIT_TARGET, child.id, None, snapshot(child))
     await db.commit()
     return child
@@ -83,7 +84,7 @@ async def update_child(
     after = snapshot(child)
     changed = [key for key in before if before[key] != after[key]]
     if not changed:
-        return child  # không đổi gì: không ghi nhật ký, không đổi updated_at
+        return child
     child.updated_at = now()
     audit.record(
         db,
@@ -99,7 +100,6 @@ async def update_child(
 
 
 async def delete_child(db: AsyncSession, child_id: int, owner_id: int, *, actor: audit.Actor) -> None:
-    """Xóa trẻ; tài khoản Windows đang gán cho trẻ được bỏ gán (ON DELETE SET NULL)."""
     child = await get_child_for_owner(db, child_id, owner_id)
     audit.record(db, actor, "delete", AUDIT_TARGET, child.id, snapshot(child), None)
     await db.delete(child)

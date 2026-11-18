@@ -6,6 +6,20 @@ from typing import Any
 from tray.ipc_client import IpcClient, IpcError
 
 
+ERROR_TEXT = {
+    "not_running": "Service chưa chạy",
+    "bad_ipc_file": "Tệp kết nối của service bị hỏng",
+    "unreachable": "Không kết nối được service",
+    "unauthorized": "Service từ chối kết nối",
+    "bad_status": "Service đang gặp lỗi",
+    "bad_response": "Service đang gặp lỗi",
+}
+
+
+def describe_error(exc: IpcError) -> str:
+    return ERROR_TEXT.get(exc.code, "Có lỗi khi hỏi service")
+
+
 def describe(status: dict[str, Any]) -> str:
     server = {True: "kết nối được", False: "không kết nối được", None: "chưa kiểm tra"}
     return (
@@ -44,7 +58,7 @@ class StatusWindow:
         try:
             text = describe(self._client.status())
         except IpcError as exc:
-            text = str(exc)
+            text = describe_error(exc)
         self._post(lambda: self._set_text(text))
 
     def _set_text(self, text: str) -> None:

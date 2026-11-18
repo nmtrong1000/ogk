@@ -1,3 +1,6 @@
+/*
+ * Children list with add and delete. The add form is remounted (key bump) after a success to clear its inputs.
+ */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -18,7 +21,7 @@ export default function ChildrenPage() {
     mutationFn: createChild,
     onSuccess: (child) => {
       setAdded(child.name)
-      setFormKey((k) => k + 1) // dựng lại form để xóa ô nhập
+      setFormKey((k) => k + 1)
       queryClient.invalidateQueries({ queryKey: childrenKey })
     },
   })

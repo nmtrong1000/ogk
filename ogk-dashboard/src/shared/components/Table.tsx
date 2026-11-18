@@ -1,7 +1,6 @@
 import type { HTMLAttributes, TdHTMLAttributes, ThHTMLAttributes } from 'react'
 import { cn } from '../utils/cn.ts'
 
-/** Bảng cuộn ngang được trên điện thoại. Dùng cùng TableHead, TableBody, TableRow, Th, Td. */
 export function Table({ className, children, ...rest }: HTMLAttributes<HTMLTableElement>) {
   return (
     <div className="-mx-5 overflow-x-auto px-5 sm:-mx-7 sm:px-7">

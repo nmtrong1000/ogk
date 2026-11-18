@@ -1,3 +1,7 @@
+"""record() does not commit: the caller commits the entry in the same transaction as the change.
+now() is the module clock; tests replace it to simulate time.
+"""
+
 import json
 from dataclasses import dataclass
 from datetime import datetime
@@ -18,20 +22,16 @@ MAX_PAGE_SIZE = 100
 
 
 def now() -> datetime:
-    """Đồng hồ của module; test thay hàm này để giả lập thời gian."""
     return utcnow()
 
 
 @dataclass(frozen=True)
 class Actor:
-    """Người thực hiện một thay đổi và IP của request."""
-
     account_id: int
     ip: str
 
 
 async def current_actor(request: Request, account: Account = Depends(auth_service.current_user)) -> Actor:
-    """Dependency cho router của module khác: ai đang thay đổi, từ IP nào."""
     return Actor(account_id=account.id, ip=client_ip(request))
 
 
@@ -48,9 +48,8 @@ def record(
     old: dict[str, Any] | None,
     new: dict[str, Any] | None,
 ) -> AuditLog:
-    """Thêm một dòng nhật ký vào phiên DB, KHÔNG commit: module gọi commit cùng giao dịch với thay đổi."""
     if action not in ACTIONS:
-        raise ValueError(f"action không hợp lệ: {action}")
+        raise ValueError(f"invalid action: {action}")
     entry = AuditLog(
         actor_id=actor.account_id,
         at=now(),
@@ -66,7 +65,6 @@ def record(
 
 
 async def list_logs(db: AsyncSession, viewer: Account, page: int, size: int) -> dict[str, Any]:
-    """Phụ huynh thấy nhật ký của mình; admin thấy toàn hệ thống nhưng không thấy giá trị."""
     if page < 1 or not 1 <= size <= MAX_PAGE_SIZE:
         raise AppError(422, "invalid_page")
     is_admin = viewer.role == ROLE_ADMIN

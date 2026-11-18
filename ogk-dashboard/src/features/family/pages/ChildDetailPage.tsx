@@ -1,3 +1,6 @@
+/*
+ * Child detail and edit page. Another parent's child also returns 404, so the page only says not found.
+ */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
@@ -62,7 +65,6 @@ function ChildDetail({ id }: { id: number }) {
       </div>
     )
   }
-  // Trẻ của phụ huynh khác cũng trả 404 nên trang chỉ báo không tìm thấy.
   if (child.error instanceof ApiError && child.error.status === 404) return <NotFound />
   if (child.isError) return <Alert tone="error">{errorMessage(child.error)}</Alert>
 

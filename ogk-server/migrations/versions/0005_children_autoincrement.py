@@ -1,9 +1,14 @@
-"""family: children.id AUTOINCREMENT (không cấp lại id đã xóa)
+"""family: children.id AUTOINCREMENT (never reuse deleted ids)
 
 Revision ID: 0005
 Revises: 0004
 Create Date: 2026-11-18 11:00:00.000000
 
+SQLite cannot ALTER a column to AUTOINCREMENT, so the table is rebuilt. Foreign keys are turned off during
+the rebuild, otherwise dropping the old table fires ON DELETE SET NULL and unassigns every windows_account.
+PRAGMA foreign_keys has no effect inside a transaction, so it runs in an autocommit block.
+Children deleted before this revision may have ids above every remaining id; those ids live in audit_logs,
+so the sequence is raised above every id ever seen.
 """
 from typing import Sequence, Union
 
@@ -17,9 +22,6 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def _recreate_children(autoincrement: bool) -> None:
-    # SQLite không ALTER được AUTOINCREMENT nên phải dựng lại bảng. Tắt khóa ngoại trong lúc dựng lại,
-    # nếu không DROP bảng cũ sẽ kích hoạt ON DELETE SET NULL và bỏ gán mọi windows_accounts.
-    # PRAGMA foreign_keys không có tác dụng trong giao dịch nên chạy ngoài giao dịch.
     with op.get_context().autocommit_block():
         op.execute('PRAGMA foreign_keys=OFF')
     with op.batch_alter_table(
@@ -30,13 +32,11 @@ def _recreate_children(autoincrement: bool) -> None:
         op.execute('PRAGMA foreign_keys=ON')
     violations = op.get_bind().exec_driver_sql('PRAGMA foreign_key_check').fetchall()
     if violations:
-        raise RuntimeError(f'Vi phạm khóa ngoại sau khi dựng lại children: {violations}')
+        raise RuntimeError(f'Foreign key violations after rebuilding children: {violations}')
 
 
 def upgrade() -> None:
     _recreate_children(True)
-    # Trẻ đã xóa trước bản này có thể có id lớn hơn mọi id còn lại; id đó nằm trong nhật ký kiểm toán.
-    # Đẩy bộ đếm lên trên mọi id từng thấy để không cấp lại.
     max_seen = (
         "MAX(COALESCE((SELECT MAX(id) FROM children), 0), "
         "COALESCE((SELECT MAX(target_id) FROM audit_logs WHERE target_type = 'child'), 0))"

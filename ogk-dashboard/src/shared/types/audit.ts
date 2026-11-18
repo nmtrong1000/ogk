@@ -11,7 +11,6 @@ export type AuditEntry = {
   action: AuditAction
   target_type: string
   target_id: number
-  /** null khi tạo (old), khi xóa (new), hoặc khi admin xem. */
   old_value: AuditValue | null
   new_value: AuditValue | null
 }

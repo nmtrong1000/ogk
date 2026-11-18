@@ -1,3 +1,5 @@
+"""IpcError.code is the contract with the UI, which maps it to user-facing text; the message is English for logs."""
+
 import json
 from pathlib import Path
 from typing import Any
@@ -8,7 +10,9 @@ IPC_FILE = "ipc.json"
 
 
 class IpcError(Exception):
-    pass
+    def __init__(self, code: str, message: str) -> None:
+        super().__init__(message)
+        self.code = code
 
 
 class IpcClient:
@@ -21,9 +25,9 @@ class IpcClient:
             info = json.loads(self._file.read_text(encoding="utf-8"))
             return int(info["port"]), str(info["token"])
         except FileNotFoundError:
-            raise IpcError("Service chưa chạy (không thấy tệp kết nối)") from None
+            raise IpcError("not_running", "Service is not running (IPC file not found)") from None
         except (OSError, ValueError, KeyError, TypeError):
-            raise IpcError(f"Tệp kết nối không hợp lệ: {self._file}") from None
+            raise IpcError("bad_ipc_file", f"Invalid IPC file: {self._file}") from None
 
     def _get(self, path: str) -> Any:
         port, token = self._endpoint()
@@ -34,15 +38,15 @@ class IpcClient:
                 timeout=self._timeout,
             )
         except httpx.HTTPError as exc:
-            raise IpcError(f"Không kết nối được service: {exc or type(exc).__name__}") from None
+            raise IpcError("unreachable", f"Cannot connect to service: {exc or type(exc).__name__}") from None
         if response.status_code == 401:
-            raise IpcError("Service từ chối token")
+            raise IpcError("unauthorized", "Service rejected the token")
         if response.status_code != 200:
-            raise IpcError(f"Service trả lỗi {response.status_code}")
+            raise IpcError("bad_status", f"Service returned HTTP {response.status_code}")
         try:
             return response.json()
         except ValueError:
-            raise IpcError("Service trả dữ liệu không hợp lệ") from None
+            raise IpcError("bad_response", "Service returned invalid data") from None
 
     def status(self) -> dict[str, Any]:
         return self._get("/ipc/status")

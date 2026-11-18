@@ -1,3 +1,5 @@
+"""Sensitive fields are ciphertext on disk. The engine is disposed first to flush the WAL for outside readers."""
+
 import sqlite3
 
 import pytest
@@ -19,7 +21,7 @@ def _raw_db() -> sqlite3.Connection:
 async def test_child_fields_unreadable_in_db_file(parent):
     year = birth_year(9)
     await create_child(parent, "Nguyễn Bình An", year)
-    await get_engine().dispose()  # đẩy WAL để công cụ ngoài thấy dữ liệu
+    await get_engine().dispose()
 
     with _raw_db() as conn:
         name, stored_year = conn.execute("SELECT name, birth_year FROM children").fetchone()

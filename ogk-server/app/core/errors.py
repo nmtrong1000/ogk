@@ -3,8 +3,6 @@ from fastapi.responses import JSONResponse
 
 
 class AppError(Exception):
-    """Lỗi trả về client dạng {"detail": code, ...extra}."""
-
     def __init__(self, status: int, code: str, headers: dict[str, str] | None = None, **extra) -> None:
         super().__init__(code)
         self.status = status

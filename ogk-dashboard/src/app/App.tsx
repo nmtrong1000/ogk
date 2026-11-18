@@ -1,3 +1,7 @@
+/*
+ * 4xx errors are not retried because a retry gives the same answer and keeps the page loading.
+ * When the session expires mid-use, cached data is cleared and the user goes to login with the current page as `next`.
+ */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { RouterProvider } from 'react-router-dom'
 import { ApiError, setUnauthorizedHandler } from '../shared/api/client.ts'
@@ -7,13 +11,11 @@ import { router } from './router.tsx'
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      // Lỗi 4xx thử lại cũng không khác, trả lỗi ngay để trang không treo ở trạng thái tải.
       retry: (count, error) => !(error instanceof ApiError && error.status >= 400 && error.status < 500) && count < 2,
     },
   },
 })
 
-// Hết phiên giữa chừng: xóa dữ liệu đã tải rồi về trang đăng nhập, giữ lại trang đang mở.
 setUnauthorizedHandler(() => {
   const { pathname, search } = router.state.location
   switchSession(queryClient, null)

@@ -1,3 +1,9 @@
+"""CSRF uses double submit: unsafe requests under /api must send X-CSRF-Token equal to the ogk_csrf cookie.
+RateLimiter keeps hits in memory, which only works with a single server process.
+client_ip trusts X-Forwarded-For only when the socket peer is in OGK_TRUSTED_PROXIES. It walks the header
+from the right and skips trusted hops, so a client cannot spoof its IP by sending the header directly.
+"""
+
 import hashlib
 import hmac
 import ipaddress
@@ -48,8 +54,6 @@ def _sets_cookie(response: Response, name: str) -> bool:
 
 
 class CSRFMiddleware(BaseHTTPMiddleware):
-    """Double-submit: request ghi dưới /api phải có header X-CSRF-Token bằng cookie ogk_csrf."""
-
     def __init__(self, app, exempt_prefixes: Iterable[str] = ()) -> None:
         super().__init__(app)
         self.exempt_prefixes = tuple(exempt_prefixes)
@@ -75,14 +79,11 @@ class CSRFMiddleware(BaseHTTPMiddleware):
 
 
 class RateLimiter:
-    """Cửa sổ trượt trong bộ nhớ; đủ cho một tiến trình server."""
-
     def __init__(self, clock: Callable[[], float] = time.monotonic) -> None:
         self._clock = clock
         self._hits: dict[str, deque[float]] = {}
 
     def hit(self, key: str, limit: int, window: float) -> float | None:
-        """Ghi một lần gọi. Trả số giây phải chờ nếu vượt giới hạn, ngược lại None."""
         now = self._clock()
         hits = self._hits.setdefault(key, deque())
         while hits and hits[0] <= now - window:
@@ -104,11 +105,6 @@ def _valid_ip(value: str) -> str | None:
 
 
 def client_ip(request: Request) -> str:
-    """IP của client. Chỉ tin X-Forwarded-For khi kết nối đến từ proxy tin cậy (OGK_TRUSTED_PROXIES).
-
-    Lấy từ phải sang: bỏ qua các hop là proxy tin cậy, hop đầu tiên còn lại là client thật.
-    Client gọi thẳng tự thêm header thì bị bỏ qua vì IP socket không phải proxy tin cậy.
-    """
     peer = request.client.host if request.client else "unknown"
     trusted = get_settings().trusted_proxy_set
     header = request.headers.get(FORWARDED_FOR_HEADER)

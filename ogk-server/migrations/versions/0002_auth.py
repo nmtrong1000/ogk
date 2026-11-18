@@ -18,7 +18,6 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # Cột thời gian lưu UTC không kèm múi giờ (app.core.db.UTCDateTime).
     op.create_table(
         'accounts',
         sa.Column('id', sa.Integer(), nullable=False),

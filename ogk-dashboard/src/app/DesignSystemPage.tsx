@@ -17,7 +17,6 @@ import {
   TextField,
 } from '../shared/components/index.ts'
 
-// Trang chỉ dùng khi phát triển (route /design) để xem toàn bộ component.
 
 const BRAND = ['50', '100', '200', '300', '400', '500', '600', '700', '800', '900']
 const INK = [

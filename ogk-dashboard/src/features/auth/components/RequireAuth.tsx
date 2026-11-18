@@ -6,7 +6,6 @@ import { useMe } from '../hooks/useMe.ts'
 
 type Props = { roles?: Role[] }
 
-/** Chặn route theo phiên và vai trò. Server vẫn tự kiểm tra quyền ở mọi API. */
 export default function RequireAuth({ roles }: Props) {
   const me = useMe()
   const location = useLocation()

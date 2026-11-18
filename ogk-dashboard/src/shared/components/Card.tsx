@@ -8,7 +8,6 @@ type Props = Omit<HTMLAttributes<HTMLElement>, 'title'> & {
   strong?: boolean
 }
 
-/** Tấm kính chứa nội dung. `strong` dùng cho form hoặc khối cần đọc kỹ. */
 export function Card({ title, description, actions, strong = false, className, children, ...rest }: Props) {
   return (
     <section className={cn(strong ? 'glass-strong' : 'glass', 'rounded-glass p-5 sm:p-7', className)} {...rest}>

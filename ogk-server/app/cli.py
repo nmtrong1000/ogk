@@ -1,9 +1,3 @@
-"""Lệnh quản trị chạy trên máy chủ.
-
-python -m app.cli create-admin <email>
-python -m app.cli gen-data-key
-"""
-
 import argparse
 import asyncio
 import getpass
@@ -16,10 +10,10 @@ from app.modules.auth import service
 from app.modules.auth.models import ROLE_ADMIN
 
 MESSAGES = {
-    "invalid_email": "Email không hợp lệ",
-    "password_too_short": f"Mật khẩu phải có ít nhất {service.MIN_PASSWORD_LENGTH} ký tự",
-    "password_too_long": f"Mật khẩu dài tối đa {service.MAX_PASSWORD_LENGTH} ký tự",
-    "email_taken": "Email đã có tài khoản",
+    "invalid_email": "Invalid email",
+    "password_too_short": f"Password must be at least {service.MIN_PASSWORD_LENGTH} characters",
+    "password_too_long": f"Password must be at most {service.MAX_PASSWORD_LENGTH} characters",
+    "email_taken": "Email is already registered",
 }
 
 
@@ -27,7 +21,7 @@ async def create_admin(email: str, password: str) -> None:
     try:
         async with get_sessionmaker()() as db:
             account = await service.create_account(db, email, password, role=ROLE_ADMIN)
-            print(f"Đã tạo admin {account.email} (id {account.id})")
+            print(f"Created admin {account.email} (id {account.id})")
     finally:
         await get_engine().dispose()
 
@@ -35,18 +29,18 @@ async def create_admin(email: str, password: str) -> None:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m app.cli")
     commands = parser.add_subparsers(dest="command", required=True)
-    create = commands.add_parser("create-admin", help="Tạo tài khoản admin")
+    create = commands.add_parser("create-admin", help="Create an admin account")
     create.add_argument("email")
-    commands.add_parser("gen-data-key", help="Sinh khóa OGK_DATA_KEY mới cho AES-GCM")
+    commands.add_parser("gen-data-key", help="Generate a new AES-GCM key for OGK_DATA_KEY")
     args = parser.parse_args(argv)
 
     if args.command == "gen-data-key":
         print(generate_key())
         return 0
 
-    password = getpass.getpass("Mật khẩu: ")
-    if getpass.getpass("Nhập lại mật khẩu: ") != password:
-        print("Hai lần nhập mật khẩu không khớp", file=sys.stderr)
+    password = getpass.getpass("Password: ")
+    if getpass.getpass("Repeat password: ") != password:
+        print("Passwords do not match", file=sys.stderr)
         return 1
     try:
         asyncio.run(create_admin(args.email, password))

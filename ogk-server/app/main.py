@@ -8,7 +8,6 @@ from app.modules.auth.router import admin_router as auth_admin_router
 from app.modules.auth.router import router as auth_router
 from app.modules.family.router import router as family_router
 
-# Đường dùng token thiết bị thay cho cookie, không cần CSRF (P8 thêm).
 CSRF_EXEMPT_PREFIXES: tuple[str, ...] = ()
 
 
