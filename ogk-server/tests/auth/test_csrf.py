@@ -1,7 +1,6 @@
 import pytest
 
-from tests.auth.conftest import PASSWORD
-from tests.conftest import csrf_headers
+from tests.conftest import PASSWORD, csrf_headers
 
 pytestmark = pytest.mark.anyio
 

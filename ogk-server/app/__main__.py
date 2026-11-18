@@ -4,12 +4,14 @@ import sys
 import uvicorn
 
 from app.core.config import ConfigError, get_settings
+from app.core.crypto import get_cipher
 from app.main import create_app
 
 
 def main() -> None:
     try:
         settings = get_settings()
+        get_cipher()  # kiểm tra OGK_DATA_KEY ngay khi khởi động
     except ConfigError as exc:
         sys.exit(str(exc))
 

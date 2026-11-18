@@ -3,7 +3,7 @@ from sqlalchemy import select
 
 from app.core.db import get_sessionmaker
 from app.modules.auth.models import Account
-from tests.auth.conftest import register
+from tests.conftest import register
 
 pytestmark = pytest.mark.anyio
 

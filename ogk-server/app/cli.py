@@ -1,10 +1,15 @@
-"""Lệnh quản trị chạy trên máy chủ: python -m app.cli create-admin <email>"""
+"""Lệnh quản trị chạy trên máy chủ.
+
+python -m app.cli create-admin <email>
+python -m app.cli gen-data-key
+"""
 
 import argparse
 import asyncio
 import getpass
 import sys
 
+from app.core.crypto import generate_key
 from app.core.db import get_engine, get_sessionmaker
 from app.core.errors import AppError
 from app.modules.auth import service
@@ -32,7 +37,12 @@ def main(argv: list[str] | None = None) -> int:
     commands = parser.add_subparsers(dest="command", required=True)
     create = commands.add_parser("create-admin", help="Tạo tài khoản admin")
     create.add_argument("email")
+    commands.add_parser("gen-data-key", help="Sinh khóa OGK_DATA_KEY mới cho AES-GCM")
     args = parser.parse_args(argv)
+
+    if args.command == "gen-data-key":
+        print(generate_key())
+        return 0
 
     password = getpass.getpass("Mật khẩu: ")
     if getpass.getpass("Nhập lại mật khẩu: ") != password:

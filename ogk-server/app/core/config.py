@@ -1,7 +1,7 @@
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import ValidationError
+from pydantic import SecretStr, ValidationError
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -18,6 +18,8 @@ class Settings(BaseSettings):
     host: str = "0.0.0.0"
     port: int = 8443
     dashboard_dist: Path | None = None
+    # Khóa AES-256-GCM cho trường nhạy cảm: base64url của 32 byte (python -m app.cli gen-data-key).
+    data_key: SecretStr
 
 
 @lru_cache
