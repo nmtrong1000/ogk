@@ -5,6 +5,8 @@ import {
   Button,
   Card,
   Checkbox,
+  Dialog,
+  Select,
   Spinner,
   Table,
   TableBody,
@@ -34,6 +36,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 export default function DesignSystemPage() {
   const [checked, setChecked] = useState(true)
+  const [dialogOpen, setDialogOpen] = useState(false)
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -101,8 +104,39 @@ export default function DesignSystemPage() {
           <TextField label="Mật khẩu" type="password" hint="Ít nhất 10 ký tự." />
           <TextField label="Có lỗi" defaultValue="abc" error="Email không hợp lệ" />
           <TextField label="Disabled" disabled defaultValue="Không sửa được" />
+          <Select
+            label="Năm sinh"
+            placeholder="Chọn năm"
+            defaultValue=""
+            options={['2018', '2017', '2016'].map((y) => ({ value: y, label: y }))}
+          />
         </div>
         <Checkbox label="Chỉ tài khoản đang khóa" checked={checked} onChange={(e) => setChecked(e.target.checked)} />
+      </Section>
+
+      <Section title="Hộp thoại">
+        <div>
+          <Button variant="danger" onClick={() => setDialogOpen(true)}>
+            Mở hộp thoại xác nhận
+          </Button>
+        </div>
+        <Dialog
+          open={dialogOpen}
+          title="Xóa Bé An?"
+          onClose={() => setDialogOpen(false)}
+          actions={
+            <>
+              <Button variant="ghost" onClick={() => setDialogOpen(false)}>
+                Hủy
+              </Button>
+              <Button variant="danger" onClick={() => setDialogOpen(false)}>
+                Xóa
+              </Button>
+            </>
+          }
+        >
+          Thông tin của con sẽ bị xóa khỏi tài khoản và không thể khôi phục.
+        </Dialog>
       </Section>
 
       <Section title="Thông báo và nhãn">

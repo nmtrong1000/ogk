@@ -41,7 +41,9 @@ Trình duyệt không hỗ trợ `backdrop-filter`, hoặc người dùng bật 
 | :---- | :---- |
 | `Button` | `variant`: primary, secondary, ghost, danger; `size`: sm, md, lg; `loading`; `block` |
 | `TextField` | `label`, `hint`, `error`; còn lại như `<input>` |
+| `Select` | `label`, `options`, `placeholder`, `hint`, `error`; còn lại như `<select>` |
 | `Checkbox` | `label`; còn lại như `<input type="checkbox">` |
+| `Dialog` | `open`, `title`, `actions`, `onClose`; hộp thoại modal, dùng để xác nhận thay vì `window.confirm` |
 | `Card` | `title`, `description`, `actions`, `strong` |
 | `Alert` | `tone`: info, success, warning, error; `title` |
 | `Badge` | `tone`: neutral, brand, success, warning, danger |

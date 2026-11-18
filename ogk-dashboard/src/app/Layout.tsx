@@ -30,6 +30,11 @@ export default function Layout() {
                 <NavLink to="/" end className={navClass}>
                   Tổng quan
                 </NavLink>
+                {me.role === 'parent' && (
+                  <NavLink to="/children" className={navClass}>
+                    Các con
+                  </NavLink>
+                )}
                 {me.role === 'admin' && (
                   <NavLink to="/admin/accounts" className={navClass}>
                     Tài khoản
