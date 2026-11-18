@@ -1,5 +1,5 @@
-import { ApiError, apiFetch } from '../../shared/api/client.ts'
-import type { Account, AdminAccount } from '../../shared/types/auth.ts'
+import { ApiError, apiFetch } from '@/shared/api/client.ts'
+import type { Account, AdminAccount } from '@/shared/types/auth.ts'
 
 export type Credentials = { email: string; password: string }
 

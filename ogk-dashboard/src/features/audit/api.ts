@@ -1,5 +1,5 @@
-import { apiFetch } from '../../shared/api/client.ts'
-import type { AuditPage } from '../../shared/types/audit.ts'
+import { apiFetch } from '@/shared/api/client.ts'
+import type { AuditPage } from '@/shared/types/audit.ts'
 
 export const PAGE_SIZE = 20
 

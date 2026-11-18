@@ -1,8 +1,8 @@
 import { useState, type FormEvent, type ReactNode } from 'react'
-import { Alert, Button, Select, TextField } from '../../../shared/components/index.ts'
-import type { ChildInput } from '../../../shared/types/family.ts'
-import { BIRTH_YEAR_ERROR, MAX_NAME_LENGTH, MIN_BIRTH_YEAR, NAME_ERROR, errorMessage, fieldError } from '../utils/messages.ts'
-import { currentYear } from '../utils/year.ts'
+import { Alert, Button, Select, TextField } from '@/shared/components/index.ts'
+import type { ChildInput } from '@/shared/types/family.ts'
+import { BIRTH_YEAR_ERROR, MAX_NAME_LENGTH, MIN_BIRTH_YEAR, NAME_ERROR, errorMessage, fieldError } from '@/features/family/utils/messages.ts'
+import { currentYear } from '@/features/family/utils/year.ts'
 
 type Props = {
   initial?: ChildInput

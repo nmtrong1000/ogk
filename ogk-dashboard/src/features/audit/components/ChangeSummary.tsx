@@ -1,8 +1,8 @@
 /*
  * Admin cannot see values, so entries without values show only the target type and id.
  */
-import type { AuditEntry } from '../../../shared/types/audit.ts'
-import { changes, targetLabel } from '../utils/format.ts'
+import type { AuditEntry } from '@/shared/types/audit.ts'
+import { changes, targetLabel } from '@/features/audit/utils/format.ts'
 
 export default function ChangeSummary({ entry }: { entry: AuditEntry }) {
   const items = changes(entry)

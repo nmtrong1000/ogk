@@ -1,7 +1,7 @@
 /*
  * FastAPI 422 responses have an array detail, so their code is http_422.
  */
-import { ApiError } from './client.ts'
+import { ApiError } from '@/shared/api/client.ts'
 
 export function commonErrorMessage(error: unknown): string {
   if (!(error instanceof ApiError)) return 'Có lỗi xảy ra, vui lòng thử lại'

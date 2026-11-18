@@ -1,5 +1,5 @@
 import type { InputHTMLAttributes } from 'react'
-import { cn } from '../utils/cn.ts'
+import { cn } from '@/shared/utils/cn.ts'
 
 type Props = Omit<InputHTMLAttributes<HTMLInputElement>, 'type'> & { label: string }
 

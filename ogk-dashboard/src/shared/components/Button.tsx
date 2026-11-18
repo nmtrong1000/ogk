@@ -1,6 +1,6 @@
 import type { ButtonHTMLAttributes } from 'react'
-import { cn } from '../utils/cn.ts'
-import { Spinner } from './Spinner.tsx'
+import { cn } from '@/shared/utils/cn.ts'
+import { Spinner } from '@/shared/components/Spinner.tsx'
 
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger'
 type Size = 'sm' | 'md' | 'lg'

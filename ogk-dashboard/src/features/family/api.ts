@@ -1,5 +1,5 @@
-import { apiFetch } from '../../shared/api/client.ts'
-import type { Child, ChildInput } from '../../shared/types/family.ts'
+import { apiFetch } from '@/shared/api/client.ts'
+import type { Child, ChildInput } from '@/shared/types/family.ts'
 
 export const childrenKey = ['children'] as const
 export const childKey = (id: number) => ['children', id] as const

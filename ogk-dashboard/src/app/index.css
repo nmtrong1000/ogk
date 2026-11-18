@@ -2,7 +2,7 @@
  * Global styles. Two blurred color blobs sit behind the page so the glass effect has something to blur.
  */
 @import 'tailwindcss';
-@import '../shared/styles/tokens.css';
+@import '@/shared/styles/tokens.css';
 
 @layer base {
   html {

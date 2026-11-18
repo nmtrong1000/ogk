@@ -4,11 +4,11 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState, type FormEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Alert, Button, TextField } from '../../../shared/components/index.ts'
-import type { Account } from '../../../shared/types/auth.ts'
-import type { Credentials } from '../api.ts'
-import { errorMessage } from '../utils/messages.ts'
-import { switchSession } from '../hooks/useMe.ts'
+import { Alert, Button, TextField } from '@/shared/components/index.ts'
+import type { Account } from '@/shared/types/auth.ts'
+import type { Credentials } from '@/features/auth/api.ts'
+import { errorMessage } from '@/features/auth/utils/messages.ts'
+import { switchSession } from '@/features/auth/hooks/useMe.ts'
 
 export const MIN_PASSWORD_LENGTH = 10
 

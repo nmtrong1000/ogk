@@ -1,8 +1,8 @@
 import { Link, Navigate } from 'react-router-dom'
-import { register } from '../api.ts'
-import AuthForm from '../components/AuthForm.tsx'
-import AuthShell from '../components/AuthShell.tsx'
-import { useMe } from '../hooks/useMe.ts'
+import { register } from '@/features/auth/api.ts'
+import AuthForm from '@/features/auth/components/AuthForm.tsx'
+import AuthShell from '@/features/auth/components/AuthShell.tsx'
+import { useMe } from '@/features/auth/hooks/useMe.ts'
 
 export default function RegisterPage() {
   const me = useMe()
