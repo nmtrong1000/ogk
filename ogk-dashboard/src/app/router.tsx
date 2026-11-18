@@ -7,7 +7,6 @@ import HomePage from './HomePage.tsx'
 import Layout from './Layout.tsx'
 import NotFoundPage from './NotFoundPage.tsx'
 
-// Trang xem design system chỉ có khi chạy `npm run dev`; bản build bỏ hẳn nhánh này.
 const devRoutes: RouteObject[] = import.meta.env.DEV
   ? [{ path: '/design', lazy: async () => ({ Component: (await import('./DesignSystemPage.tsx')).default }) }]
   : []

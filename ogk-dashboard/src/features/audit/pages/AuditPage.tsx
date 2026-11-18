@@ -62,7 +62,6 @@ export default function AuditPage() {
 
           {data && data.items.length > 0 && (
             <>
-              {/* Điện thoại: mỗi thay đổi một thẻ, không cuộn ngang. */}
               <ul className="flex flex-col gap-3 sm:hidden">
                 {data.items.map((entry) => (
                   <li key={entry.id} className="rounded-control bg-white/50 p-3 text-sm ring-1 ring-brand-100/80">

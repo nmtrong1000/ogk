@@ -1,3 +1,9 @@
+"""client_ip with and without a trusted proxy.
+
+The Vite proxy (xfwd) runs on the dev machine and connects to the server over loopback.
+A client may prepend its own fake hop to X-Forwarded-For; the proxy appends the real IP last.
+"""
+
 import httpx
 import pytest
 from fastapi import FastAPI, Request
@@ -36,7 +42,6 @@ async def test_direct_call_ignores_spoofed_header(settings_env):
 
 @pytest.mark.parametrize("proxy", ["127.0.0.1", "::1"])
 async def test_trusted_proxy_uses_forwarded_ip(settings_env, proxy):
-    # Proxy của Vite (xfwd) chạy trên máy dev, kết nối đến server qua loopback.
     assert await _ip(proxy, "203.0.113.5") == "203.0.113.5"
 
 
@@ -45,7 +50,6 @@ async def test_trusted_proxy_without_header_uses_socket_ip(settings_env):
 
 
 async def test_rightmost_untrusted_hop_wins(settings_env):
-    # Client tự thêm "1.2.3.4" vào header; proxy nối IP thật vào cuối.
     assert await _ip("127.0.0.1", "1.2.3.4, 203.0.113.5") == "203.0.113.5"
     assert await _ip("127.0.0.1", "203.0.113.5, 127.0.0.1") == "203.0.113.5"
 

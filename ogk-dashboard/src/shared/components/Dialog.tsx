@@ -5,14 +5,11 @@ type Props = {
   open: boolean
   title: ReactNode
   children?: ReactNode
-  /** Nút thao tác ở chân hộp thoại. */
   actions?: ReactNode
-  /** Đóng bằng phím Esc hoặc bấm ra ngoài. */
   onClose: () => void
   className?: string
 }
 
-/** Hộp thoại modal dựng trên <dialog>: khóa nền, giữ focus bên trong, Esc để đóng. */
 export function Dialog({ open, title, children, actions, onClose, className }: Props) {
   const ref = useRef<HTMLDialogElement>(null)
   const titleId = useId()

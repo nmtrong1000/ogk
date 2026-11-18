@@ -1,3 +1,6 @@
+/*
+ * Shared login/register form. The `next` redirect only allows internal paths, never an external site.
+ */
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState, type FormEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
@@ -9,7 +12,6 @@ import { switchSession } from '../hooks/useMe.ts'
 
 export const MIN_PASSWORD_LENGTH = 10
 
-/** Chỉ cho phép quay lại đường nội bộ, tránh chuyển hướng ra trang ngoài. */
 function safeNext(next: string | null, account: Account): string {
   if (next && next.startsWith('/') && !next.startsWith('//')) return next
   return account.role === 'admin' ? '/admin/accounts' : '/'

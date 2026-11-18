@@ -1,4 +1,9 @@
-"""Mã hóa trường nhạy cảm bằng AES-256-GCM. Khóa đọc từ biến môi trường OGK_DATA_KEY."""
+"""AES-256-GCM encryption for sensitive fields, keyed by OGK_DATA_KEY.
+
+Ciphertext layout: version (1 byte) || nonce (12 bytes) || ciphertext with tag.
+The AAD binds each ciphertext to its table and column, so a wrong key, wrong AAD or tampered data
+raises cryptography.exceptions.InvalidTag on decrypt.
+"""
 
 import base64
 import binascii
@@ -26,7 +31,7 @@ def decode_key(value: str) -> bytes:
     except (binascii.Error, ValueError):
         key = b""
     if len(key) != KEY_SIZE:
-        raise ConfigError("OGK_DATA_KEY phải là base64url của 32 byte (python -m app.cli gen-data-key)")
+        raise ConfigError("OGK_DATA_KEY must be base64url of 32 bytes (python -m app.cli gen-data-key)")
     return key
 
 
@@ -36,22 +41,18 @@ def get_cipher() -> AESGCM:
 
 
 def encrypt(plaintext: bytes, aad: bytes, cipher: AESGCM | None = None) -> bytes:
-    """Trả về version (1 byte) || nonce (12 byte) || ciphertext kèm tag."""
     nonce = os.urandom(NONCE_SIZE)
     return VERSION + nonce + (cipher or get_cipher()).encrypt(nonce, plaintext, aad)
 
 
 def decrypt(blob: bytes, aad: bytes, cipher: AESGCM | None = None) -> bytes:
-    """Sai khóa, sai AAD hoặc dữ liệu bị sửa thì ném cryptography.exceptions.InvalidTag."""
     if len(blob) < 1 + NONCE_SIZE or blob[:1] != VERSION:
-        raise ValueError("Bản mã không đúng định dạng")
+        raise ValueError("Malformed ciphertext")
     nonce, ciphertext = blob[1 : 1 + NONCE_SIZE], blob[1 + NONCE_SIZE :]
     return (cipher or get_cipher()).decrypt(nonce, ciphertext, aad)
 
 
 class EncryptedString(TypeDecorator):
-    """Cột chuỗi được mã hóa khi ghi, giải mã khi đọc. AAD gắn bản mã với đúng bảng và cột."""
-
     impl = LargeBinary
     cache_ok = True
 

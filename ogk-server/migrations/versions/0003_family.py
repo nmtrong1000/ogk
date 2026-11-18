@@ -18,7 +18,6 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # Cột LargeBinary là bản mã AES-GCM (app.core.crypto): version || nonce || ciphertext+tag.
     op.create_table(
         'children',
         sa.Column('id', sa.Integer(), nullable=False),

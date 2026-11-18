@@ -14,7 +14,6 @@ export function targetLabel(type: string): string {
   return TARGET_LABELS[type] ?? type
 }
 
-/** "Thêm con", "Sửa con", "Xóa con". */
 export function actionLabel(entry: Pick<AuditEntry, 'action' | 'target_type'>): string {
   return `${ACTION_VERBS[entry.action] ?? entry.action} ${targetLabel(entry.target_type)}`
 }
@@ -35,7 +34,6 @@ export function formatDateTime(iso: string): string {
 
 export type FieldChange = { field: string; label: string; before?: string; after?: string }
 
-/** Danh sách trường đã đổi, theo thứ tự nhãn đã biết trước, trường lạ xếp sau. */
 export function changes(entry: AuditEntry): FieldChange[] {
   const known = Object.keys(FIELD_LABELS[entry.target_type] ?? {})
   const fields = new Set([...Object.keys(entry.old_value ?? {}), ...Object.keys(entry.new_value ?? {})])

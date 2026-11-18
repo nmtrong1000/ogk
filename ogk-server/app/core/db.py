@@ -1,3 +1,7 @@
+"""UTCDateTime stores UTC without tzinfo because SQLite has no timezone type, and reads it back with tzinfo=UTC.
+select_owned/get_owned always filter by owner_id, so another owner's row behaves as if it does not exist.
+"""
+
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime
 from functools import lru_cache
@@ -63,8 +67,6 @@ def utcnow() -> datetime:
 
 
 class UTCDateTime(TypeDecorator):
-    """Lưu UTC không kèm múi giờ trong SQLite, đọc ra datetime có tzinfo=UTC."""
-
     impl = DateTime
     cache_ok = True
 
@@ -72,7 +74,7 @@ class UTCDateTime(TypeDecorator):
         if value is None:
             return None
         if value.tzinfo is None:
-            raise ValueError("datetime phải có múi giờ")
+            raise ValueError("datetime must be timezone-aware")
         return value.astimezone(UTC).replace(tzinfo=None)
 
     def process_result_value(self, value: datetime | None, _dialect) -> datetime | None:
@@ -83,11 +85,9 @@ M = TypeVar("M")
 
 
 def select_owned(model: type[M], owner_id: Any) -> Select[tuple[M]]:
-    """SELECT luôn lọc theo chủ sở hữu. Model phải có cột owner_id."""
     return select(model).where(model.owner_id == owner_id)
 
 
 async def get_owned(db: AsyncSession, model: type[M], obj_id: Any, owner_id: Any) -> M | None:
-    """Lấy một đối tượng của đúng chủ sở hữu; của người khác thì trả None như không tồn tại."""
     stmt = select_owned(model, owner_id).where(model.id == obj_id)
     return (await db.execute(stmt)).scalar_one_or_none()

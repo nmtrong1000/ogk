@@ -1,14 +1,11 @@
-# OS
 .DS_Store
 Thumbs.db
 desktop.ini
 
-# Editor
 .vscode/
 .idea/
 *.swp
 
-# Python
 __pycache__/
 *.py[cod]
 .venv/
@@ -22,14 +19,11 @@ htmlcov/
 build/
 *.spec
 
-# Node
 node_modules/
 .vite/
 
-# Build output
 dist/
 
-# Environment and secrets
 .env
 .env.*
 !.env.example
@@ -38,7 +32,6 @@ dist/
 *.crt
 *.srl
 
-# Local data
 *.db
 *.db-wal
 *.db-shm
@@ -47,5 +40,4 @@ dist/
 logs/
 .ogk-data/
 
-# Ghi chú tài khoản chạy thử trên máy
 tmp.txt

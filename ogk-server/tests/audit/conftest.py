@@ -12,7 +12,6 @@ async def audit_page(c: httpx.AsyncClient, page: int = 1, size: int = 20) -> dic
 
 @pytest.fixture
 async def other_parent(app):
-    """Client của phụ huynh thứ hai (B)."""
     async with make_client(app) as c:
         assert (await register(c, "other@example.com")).status_code == 201
         yield c

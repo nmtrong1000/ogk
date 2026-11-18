@@ -3,7 +3,6 @@ import { Card } from '../../../shared/components/index.ts'
 
 type Props = { title: string; subtitle: string; footer: ReactNode; children: ReactNode }
 
-/** Khung chung của trang đăng nhập và đăng ký. */
 export default function AuthShell({ title, subtitle, footer, children }: Props) {
   return (
     <div className="mx-auto flex w-full max-w-md flex-col gap-5 pt-2 sm:pt-8">

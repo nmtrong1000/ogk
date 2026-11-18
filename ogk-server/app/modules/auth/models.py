@@ -1,3 +1,5 @@
+"""Accounts and sessions. sessions.id is the SHA-256 hex of the session token, never the token itself."""
+
 from datetime import datetime
 
 from sqlalchemy import CheckConstraint, ForeignKey, String
@@ -25,7 +27,7 @@ class Account(Base):
 class AuthSession(Base):
     __tablename__ = "sessions"
 
-    id: Mapped[str] = mapped_column(String(64), primary_key=True)  # SHA-256 của token phiên
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
     account_id: Mapped[int] = mapped_column(ForeignKey("accounts.id", ondelete="CASCADE"), index=True)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime())
     expires_at: Mapped[datetime] = mapped_column(UTCDateTime(), index=True)

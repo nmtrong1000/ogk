@@ -1,11 +1,12 @@
+/*
+ * Admin cannot see values, so entries without values show only the target type and id.
+ */
 import type { AuditEntry } from '../../../shared/types/audit.ts'
 import { changes, targetLabel } from '../utils/format.ts'
 
-/** Giá trị cũ và mới dạng "Tên: An → An Nhiên", không hiện JSON thô. */
 export default function ChangeSummary({ entry }: { entry: AuditEntry }) {
   const items = changes(entry)
   if (items.length === 0) {
-    // Admin không được xem giá trị: chỉ cho biết đối tượng.
     return (
       <span className="text-ink-muted">
         {targetLabel(entry.target_type)} #{entry.target_id}

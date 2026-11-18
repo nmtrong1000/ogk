@@ -11,7 +11,7 @@ from app.main import create_app
 def main() -> None:
     try:
         settings = get_settings()
-        get_cipher()  # kiểm tra OGK_DATA_KEY ngay khi khởi động
+        get_cipher()
     except ConfigError as exc:
         sys.exit(str(exc))
 

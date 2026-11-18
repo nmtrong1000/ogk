@@ -1,8 +1,8 @@
+"""Raw input types; the service validates value ranges so errors return string codes (invalid_name, invalid_birth_year)."""
+
 from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict
-
-# Kiểu thô; giới hạn giá trị do service kiểm tra để lỗi trả về mã chuỗi (invalid_name, invalid_birth_year).
 
 
 class ChildCreate(BaseModel):

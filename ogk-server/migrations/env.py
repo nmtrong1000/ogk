@@ -1,3 +1,5 @@
+"""Alembic environment. Model modules are imported only to register their tables on Base.metadata."""
+
 import asyncio
 from logging.config import fileConfig
 
@@ -6,9 +8,9 @@ from sqlalchemy.engine import Connection
 
 from app.core.config import get_settings
 from app.core.db import Base, create_engine
-from app.modules.audit import models as _audit_models  # noqa: F401
-from app.modules.auth import models as _auth_models  # noqa: F401  đăng ký bảng vào Base.metadata
-from app.modules.family import models as _family_models  # noqa: F401
+from app.modules.audit import models as _audit_models
+from app.modules.auth import models as _auth_models
+from app.modules.family import models as _family_models
 
 config = context.config
 

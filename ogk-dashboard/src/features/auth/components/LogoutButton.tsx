@@ -1,3 +1,6 @@
+/*
+ * Logout button. The browser treats the user as logged out whether or not the server session still existed.
+ */
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '../../../shared/components/index.ts'
@@ -9,7 +12,6 @@ export default function LogoutButton() {
   const navigate = useNavigate()
   const mutation = useMutation({
     mutationFn: logout,
-    // Phiên đã mất ở server hay chưa thì phía trình duyệt cũng coi như đã đăng xuất.
     onSettled: () => {
       switchSession(queryClient, null)
       navigate('/login', { replace: true })

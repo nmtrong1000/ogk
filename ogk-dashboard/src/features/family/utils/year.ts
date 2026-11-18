@@ -1,4 +1,6 @@
-/** Năm hiện tại theo giờ máy người dùng; chỉ dùng để hiện tuổi và giới hạn ô năm sinh. */
+/*
+ * Current year from the user's clock; used only to show age and bound the birth year input.
+ */
 export function currentYear(): number {
   return new Date().getFullYear()
 }

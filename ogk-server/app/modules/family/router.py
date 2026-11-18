@@ -8,7 +8,6 @@ from app.modules.auth.service import require_parent
 from app.modules.family import service
 from app.modules.family.schemas import ChildCreate, ChildOut, ChildUpdate
 
-# Chỉ vai trò parent: admin nhận 403, không đọc được dữ liệu của trẻ.
 router = APIRouter(prefix="/api/children", tags=["family"], dependencies=[Depends(require_parent)])
 
 

@@ -23,11 +23,11 @@ def load_config(data_dir: Path) -> Config:
     try:
         raw = json.loads(path.read_text(encoding="utf-8-sig"))
     except FileNotFoundError:
-        raise ConfigError(f"Không tìm thấy tệp cấu hình: {path}") from None
+        raise ConfigError(f"Config file not found: {path}") from None
     except json.JSONDecodeError:
-        raise ConfigError(f"Tệp cấu hình không phải JSON hợp lệ: {path}") from None
+        raise ConfigError(f"Config file is not valid JSON: {path}") from None
     if not isinstance(raw, dict):
-        raise ConfigError(f"Tệp cấu hình phải là một đối tượng JSON: {path}")
+        raise ConfigError(f"Config file must be a JSON object: {path}")
 
     bad = []
     server_url = raw.get("server_url")
@@ -43,7 +43,7 @@ def load_config(data_dir: Path) -> Config:
     if isinstance(ipc_port, bool) or not isinstance(ipc_port, int) or not 1 <= ipc_port <= 65535:
         bad.append("ipc_port")
     if bad:
-        raise ConfigError(f"Thiếu hoặc sai trường cấu hình: {', '.join(bad)}")
+        raise ConfigError(f"Missing or invalid config fields: {', '.join(bad)}")
 
     return Config(
         server_url=server_url.rstrip("/"),

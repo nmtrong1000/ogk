@@ -1,3 +1,6 @@
+/*
+ * Vite config. The /api proxy sends X-Forwarded-For (xfwd) so the server logs the browser's real IP in the audit log.
+ */
 import { existsSync, readFileSync } from 'node:fs'
 import { Agent } from 'node:https'
 import tailwindcss from '@tailwindcss/vite'
@@ -13,7 +16,6 @@ export default defineConfig({
       '/api': {
         target: process.env.OGK_SERVER_URL ?? 'https://localhost:8443',
         changeOrigin: true,
-        // Gửi X-Forwarded-For để server ghi IP thật của trình duyệt vào nhật ký kiểm toán.
         xfwd: true,
         secure: true,
         agent: existsSync(caPath) ? new Agent({ ca: readFileSync(caPath) }) : undefined,

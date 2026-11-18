@@ -1,8 +1,10 @@
+/*
+ * The reload link is a plain <a> so the whole app reloads and leaves the error state.
+ */
 import { isRouteErrorResponse, useRouteError } from 'react-router-dom'
 import { Card } from '../shared/components/index.ts'
 import NotFoundPage from './NotFoundPage.tsx'
 
-/** Lỗi không lường trước khi render route; thay trang lỗi mặc định của React Router. */
 export default function ErrorPage() {
   const error = useRouteError()
   if (isRouteErrorResponse(error) && error.status === 404) {
@@ -19,7 +21,6 @@ export default function ErrorPage() {
         <h1 className="text-xl font-bold text-ink">Có lỗi xảy ra</h1>
         <p className="mt-2 text-ink-muted">Trang gặp lỗi không mong muốn. Hãy tải lại trang.</p>
         <p className="mt-5">
-          {/* Dùng thẻ a để tải lại toàn bộ app, thoát khỏi trạng thái lỗi. */}
           <a href="/">Về trang tổng quan</a>
         </p>
       </Card>

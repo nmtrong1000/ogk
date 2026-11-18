@@ -41,7 +41,6 @@ def test_migration_0005_keeps_data_and_assignments(settings_env, tmp_path, monke
             VALUES (1, 1, x'01', x'01', '2026-01-01', '2026-01-01'), (2, 1, x'02', x'02', '2026-01-01', '2026-01-01');
         INSERT INTO devices (id, owner_id, name, created_at) VALUES (1, 1, 'PC', '2026-01-01');
         INSERT INTO windows_accounts (id, device_id, child_id, sid, username) VALUES (1, 1, 2, 'S-1', x'03');
-        -- Trẻ id 5 đã bị xóa trước khi nâng cấp, chỉ còn trong nhật ký.
         INSERT INTO audit_logs (actor_id, at, ip, action, target_type, target_id)
             VALUES (1, '2026-01-01', '::1', 'delete', 'child', 5);
         """

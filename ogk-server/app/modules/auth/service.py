@@ -1,3 +1,8 @@
+"""now() is the module clock; tests replace it to simulate time passing.
+_verify_dummy hashes when the email does not exist, so the response time matches a wrong password.
+Failed attempts are incremented with a single UPDATE so parallel attempts are not lost.
+"""
+
 from datetime import datetime, timedelta
 
 from fastapi import Depends, Request
@@ -23,7 +28,6 @@ _dummy_hash: str | None = None
 
 
 def now() -> datetime:
-    """Đồng hồ của module; test thay hàm này để giả lập thời gian trôi."""
     return utcnow()
 
 
@@ -55,7 +59,6 @@ async def verify_password(password: str, password_hash: str) -> bool:
 
 
 async def _verify_dummy(password: str) -> None:
-    """Băm giả khi email không tồn tại để thời gian trả lời giống trường hợp sai mật khẩu."""
     global _dummy_hash
     if _dummy_hash is None:
         _dummy_hash = await hash_password(new_token())
@@ -102,7 +105,6 @@ async def authenticate(db: AsyncSession, email: str, password: str) -> Account:
         raise AppError(423, "account_locked", locked_until=_iso(account.locked_until))
 
     if not await verify_password(password, account.password_hash):
-        # Tăng bộ đếm bằng một câu UPDATE để các lần thử song song không đếm thiếu.
         failed = (
             await db.execute(
                 update(Account)
@@ -161,7 +163,6 @@ async def account_for_session(db: AsyncSession, token: str) -> Account | None:
 
 
 async def current_user(request: Request, db: AsyncSession = Depends(get_db)) -> Account:
-    """Dependency: tài khoản của phiên hiện tại, không có thì 401."""
     token = request.cookies.get(SESSION_COOKIE)
     account = await account_for_session(db, token) if token else None
     if account is None:
@@ -170,8 +171,6 @@ async def current_user(request: Request, db: AsyncSession = Depends(get_db)) -> 
 
 
 def require_role(*roles: str):
-    """Dependency: phiên phải có một trong các vai trò, sai thì 403."""
-
     async def dependency(account: Account = Depends(current_user)) -> Account:
         if account.role not in roles:
             raise AppError(403, "forbidden")
@@ -185,7 +184,6 @@ require_admin = require_role(ROLE_ADMIN)
 
 
 async def emails_by_ids(db: AsyncSession, ids: set[int]) -> dict[int, str]:
-    """Email theo id tài khoản, cho module khác hiển thị người thực hiện."""
     if not ids:
         return {}
     rows = await db.execute(select(Account.id, Account.email).where(Account.id.in_(ids)))

@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Create a lab CA (reused if present) and a server certificate for localhost, 127.0.0.1 and the LAN IP.
+# Usage: certs/gen_certs.sh [LAN_IP]   (defaults to the en0 address)
 set -euo pipefail
 
 DIR="$(cd "$(dirname "$0")" && pwd)/out"
@@ -13,9 +15,9 @@ if [[ ! -f ca.key || ! -f ca.crt ]]; then
     -addext "basicConstraints=critical,CA:TRUE" \
     -addext "keyUsage=critical,keyCertSign,cRLSign"
   chmod 600 ca.key
-  echo "Tạo CA mới: $DIR/ca.crt"
+  echo "Created new CA: $DIR/ca.crt"
 else
-  echo "Dùng lại CA có sẵn: $DIR/ca.crt"
+  echo "Reusing existing CA: $DIR/ca.crt"
 fi
 
 SAN="DNS:localhost,IP:127.0.0.1"
@@ -36,5 +38,5 @@ openssl x509 -req -in server.csr -CA ca.crt -CAkey ca.key -CAcreateserial \
 rm -f server.csr server.ext
 chmod 600 server.key
 
-echo "Chứng chỉ server: $DIR/server.crt ($SAN)"
+echo "Server certificate: $DIR/server.crt ($SAN)"
 openssl verify -CAfile ca.crt server.crt

@@ -1,3 +1,8 @@
+"""Children changes write audit entries with who, when, IP, old value and new value.
+
+ASGITransport connects from 127.0.0.1, which is both the socket IP and a default trusted proxy (like Vite).
+"""
+
 from datetime import datetime
 
 import pytest
@@ -31,11 +36,10 @@ async def test_update_logs_all_five_fields(parent):
     assert page["total"] == 2
     entry = page["items"][0]
     assert entry["action"] == "update"
-    # Ai, lúc nào, IP, giá trị cũ, giá trị mới.
     assert entry["actor_id"] == me["id"]
     assert entry["actor_email"] == "parent@example.com"
     assert datetime.fromisoformat(entry["at"])
-    assert entry["ip"] == "127.0.0.1"  # IP socket của ASGITransport
+    assert entry["ip"] == "127.0.0.1"
     assert entry["old_value"] == {"name": "An"}
     assert entry["new_value"] == {"name": "An Nhiên"}
 
@@ -76,7 +80,6 @@ async def test_each_operation_one_entry(parent):
 
 
 async def test_forwarded_ip_via_trusted_proxy(parent):
-    # ASGITransport kết nối từ 127.0.0.1 = proxy tin cậy mặc định, như proxy của Vite.
     headers = {**await csrf_headers(parent), "X-Forwarded-For": "203.0.113.5"}
     response = await parent.post("/api/children", json={"name": "An", "birth_year": birth_year()}, headers=headers)
     assert response.status_code == 201

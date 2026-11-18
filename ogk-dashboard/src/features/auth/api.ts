@@ -3,7 +3,6 @@ import type { Account, AdminAccount } from '../../shared/types/auth.ts'
 
 export type Credentials = { email: string; password: string }
 
-/** Tài khoản đang đăng nhập, hoặc null nếu chưa có phiên. */
 export async function getMe(): Promise<Account | null> {
   try {
     return await apiFetch<Account>('/api/auth/me')

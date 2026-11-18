@@ -13,7 +13,6 @@ class AuditEntryOut(BaseModel):
     action: str
     target_type: str
     target_id: int
-    # Admin nhận null: không đọc dữ liệu của trẻ.
     old_value: dict[str, Any] | None
     new_value: dict[str, Any] | None
 

@@ -1,3 +1,5 @@
+"""The test client uses https so httpx sends the Secure session and CSRF cookies."""
+
 import base64
 import os
 
@@ -46,12 +48,10 @@ async def create_tables() -> None:
 
 
 def make_client(app) -> httpx.AsyncClient:
-    # https để httpx gửi cookie Secure.
     return httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url=BASE_URL)
 
 
 async def csrf_headers(c: httpx.AsyncClient) -> dict[str, str]:
-    """Lấy cookie ogk_csrf (gọi một GET nếu chưa có) và trả header để gửi kèm request ghi."""
     if CSRF_COOKIE not in c.cookies:
         await c.get("/api/health")
     return {"X-CSRF-Token": c.cookies[CSRF_COOKIE]}
@@ -88,7 +88,6 @@ async def create_admin(email: str = "admin@ogk.local", password: str = PASSWORD)
 
 @pytest.fixture
 async def parent(client):
-    """Client đã đăng nhập bằng một tài khoản phụ huynh."""
     response = await register(client, "parent@example.com")
     assert response.status_code == 201
     return client

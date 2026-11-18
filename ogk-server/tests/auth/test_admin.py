@@ -1,3 +1,5 @@
+"""Admin role and CLI. The CLI calls asyncio.run, so tests run it in a thread outside the test event loop."""
+
 import pytest
 
 from app.cli import main as cli_main
@@ -57,7 +59,6 @@ async def test_admin_list_excludes_admins(admin, app):
 
 async def test_cli_create_admin(app, monkeypatch, capsys):
     monkeypatch.setattr("getpass.getpass", lambda _prompt="": PASSWORD)
-    # asyncio.run trong CLI cần chạy ở thread khác event loop của test.
     from starlette.concurrency import run_in_threadpool
 
     assert await run_in_threadpool(cli_main, ["create-admin", "Boss@OGK.local"]) == 0
@@ -72,4 +73,4 @@ async def test_cli_rejects_short_password(app, monkeypatch, capsys):
     from starlette.concurrency import run_in_threadpool
 
     assert await run_in_threadpool(cli_main, ["create-admin", "boss@ogk.local"]) == 1
-    assert "ít nhất 10" in capsys.readouterr().err
+    assert "at least 10" in capsys.readouterr().err

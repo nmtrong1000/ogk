@@ -8,7 +8,6 @@ export const NAME_ERROR = `Tên con dài từ 1 đến ${MAX_NAME_LENGTH} ký t�
 
 export const BIRTH_YEAR_ERROR = `Chọn năm sinh từ ${MIN_BIRTH_YEAR} đến năm nay`
 
-/** Lỗi gắn vào ô nhập tương ứng; lỗi khác hiện ở thông báo chung. */
 export function fieldError(error: unknown): { name?: string; birthYear?: string } {
   if (!(error instanceof ApiError)) return {}
   if (error.code === 'invalid_name') return { name: NAME_ERROR }
