@@ -2,6 +2,7 @@
 full control. user_readable adds read for BUILTIN\\Users on that one file; users can still open it inside
 the locked directory because Windows grants traverse checking bypass to everyone by default.
 MachineGuid is read from the 64-bit registry view so a 32-bit build sees the same value.
+SvcOtherEx runs on the SCM dispatcher thread, so session events are handed to the event loop thread.
 """
 
 import asyncio
@@ -9,6 +10,7 @@ import hashlib
 import logging
 import os
 import winreg
+from collections.abc import Callable
 from pathlib import Path
 
 import ntsecuritycon
@@ -20,14 +22,24 @@ import win32service
 import win32serviceutil
 from win32com.shell import shell
 
+from service.core.bus import SessionEvent
 from service.core.logging_setup import setup_logging
 from service.platform import Entry
+from service.platform.session import current_session, launch_tray, to_session_event
+
+__all__ = ["current_session", "launch_tray"]
 
 log = logging.getLogger("ogk.platform")
 
 SERVICE_NAME = "OGKAgent"
 
 _entry: Entry | None = None
+_listener: Callable[[SessionEvent], None] | None = None
+
+
+def set_session_listener(listener: Callable[[SessionEvent], None] | None) -> None:
+    global _listener
+    _listener = listener
 
 
 def data_dir() -> Path:
@@ -98,6 +110,17 @@ class OGKService(win32serviceutil.ServiceFramework):
         super().__init__(args)
         self._loop = asyncio.new_event_loop()
         self._stop_event = asyncio.Event()
+
+    def GetAcceptedControls(self) -> int:
+        return super().GetAcceptedControls() | win32service.SERVICE_ACCEPT_SESSIONCHANGE
+
+    def SvcOtherEx(self, control: int, event_type: int, data) -> None:
+        if control != win32service.SERVICE_CONTROL_SESSIONCHANGE:
+            return
+        event = to_session_event(event_type, data)
+        listener = _listener
+        if event is not None and listener is not None and not self._loop.is_closed():
+            self._loop.call_soon_threadsafe(listener, event)
 
     def SvcStop(self) -> None:
         log.info("stop requested by SCM")

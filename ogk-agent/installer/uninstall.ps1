@@ -5,8 +5,6 @@ $ServiceName = "OGKAgent"
 $InstallDir = Join-Path $env:ProgramFiles "OGK"
 $DataDir = Join-Path $env:ProgramData "OGK"
 
-Stop-Process -Name "ogk-tray" -Force -ErrorAction SilentlyContinue
-
 $service = Get-Service $ServiceName -ErrorAction SilentlyContinue
 if ($service) {
     if ($service.Status -ne "Stopped") {
@@ -15,6 +13,7 @@ if ($service) {
     sc.exe delete $ServiceName | Out-Null
 }
 Wait-Process -Name "ogk-service" -Timeout 15 -ErrorAction SilentlyContinue
+Stop-Process -Name "ogk-tray" -Force -ErrorAction SilentlyContinue
 
 Remove-Item $InstallDir, $DataDir -Recurse -Force -ErrorAction SilentlyContinue
 Write-Output "Da go $ServiceName"

@@ -1,3 +1,7 @@
+"""There is deliberately no Quit item: the agent has no hidden mode, and the service would relaunch the
+Tray UI anyway.
+"""
+
 from collections.abc import Callable
 
 import pystray
@@ -12,9 +16,9 @@ def _image() -> Image.Image:
     return image
 
 
-def create_icon(on_open: Callable[[], None], on_quit: Callable[[], None]) -> pystray.Icon:
-    menu = pystray.Menu(
-        pystray.MenuItem("Mở OGK", lambda: on_open(), default=True),
-        pystray.MenuItem("Thoát", lambda: on_quit()),
-    )
-    return pystray.Icon("ogk-tray", _image(), "OGK", menu=menu)
+TOOLTIP = "OGK đang chạy: máy tính này được phụ huynh quản lý"
+
+
+def create_icon(on_open: Callable[[], None]) -> pystray.Icon:
+    menu = pystray.Menu(pystray.MenuItem("Mở OGK", lambda: on_open(), default=True))
+    return pystray.Icon("ogk-tray", _image(), TOOLTIP, menu=menu)

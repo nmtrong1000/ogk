@@ -6,29 +6,63 @@ The device check logs only when its outcome changes, so a long outage or revocat
 import asyncio
 import logging
 import time
+from collections.abc import Callable, Sequence
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from types import ModuleType
+from typing import Any, Protocol
 
 import httpx
 
+from service.core.bus import SESSION, TRAY_HEARTBEAT, Bus
 from service.core.config import Config, load_config
 from service.core.device_session import DeviceRevoked, DeviceSession, NotEnrolled
+from service.core.enforcement import Enforcement
 from service.core.ipc_server import IpcServer
 from service.core.local_db import LocalDb
 from service.core.server_client import ApiError, CertificatePinError, ServerClient
+from service.platform import get_platform
 
 log = logging.getLogger("ogk.agent")
 
 
+@dataclass(frozen=True)
+class ModuleContext:
+    bus: Bus
+    enforcement: Enforcement
+    platform: ModuleType
+    data_dir: Path
+
+
+class Module(Protocol):
+    async def run(self) -> None: ...
+
+
+ModuleFactory = Callable[[ModuleContext], Module]
+
+
 class Agent:
     def __init__(
-        self, config: Config, client: ServerClient, data_dir: Path, session: DeviceSession | None = None
+        self,
+        config: Config,
+        client: ServerClient,
+        data_dir: Path,
+        session: DeviceSession | None = None,
+        *,
+        bus: Bus | None = None,
+        enforcement: Enforcement | None = None,
+        modules: Sequence[Module] = (),
     ) -> None:
         self._config = config
         self._client = client
         self._session = session
         self._device_outcome: str | None = None
-        self._ipc = IpcServer(data_dir, config.ipc_port, self.status)
+        self._bus = bus or Bus()
+        self._enforcement = enforcement or Enforcement()
+        self._modules = list(modules)
+        self._ipc = IpcServer(
+            data_dir, config.ipc_port, self.status, lambda pid: self._bus.publish(TRAY_HEARTBEAT, pid)
+        )
         self._started = time.monotonic()
         self._server_reachable: bool | None = None
 
@@ -37,6 +71,7 @@ class Agent:
             "uptime": round(time.monotonic() - self._started, 1),
             "server_reachable": self._server_reachable,
             "enrollment": None if self._session is None else self._session.state,
+            "enforcement": self._enforcement.snapshot(),
         }
 
     async def run(self, stop_event: asyncio.Event) -> None:
@@ -49,6 +84,8 @@ class Agent:
             tasks.append(asyncio.create_task(self._health_loop(), name="health"))
             if self._session is not None:
                 tasks.append(asyncio.create_task(self._device_loop(), name="device"))
+            for module in self._modules:
+                tasks.append(asyncio.create_task(module.run(), name=type(module).__name__))
             await asyncio.wait([stop_task, *tasks], return_when=asyncio.FIRST_COMPLETED)
         finally:
             for task in [stop_task, *tasks]:
@@ -110,10 +147,19 @@ class Agent:
             await asyncio.sleep(self._config.health_interval)
 
 
-async def run_agent(data_dir: Path, stop_event: asyncio.Event) -> None:
+async def run_agent(data_dir: Path, stop_event: asyncio.Event, modules: Sequence[ModuleFactory] = ()) -> None:
     config = load_config(data_dir)
     db = LocalDb(data_dir)
     creds = await asyncio.to_thread(db.load)
     pin = creds.cert_sha256 if creds is not None and creds.server_url == config.server_url else None
     client = ServerClient(config.server_url, config.ca_cert, pin_sha256=pin)
-    await Agent(config, client, data_dir, DeviceSession(config, db)).run(stop_event)
+    bus = Bus()
+    enforcement = Enforcement()
+    platform = get_platform()
+    context = ModuleContext(bus, enforcement, platform, data_dir)
+    instances = [factory(context) for factory in modules]
+    platform.set_session_listener(lambda event: bus.publish(SESSION, event))
+    agent = Agent(
+        config, client, data_dir, DeviceSession(config, db), bus=bus, enforcement=enforcement, modules=instances
+    )
+    await agent.run(stop_event)

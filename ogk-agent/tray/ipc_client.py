@@ -1,6 +1,7 @@
 """IpcError.code is the contract with the UI, which maps it to user-facing text; the message is English for logs."""
 
 import json
+import os
 from pathlib import Path
 from typing import Any
 
@@ -29,12 +30,14 @@ class IpcClient:
         except (OSError, ValueError, KeyError, TypeError):
             raise IpcError("bad_ipc_file", f"Invalid IPC file: {self._file}") from None
 
-    def _get(self, path: str) -> Any:
+    def _request(self, method: str, path: str, body: Any = None) -> Any:
         port, token = self._endpoint()
         try:
-            response = httpx.get(
+            response = httpx.request(
+                method,
                 f"http://127.0.0.1:{port}{path}",
                 headers={"Authorization": f"Bearer {token}"},
+                json=body,
                 timeout=self._timeout,
             )
         except httpx.HTTPError as exc:
@@ -49,4 +52,7 @@ class IpcClient:
             raise IpcError("bad_response", "Service returned invalid data") from None
 
     def status(self) -> dict[str, Any]:
-        return self._get("/ipc/status")
+        return self._request("GET", "/ipc/status")
+
+    def heartbeat(self) -> None:
+        self._request("POST", "/ipc/heartbeat", {"pid": os.getpid()})
