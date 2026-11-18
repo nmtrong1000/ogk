@@ -4,9 +4,9 @@
  */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { RouterProvider } from 'react-router-dom'
-import { ApiError, setUnauthorizedHandler } from '../shared/api/client.ts'
-import { switchSession } from '../features/auth/index.ts'
-import { router } from './router.tsx'
+import { ApiError, setUnauthorizedHandler } from '@/shared/api/client.ts'
+import { switchSession } from '@/features/auth/index.ts'
+import { router } from '@/app/router.tsx'
 
 const queryClient = new QueryClient({
   defaultOptions: {

@@ -1,5 +1,5 @@
 import { useId, type SelectHTMLAttributes } from 'react'
-import { cn } from '../utils/cn.ts'
+import { cn } from '@/shared/utils/cn.ts'
 
 type Option = { value: string; label: string }
 

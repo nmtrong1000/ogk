@@ -1,6 +1,6 @@
 import { Link, NavLink, Outlet } from 'react-router-dom'
-import { LogoutButton, useMe } from '../features/auth/index.ts'
-import { cn } from '../shared/utils/cn.ts'
+import { LogoutButton, useMe } from '@/features/auth/index.ts'
+import { cn } from '@/shared/utils/cn.ts'
 
 function navClass({ isActive }: { isActive: boolean }) {
   return cn(

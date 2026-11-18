@@ -1,4 +1,4 @@
-import type { AuditAction, AuditEntry, AuditValue } from '../../../shared/types/audit.ts'
+import type { AuditAction, AuditEntry, AuditValue } from '@/shared/types/audit.ts'
 
 const TARGET_LABELS: Record<string, string> = { child: 'con' }
 

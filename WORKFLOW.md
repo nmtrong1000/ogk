@@ -12,7 +12,7 @@ PLANNING -> DESIGN -> IMPLEMENTATION -> TESTING -> REVIEW -> RESOLVE FEEDBACK ->
 | DESIGN | Thiết kế API, lược đồ DB, module và giao thức cho phase | Thiết kế; cập nhật `docs/protocol.md` khi giao thức thay đổi; cập nhật `DB_SCHEMA.md` trong thư mục migrations của app khi lược đồ DB thay đổi | Thiết kế khớp kế hoạch đã duyệt |
 | IMPLEMENTATION | Viết code theo task ID, đúng quy tắc module trong PLAN.md | Code và test của phase | Làm xong mọi task của phase |
 | TESTING | Chạy test tự động và mọi mục kiểm tra nghiệm thu của phase | Kết quả từng mục, kèm lỗi nếu có | Mọi test và mục nghiệm thu qua |
-| REVIEW | Tự review thay đổi: đúng yêu cầu, bảo mật, quy tắc module, quy định comment và ngôn ngữ, không có tệp bí mật, `DB_SCHEMA.md` khớp model và migration | Danh sách vấn đề | Đã có danh sách vấn đề, kể cả khi rỗng |
+| REVIEW | Tự review thay đổi: đúng yêu cầu, bảo mật, quy tắc module, quy định comment và ngôn ngữ, quy định import, không có tệp bí mật, `DB_SCHEMA.md` khớp model và migration | Danh sách vấn đề | Đã có danh sách vấn đề, kể cả khi rỗng |
 | RESOLVE FEEDBACK | Sửa từng vấn đề, chạy lại TESTING | Code đã sửa, kết quả test mới | Không còn vấn đề và test qua |
 | HUMAN REVIEW | Trình bày cho user: thay đổi, kết quả test, chỗ lệch so với kế hoạch | Quyết định của user | User approve. Nếu user yêu cầu sửa thì quay lại RESOLVE FEEDBACK |
 | COMMIT | Commit theo conventional commit trên branch của phase, merge branch vào `main` và push | Phase đã merge vào `origin/main` | Kết thúc phase |
@@ -55,7 +55,13 @@ PLANNING -> DESIGN -> IMPLEMENTATION -> TESTING -> REVIEW -> RESOLVE FEEDBACK ->
 - Thông báo lỗi của hệ thống dùng tiếng Anh: exception, lỗi cấu hình, output của CLI và script, log, mô tả service.
 - Chữ hiển thị cho người dùng trên dashboard và Tray UI dùng tiếng Việt. Lỗi hệ thống cần hiện lên giao diện thì mang mã lỗi; tầng giao diện đổi mã lỗi sang câu tiếng Việt.
 
-## 5. Phạm vi áp dụng
+## 5. Quy định import
+
+- ogk-dashboard: mọi import tới tệp trong `src/` dùng alias `@/`, ví dụ `@/shared/components/index.ts`, kể cả import trong cùng feature và `@import` trong CSS. Không dùng đường dẫn tương đối `./` hoặc `../`.
+- Alias `@/` trỏ tới `src/`, khai ở `paths` trong `tsconfig.app.json` và `resolve.alias` trong `vite.config.ts`; hai chỗ phải khớp nhau.
+- ogk-server và ogk-agent: dùng import tuyệt đối từ gốc package (`app.`, `service.`, `tray.`, `tests.`). Không dùng import tương đối `from .` hoặc `from ..`, không sửa `sys.path`.
+
+## 6. Phạm vi áp dụng
 
 - Áp dụng từ P2 trở đi.
 - P1 được commit trước khi có quy trình này nên không áp dụng.

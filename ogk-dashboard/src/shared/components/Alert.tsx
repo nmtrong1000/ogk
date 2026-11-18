@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { cn } from '../utils/cn.ts'
+import { cn } from '@/shared/utils/cn.ts'
 
 type Tone = 'error' | 'info' | 'success' | 'warning'
 

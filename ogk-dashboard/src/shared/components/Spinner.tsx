@@ -1,4 +1,4 @@
-import { cn } from '../utils/cn.ts'
+import { cn } from '@/shared/utils/cn.ts'
 
 type Props = { size?: 'sm' | 'md' | 'lg'; label?: string; className?: string }
 

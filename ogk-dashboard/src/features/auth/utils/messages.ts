@@ -1,5 +1,5 @@
-import { ApiError } from '../../../shared/api/client.ts'
-import { commonErrorMessage } from '../../../shared/api/errors.ts'
+import { ApiError } from '@/shared/api/client.ts'
+import { commonErrorMessage } from '@/shared/api/errors.ts'
 
 function formatTime(iso: unknown): string {
   if (typeof iso !== 'string') return ''

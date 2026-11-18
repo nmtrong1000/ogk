@@ -2,8 +2,8 @@
  * The reload link is a plain <a> so the whole app reloads and leaves the error state.
  */
 import { isRouteErrorResponse, useRouteError } from 'react-router-dom'
-import { Card } from '../shared/components/index.ts'
-import NotFoundPage from './NotFoundPage.tsx'
+import { Card } from '@/shared/components/index.ts'
+import NotFoundPage from '@/app/NotFoundPage.tsx'
 
 export default function ErrorPage() {
   const error = useRouteError()

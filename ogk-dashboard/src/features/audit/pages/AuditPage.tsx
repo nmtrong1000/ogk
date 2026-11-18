@@ -1,6 +1,6 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
-import { commonErrorMessage } from '../../../shared/api/errors.ts'
+import { commonErrorMessage } from '@/shared/api/errors.ts'
 import {
   Alert,
   Badge,
@@ -13,11 +13,11 @@ import {
   TableRow,
   Td,
   Th,
-} from '../../../shared/components/index.ts'
-import type { AuditEntry } from '../../../shared/types/audit.ts'
-import { auditKey, listAudit, PAGE_SIZE } from '../api.ts'
-import ChangeSummary from '../components/ChangeSummary.tsx'
-import { ACTION_TONES, actionLabel, formatDateTime } from '../utils/format.ts'
+} from '@/shared/components/index.ts'
+import type { AuditEntry } from '@/shared/types/audit.ts'
+import { auditKey, listAudit, PAGE_SIZE } from '@/features/audit/api.ts'
+import ChangeSummary from '@/features/audit/components/ChangeSummary.tsx'
+import { ACTION_TONES, actionLabel, formatDateTime } from '@/features/audit/utils/format.ts'
 
 function ActionBadge({ entry }: { entry: AuditEntry }) {
   return <Badge tone={ACTION_TONES[entry.action] ?? 'neutral'}>{actionLabel(entry)}</Badge>

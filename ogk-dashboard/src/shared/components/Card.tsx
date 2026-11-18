@@ -1,5 +1,5 @@
 import type { HTMLAttributes, ReactNode } from 'react'
-import { cn } from '../utils/cn.ts'
+import { cn } from '@/shared/utils/cn.ts'
 
 type Props = Omit<HTMLAttributes<HTMLElement>, 'title'> & {
   title?: ReactNode

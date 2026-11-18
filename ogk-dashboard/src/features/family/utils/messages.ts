@@ -1,5 +1,5 @@
-import { ApiError } from '../../../shared/api/client.ts'
-import { commonErrorMessage } from '../../../shared/api/errors.ts'
+import { ApiError } from '@/shared/api/client.ts'
+import { commonErrorMessage } from '@/shared/api/errors.ts'
 
 export const MAX_NAME_LENGTH = 64
 export const MIN_BIRTH_YEAR = 2000

@@ -1,1 +1,1 @@
-export { default as AuditPage } from './pages/AuditPage.tsx'
+export { default as AuditPage } from '@/features/audit/pages/AuditPage.tsx'

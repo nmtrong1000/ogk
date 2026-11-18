@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
-import { apiFetch } from '../shared/api/client.ts'
-import { Badge, Card, Spinner } from '../shared/components/index.ts'
-import type { Health } from '../shared/types/health.ts'
+import { apiFetch } from '@/shared/api/client.ts'
+import { Badge, Card, Spinner } from '@/shared/components/index.ts'
+import type { Health } from '@/shared/types/health.ts'
 
 export default function HomePage() {
   const { data, error, isPending } = useQuery({
