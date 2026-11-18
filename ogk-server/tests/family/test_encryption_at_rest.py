@@ -36,7 +36,13 @@ async def test_windows_username_encrypted_and_unassigned_on_child_delete(parent)
     child = (await create_child(parent)).json()
     owner_id = (await parent.get("/api/auth/me")).json()["id"]
     async with get_sessionmaker()() as db:
-        device = Device(owner_id=owner_id, name="PC phòng khách", created_at=utcnow())
+        device = Device(
+            owner_id=owner_id,
+            name="PC phòng khách",
+            created_at=utcnow(),
+            fingerprint_hash="0" * 64,
+            secret_hash="0" * 64,
+        )
         db.add(device)
         await db.flush()
         db.add(WindowsAccount(device_id=device.id, child_id=child["id"], sid="S-1-5-21-1-1001", username="be.an"))

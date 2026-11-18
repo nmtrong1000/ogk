@@ -13,8 +13,12 @@ async def test_one_child_many_devices_and_shared_device(parent):
     an = (await create_child(parent, "An")).json()["id"]
     binh = (await create_child(parent, "Bình")).json()["id"]
     async with get_sessionmaker()() as db:
-        pc1 = Device(owner_id=owner_id, name="PC1", created_at=utcnow())
-        pc2 = Device(owner_id=owner_id, name="PC2", created_at=utcnow())
+        pc1 = Device(
+            owner_id=owner_id, name="PC1", created_at=utcnow(), fingerprint_hash="0" * 64, secret_hash="0" * 64
+        )
+        pc2 = Device(
+            owner_id=owner_id, name="PC2", created_at=utcnow(), fingerprint_hash="0" * 64, secret_hash="0" * 64
+        )
         db.add_all([pc1, pc2])
         await db.flush()
         await db.execute(

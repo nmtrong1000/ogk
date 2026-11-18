@@ -1,5 +1,6 @@
 """children uses AUTOINCREMENT so a deleted child's id is never reused
 and audit entries never point at another child.
+A removed device is kept with revoked_at set so consent records and audit entries still point at it.
 """
 
 from datetime import datetime
@@ -30,6 +31,10 @@ class Device(Base):
     owner_id: Mapped[int] = mapped_column(ForeignKey("accounts.id", ondelete="CASCADE"), index=True)
     name: Mapped[str] = mapped_column(String(64))
     created_at: Mapped[datetime] = mapped_column(UTCDateTime())
+    fingerprint_hash: Mapped[str] = mapped_column(String(64))
+    secret_hash: Mapped[str] = mapped_column(String(64))
+    revoked_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
+    last_seen_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
 
 
 class WindowsAccount(Base):

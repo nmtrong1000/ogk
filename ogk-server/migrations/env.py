@@ -10,6 +10,7 @@ from app.core.config import get_settings
 from app.core.db import Base, create_engine
 from app.modules.audit import models as _audit_models
 from app.modules.auth import models as _auth_models
+from app.modules.enrollment import models as _enrollment_models
 from app.modules.family import models as _family_models
 
 config = context.config

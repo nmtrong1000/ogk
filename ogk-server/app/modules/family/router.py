@@ -6,9 +6,10 @@ from app.modules.audit.service import Actor, current_actor
 from app.modules.auth.models import Account
 from app.modules.auth.service import require_parent
 from app.modules.family import service
-from app.modules.family.schemas import ChildCreate, ChildOut, ChildUpdate
+from app.modules.family.schemas import AssignIn, ChildCreate, ChildOut, ChildUpdate, DeviceOut, WindowsAccountOut
 
 router = APIRouter(prefix="/api/children", tags=["family"], dependencies=[Depends(require_parent)])
+devices_router = APIRouter(prefix="/api/devices", tags=["family"], dependencies=[Depends(require_parent)])
 
 
 @router.get("", response_model=list[ChildOut])
@@ -51,3 +52,27 @@ async def delete_child(
 ) -> Response:
     await service.delete_child(db, child_id, account.id, actor=actor)
     return Response(status_code=204)
+
+
+@router.get("/{child_id}/devices", response_model=list[DeviceOut])
+async def list_child_devices(
+    child_id: int, account: Account = Depends(require_parent), db: AsyncSession = Depends(get_db)
+):
+    return await service.list_child_devices(db, child_id, account.id)
+
+
+@devices_router.get("", response_model=list[DeviceOut])
+async def list_devices(account: Account = Depends(require_parent), db: AsyncSession = Depends(get_db)):
+    return await service.list_devices(db, account.id)
+
+
+@devices_router.put("/{device_id}/accounts/{account_id}", response_model=WindowsAccountOut)
+async def assign_account(
+    device_id: int,
+    account_id: int,
+    body: AssignIn,
+    account: Account = Depends(require_parent),
+    actor: Actor = Depends(current_actor),
+    db: AsyncSession = Depends(get_db),
+):
+    return await service.assign_account(db, device_id, account_id, body.child_id, account.id, actor=actor)
