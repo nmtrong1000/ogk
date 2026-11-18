@@ -6,7 +6,7 @@ from collections.abc import AsyncIterator
 from datetime import UTC, datetime
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, TypeVar
+from typing import Any
 
 from sqlalchemy import DateTime, Select, event, select, text
 from sqlalchemy.engine import make_url
@@ -81,13 +81,10 @@ class UTCDateTime(TypeDecorator):
         return None if value is None else value.replace(tzinfo=UTC)
 
 
-M = TypeVar("M")
-
-
-def select_owned(model: type[M], owner_id: Any) -> Select[tuple[M]]:
+def select_owned[M](model: type[M], owner_id: Any) -> Select[tuple[M]]:
     return select(model).where(model.owner_id == owner_id)
 
 
-async def get_owned(db: AsyncSession, model: type[M], obj_id: Any, owner_id: Any) -> M | None:
+async def get_owned[M](db: AsyncSession, model: type[M], obj_id: Any, owner_id: Any) -> M | None:
     stmt = select_owned(model, owner_id).where(model.id == obj_id)
     return (await db.execute(stmt)).scalar_one_or_none()

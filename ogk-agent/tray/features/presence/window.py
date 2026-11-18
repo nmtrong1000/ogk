@@ -5,7 +5,6 @@ from typing import Any
 
 from tray.ipc_client import IpcClient, IpcError
 
-
 ERROR_TEXT = {
     "not_running": "Service chưa chạy",
     "bad_ipc_file": "Tệp kết nối của service bị hỏng",

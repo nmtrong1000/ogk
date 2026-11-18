@@ -4,7 +4,6 @@ import pytest
 from tests.conftest import csrf_headers, make_client, register
 
 
-
 def birth_year(age: int = 8) -> int:
     from app.modules.family.service import now
 

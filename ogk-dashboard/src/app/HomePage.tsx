@@ -20,9 +20,7 @@ export default function HomePage() {
         <p className="mt-1 text-ink-muted">Quản lý việc sử dụng máy tính của con.</p>
       </div>
       <Card title="Trạng thái server">
-        <div className="flex items-center gap-3 text-sm text-ink-muted">
-          Kết nối tới OGK-Server: {status}
-        </div>
+        <div className="flex items-center gap-3 text-sm text-ink-muted">Kết nối tới OGK-Server: {status}</div>
       </Card>
     </div>
   )

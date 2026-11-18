@@ -73,7 +73,9 @@ async def test_delete_logs_old_value(parent):
 
 async def test_each_operation_one_entry(parent):
     child = (await create_child(parent, "An")).json()
-    await parent.patch(f"/api/children/{child['id']}", json={"birth_year": birth_year(10)}, headers=await csrf_headers(parent))
+    await parent.patch(
+        f"/api/children/{child['id']}", json={"birth_year": birth_year(10)}, headers=await csrf_headers(parent)
+    )
     await parent.delete(f"/api/children/{child['id']}", headers=await csrf_headers(parent))
     page = await audit_page(parent)
     assert [e["action"] for e in page["items"]] == ["delete", "update", "create"]

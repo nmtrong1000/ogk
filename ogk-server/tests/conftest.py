@@ -74,7 +74,9 @@ PASSWORD = "dung-mat-khau-1"
 
 
 async def register(c: httpx.AsyncClient, email: str, password: str = PASSWORD) -> httpx.Response:
-    return await c.post("/api/auth/register", json={"email": email, "password": password}, headers=await csrf_headers(c))
+    return await c.post(
+        "/api/auth/register", json={"email": email, "password": password}, headers=await csrf_headers(c)
+    )
 
 
 async def login(c: httpx.AsyncClient, email: str, password: str = PASSWORD) -> httpx.Response:

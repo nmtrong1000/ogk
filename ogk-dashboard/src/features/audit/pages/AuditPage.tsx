@@ -56,9 +56,7 @@ export default function AuditPage() {
             </div>
           )}
           {audit.isError && <Alert tone="error">{commonErrorMessage(audit.error)}</Alert>}
-          {data?.items.length === 0 && (
-            <p className="py-8 text-center text-sm text-ink-muted">Chưa có thay đổi nào.</p>
-          )}
+          {data?.items.length === 0 && <p className="py-8 text-center text-sm text-ink-muted">Chưa có thay đổi nào.</p>}
 
           {data && data.items.length > 0 && (
             <>

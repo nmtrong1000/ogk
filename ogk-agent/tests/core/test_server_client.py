@@ -16,7 +16,7 @@ from service.core.server_client import ServerClient
 
 
 def _cert(subject, issuer_name, public_key, signing_key, *, ca):
-    now = datetime.datetime.now(datetime.timezone.utc)
+    now = datetime.datetime.now(datetime.UTC)
     builder = (
         x509.CertificateBuilder()
         .subject_name(x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, subject)]))

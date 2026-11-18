@@ -48,4 +48,3 @@ async def test_windows_username_encrypted_and_unassigned_on_child_delete(parent)
         child_id, username = conn.execute("SELECT child_id, username FROM windows_accounts").fetchone()
     assert child_id is None
     assert b"be.an" not in username
-

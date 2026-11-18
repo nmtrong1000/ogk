@@ -11,7 +11,7 @@ from fastapi import Depends, Request
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.db import get_db, utcnow
+from app.core.db import utcnow
 from app.core.errors import AppError
 from app.core.security import client_ip
 from app.modules.audit.models import ACTIONS, AuditLog

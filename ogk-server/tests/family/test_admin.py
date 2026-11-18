@@ -18,7 +18,9 @@ async def test_admin_cannot_write_children(parent, admin):
     child = (await create_child(parent)).json()
     headers = await csrf_headers(admin)
     url = f"/api/children/{child['id']}"
-    assert (await admin.post("/api/children", json={"name": "X", "birth_year": birth_year()}, headers=headers)).status_code == 403
+    assert (
+        await admin.post("/api/children", json={"name": "X", "birth_year": birth_year()}, headers=headers)
+    ).status_code == 403
     assert (await admin.patch(url, json={"name": "X"}, headers=headers)).status_code == 403
     assert (await admin.delete(url, headers=headers)).status_code == 403
     assert (await parent.get(url)).json() == child
