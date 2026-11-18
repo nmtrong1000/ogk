@@ -3,8 +3,7 @@ import pytest
 from app.cli import main as cli_main
 from app.core.db import get_sessionmaker
 from app.modules.auth import service
-from tests.auth.conftest import PASSWORD, login, register
-from tests.conftest import csrf_headers, make_client
+from tests.conftest import PASSWORD, csrf_headers, login, make_client, register
 
 pytestmark = pytest.mark.anyio
 

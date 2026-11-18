@@ -7,6 +7,7 @@ from sqlalchemy.engine import Connection
 from app.core.config import get_settings
 from app.core.db import Base, create_engine
 from app.modules.auth import models as _auth_models  # noqa: F401  đăng ký bảng vào Base.metadata
+from app.modules.family import models as _family_models  # noqa: F401
 
 config = context.config
 

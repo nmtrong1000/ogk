@@ -1,5 +1,7 @@
 # Chạy OGK-Server và OGK-Dashboard: docker compose up --build
 # Cần chứng chỉ trước: ogk-server/certs/gen_certs.sh
+# Cần khóa mã hóa dữ liệu trong biến môi trường hoặc tệp .env cạnh file này:
+#   OGK_DATA_KEY=<kết quả của: python -m app.cli gen-data-key>
 # Agent Service và Tray UI chạy trực tiếp trên Mac, không chạy trong Docker.
 
 services:
@@ -20,6 +22,7 @@ services:
       OGK_HOST: 0.0.0.0
       OGK_PORT: "8443"
       OGK_DASHBOARD_DIST: /dashboard
+      OGK_DATA_KEY: ${OGK_DATA_KEY:?Thiếu OGK_DATA_KEY}
     volumes:
       - server-data:/data
       - dashboard-dist:/dashboard:ro

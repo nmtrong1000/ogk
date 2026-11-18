@@ -4,8 +4,7 @@ import pytest
 
 from app.core.db import utcnow
 from app.modules.auth import service
-from tests.auth.conftest import login, register
-from tests.conftest import make_client
+from tests.conftest import login, make_client, register
 
 pytestmark = pytest.mark.anyio
 

@@ -1,7 +1,7 @@
 import pytest
 
 from app.core.security import RateLimiter
-from tests.auth.conftest import login, register
+from tests.conftest import login, register
 
 pytestmark = pytest.mark.anyio
 

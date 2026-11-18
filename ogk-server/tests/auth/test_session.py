@@ -4,8 +4,7 @@ import pytest
 
 from app.core.db import utcnow
 from app.modules.auth import service
-from tests.auth.conftest import login, register
-from tests.conftest import csrf_headers
+from tests.conftest import csrf_headers, login, register
 
 pytestmark = pytest.mark.anyio
 
