@@ -1,7 +1,7 @@
 # Runs OGK-Server and OGK-Dashboard: docker compose up --build
-# Requires certificates first: ogk-server/certs/gen_certs.sh
-# Requires the data encryption key in the environment or in a .env file next to this file:
-#   OGK_DATA_KEY=<output of: python -m app.cli gen-data-key>
+# Every setting comes from .env next to this file (copy .env.example); a missing variable stops compose with its name.
+# Certificates must exist first: ogk-server/certs/gen_certs.sh
+# Only server.crt, server.key and ca.crt are mounted, never ca.key.
 # The Agent Service and Tray UI run directly on the Mac, not in Docker.
 
 services:
@@ -16,27 +16,28 @@ services:
       dashboard:
         condition: service_completed_successfully
     environment:
-      OGK_DATABASE_URL: sqlite+aiosqlite:////data/ogk.db
-      OGK_TLS_CERT: /certs/server.crt
-      OGK_TLS_KEY: /certs/server.key
-      OGK_HOST: 0.0.0.0
-      OGK_PORT: "8443"
-      OGK_DASHBOARD_DIST: /dashboard
       OGK_DATA_KEY: ${OGK_DATA_KEY:?OGK_DATA_KEY is missing}
+      OGK_HOST: ${OGK_HOST:?OGK_HOST is missing}
+      OGK_PORT: ${OGK_PORT:?OGK_PORT is missing}
+      OGK_TRUSTED_PROXIES: ${OGK_TRUSTED_PROXIES:?OGK_TRUSTED_PROXIES is missing}
+      OGK_DATABASE_URL: ${OGK_DATABASE_URL:?OGK_DATABASE_URL is missing}
+      OGK_TLS_CERT: ${OGK_TLS_CERT:?OGK_TLS_CERT is missing}
+      OGK_TLS_KEY: ${OGK_TLS_KEY:?OGK_TLS_KEY is missing}
+      OGK_DASHBOARD_DIST: ${OGK_DASHBOARD_DIST:?OGK_DASHBOARD_DIST is missing}
     volumes:
-      - server-data:/data
-      - dashboard-dist:/dashboard:ro
-      - ./ogk-server/certs/out/server.crt:/certs/server.crt:ro
-      - ./ogk-server/certs/out/server.key:/certs/server.key:ro
-      - ./ogk-server/certs/out/ca.crt:/certs/ca.crt:ro
+      - server-data:${OGK_CONTAINER_DATA_DIR:?OGK_CONTAINER_DATA_DIR is missing}
+      - dashboard-dist:${OGK_DASHBOARD_DIST}:ro
+      - ${OGK_CERT_DIR:?OGK_CERT_DIR is missing}/server.crt:${OGK_TLS_CERT}:ro
+      - ${OGK_CERT_DIR}/server.key:${OGK_TLS_KEY}:ro
+      - ${OGK_CERT_DIR}/ca.crt:${OGK_CA_CERT:?OGK_CA_CERT is missing}:ro
     ports:
-      - "8443:8443"
+      - "${OGK_PORT}:${OGK_PORT}"
     healthcheck:
       test:
         - CMD
         - python
         - -c
-        - "import ssl, urllib.request; urllib.request.urlopen('https://localhost:8443/api/health', context=ssl.create_default_context(cafile='/certs/ca.crt'), timeout=3)"
+        - "import ssl, urllib.request; urllib.request.urlopen('https://localhost:${OGK_PORT}/api/health', context=ssl.create_default_context(cafile='${OGK_CA_CERT}'), timeout=3)"
       interval: 10s
       timeout: 5s
       retries: 3
