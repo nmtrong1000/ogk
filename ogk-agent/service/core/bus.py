@@ -12,6 +12,7 @@ log = logging.getLogger("ogk.bus")
 
 SESSION = "session"
 TRAY_HEARTBEAT = "tray_heartbeat"
+POLICY = "policy"
 
 SessionKind = Literal["logon", "logoff", "lock", "unlock"]
 SESSION_KINDS: tuple[SessionKind, ...] = ("logon", "logoff", "lock", "unlock")

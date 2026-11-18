@@ -23,6 +23,7 @@ class FakeServer:
         self.revoked = False
         self.requests: list[tuple[str, str]] = []
         self.enroll_bodies: list[dict] = []
+        self.policy_body: dict = {"policies": []}
 
     def _tokens(self) -> dict:
         self.counter += 1
@@ -37,6 +38,16 @@ class FakeServer:
             "refresh_token": refresh,
             "refresh_expires_at": (self.now + timedelta(days=30)).isoformat().replace("+00:00", "Z"),
         }
+
+    def _check_access(self, request: httpx.Request) -> httpx.Response | None:
+        token = request.headers.get("authorization", "").removeprefix("Bearer ")
+        if self.revoked:
+            return httpx.Response(401, json={"detail": "device_revoked"})
+        if token not in self.access:
+            return httpx.Response(401, json={"detail": "invalid_token"})
+        if self.access[token] <= self.now:
+            return httpx.Response(401, json={"detail": "token_expired"})
+        return None
 
     def handle(self, request: httpx.Request) -> httpx.Response:
         self.requests.append((request.method, request.url.path))
@@ -55,14 +66,12 @@ class FakeServer:
             if self.revoked:
                 return httpx.Response(401, json={"detail": "device_revoked"})
             return httpx.Response(200, json=self._tokens())
-        if path == "/api/device/me":
-            token = request.headers.get("authorization", "").removeprefix("Bearer ")
-            if self.revoked:
-                return httpx.Response(401, json={"detail": "device_revoked"})
-            if token not in self.access:
-                return httpx.Response(401, json={"detail": "invalid_token"})
-            if self.access[token] <= self.now:
-                return httpx.Response(401, json={"detail": "token_expired"})
+        if path in ("/api/device/me", "/api/device/policy"):
+            denied = self._check_access(request)
+            if denied is not None:
+                return denied
+            if path == "/api/device/policy":
+                return httpx.Response(200, json=self.policy_body)
             return httpx.Response(200, json={"id": 1, "name": "PC"})
         return httpx.Response(404, json={"detail": "not_found"})
 

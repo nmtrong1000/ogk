@@ -158,5 +158,8 @@ class ServerClient:
     async def device_me(self, access_token: str) -> dict[str, Any]:
         return await self._json("GET", "/api/device/me", headers={"Authorization": f"Bearer {access_token}"})
 
+    async def device_policy(self, access_token: str) -> Any:
+        return await self._json("GET", "/api/device/policy", headers={"Authorization": f"Bearer {access_token}"})
+
     async def aclose(self) -> None:
         await self._client.aclose()
