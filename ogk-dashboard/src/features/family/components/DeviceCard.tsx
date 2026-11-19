@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { AccountAssignments, Card } from '@/shared/components/index.ts'
 import type { Child, Device } from '@/shared/types/family.ts'
 import ConfirmDelete from '@/features/family/components/ConfirmDelete.tsx'
@@ -22,7 +23,14 @@ export default function DeviceCard({ device, childOptions, pendingAccountId, rem
           {device.last_seen_at ? `Hoạt động lần cuối ${formatDateTime(device.last_seen_at)}` : 'Chưa kết nối'}
         </>
       }
-      actions={<ConfirmDelete name={device.name} verb="Gỡ" pending={removing} onConfirm={onRemove} />}
+      actions={
+        <div className="flex items-center gap-2">
+          <Link to={`/alerts?device=${device.id}`} className="text-sm font-medium">
+            Cảnh báo
+          </Link>
+          <ConfirmDelete name={device.name} verb="Gỡ" pending={removing} onConfirm={onRemove} />
+        </div>
+      }
     >
       <AccountAssignments
         device={device}
