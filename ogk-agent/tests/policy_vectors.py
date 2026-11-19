@@ -11,6 +11,7 @@ from service.core.policy_store import canonical_json
 VECTORS = json.loads((Path(__file__).resolve().parents[2] / "docs" / "test_vectors.json").read_text(encoding="utf-8"))
 PRIVATE_KEY = Ed25519PrivateKey.from_private_bytes(bytes.fromhex(VECTORS["key"]["test_only_private_seed_hex"]))
 PUBLIC_KEY_PEM = VECTORS["key"]["public_key_pem"]
+EVENT_VECTORS = VECTORS["events"]
 
 
 def write_public_key(directory: Path) -> Path:

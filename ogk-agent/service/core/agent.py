@@ -1,10 +1,14 @@
 """The health check carries no secret, but once the device is enrolled it still uses the pinned certificate
 so a changed server certificate shows up as unreachable instead of healthy.
+The development tools are imported only when OGK_DEV=1; release builds exclude the service.devtools package,
+so there the import fails and no development route exists even if the variable is set.
 The device check logs only when its outcome changes, so a long outage or revocation does not flood the log.
 """
 
 import asyncio
+import importlib
 import logging
+import os
 import time
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
@@ -13,18 +17,25 @@ from types import ModuleType
 from typing import Any, Protocol
 
 import httpx
+from aiohttp import web
 
 from service.core.bus import SESSION, TRAY_HEARTBEAT, Bus
-from service.core.config import Config, load_config
+from service.core.clock import SyncClock
+from service.core.config import DEFAULT_POLICY_FILE, Config, bundled_data_dir, load_config
 from service.core.device_session import DeviceRevoked, DeviceSession, NotEnrolled
 from service.core.enforcement import Enforcement
+from service.core.event_queue import EventQueue
 from service.core.ipc_server import IpcServer
 from service.core.local_db import LocalDb
-from service.core.policy_store import PolicyStore
+from service.core.offline import OfflineGuard
+from service.core.policy_store import PolicyStore, load_default_policy
 from service.core.server_client import ApiError, CertificatePinError, ServerClient
 from service.platform import get_platform
 
 log = logging.getLogger("ogk.agent")
+
+DEV_ENV = "OGK_DEV"
+DEVTOOLS_MODULE = "service.devtools"
 
 
 @dataclass(frozen=True)
@@ -35,6 +46,9 @@ class ModuleContext:
     data_dir: Path
     policy_store: PolicyStore
     session: DeviceSession | None = None
+    config: Config | None = None
+    event_queue: EventQueue | None = None
+    offline: OfflineGuard | None = None
 
 
 class Module(Protocol):
@@ -55,7 +69,9 @@ class Agent:
         bus: Bus | None = None,
         enforcement: Enforcement | None = None,
         policy_store: PolicyStore | None = None,
+        offline: OfflineGuard | None = None,
         modules: Sequence[Module] = (),
+        extra_routes: Sequence[web.AbstractRouteDef] = (),
     ) -> None:
         self._config = config
         self._client = client
@@ -64,9 +80,14 @@ class Agent:
         self._bus = bus or Bus()
         self._enforcement = enforcement or Enforcement()
         self._policy_store = policy_store
+        self._offline = offline
         self._modules = list(modules)
         self._ipc = IpcServer(
-            data_dir, config.ipc_port, self.status, lambda pid: self._bus.publish(TRAY_HEARTBEAT, pid)
+            data_dir,
+            config.ipc_port,
+            self.status,
+            lambda pid: self._bus.publish(TRAY_HEARTBEAT, pid),
+            extra_routes,
         )
         self._started = time.monotonic()
         self._server_reachable: bool | None = None
@@ -78,6 +99,8 @@ class Agent:
             "enrollment": None if self._session is None else self._session.state,
             "enforcement": self._enforcement.snapshot(),
             "policies": {} if self._policy_store is None else self._policy_store.versions(),
+            "policy_mode": None if self._policy_store is None else self._policy_store.mode,
+            "offline_seconds": None if self._offline is None else round(self._offline.clock.offline_seconds()),
         }
 
     async def run(self, stop_event: asyncio.Event) -> None:
@@ -153,6 +176,18 @@ class Agent:
             await asyncio.sleep(self._config.health_interval)
 
 
+def dev_routes(context: ModuleContext) -> list[web.AbstractRouteDef]:
+    if os.environ.get(DEV_ENV) != "1":
+        return []
+    try:
+        devtools = importlib.import_module(DEVTOOLS_MODULE)
+    except ImportError:
+        log.warning("%s=1 but this build has no development tools", DEV_ENV)
+        return []
+    log.warning("development tools enabled on IPC")
+    return devtools.routes(context)
+
+
 async def run_agent(data_dir: Path, stop_event: asyncio.Event, modules: Sequence[ModuleFactory] = ()) -> None:
     config = load_config(data_dir)
     db = LocalDb(data_dir)
@@ -163,8 +198,21 @@ async def run_agent(data_dir: Path, stop_event: asyncio.Event, modules: Sequence
     enforcement = Enforcement()
     platform = get_platform()
     session = DeviceSession(config, db)
-    policy_store = PolicyStore(db, config.policy_public_key)
-    context = ModuleContext(bus, enforcement, platform, data_dir, policy_store, session)
+    default_policy = load_default_policy(bundled_data_dir() / DEFAULT_POLICY_FILE)
+    policy_store = PolicyStore(db, config.policy_public_key, default_policy)
+    offline = OfflineGuard(SyncClock(db), policy_store, bus, config.offline_limit_days)
+    await asyncio.to_thread(offline.start)
+    context = ModuleContext(
+        bus,
+        enforcement,
+        platform,
+        data_dir,
+        policy_store,
+        session,
+        config=config,
+        event_queue=EventQueue(db, session),
+        offline=offline,
+    )
     instances = [factory(context) for factory in modules]
     platform.set_session_listener(lambda event: bus.publish(SESSION, event))
     agent = Agent(
@@ -175,6 +223,8 @@ async def run_agent(data_dir: Path, stop_event: asyncio.Event, modules: Sequence
         bus=bus,
         enforcement=enforcement,
         policy_store=policy_store,
+        offline=offline,
         modules=instances,
+        extra_routes=dev_routes(context),
     )
     await agent.run(stop_event)

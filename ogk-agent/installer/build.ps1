@@ -5,6 +5,8 @@ Push-Location $Root
 try {
     python -m PyInstaller --noconfirm --onefile --name ogk-service `
         --hidden-import win32timezone `
+        --exclude-module service.devtools `
+        --add-data "data;data" `
         --distpath dist --workpath build `
         ogk_service.py
     if ($LASTEXITCODE -ne 0) { throw "PyInstaller ogk-service that bai" }

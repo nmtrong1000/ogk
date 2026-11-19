@@ -79,3 +79,20 @@ def test_bad_policy_public_key_rejected(tmp_path, write_config, value):
     write_config({"server_url": "https://h:1", "ca_cert": "ca.crt", "policy_public_key": value})
     with pytest.raises(ConfigError, match="policy_public_key"):
         load_config(tmp_path)
+
+
+def test_sync_defaults(tmp_path, write_config):
+    write_config({"server_url": "https://h:1", "ca_cert": "ca.crt"})
+    config = load_config(tmp_path)
+    assert config.heartbeat_interval == 60.0
+    assert config.offline_limit_days == 7
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [("heartbeat_interval", 0), ("heartbeat_interval", "60"), ("offline_limit_days", 0), ("offline_limit_days", 1.5)],
+)
+def test_bad_sync_fields_rejected(tmp_path, write_config, field, value):
+    write_config({"server_url": "https://h:1", "ca_cert": "ca.crt", field: value})
+    with pytest.raises(ConfigError, match=field):
+        load_config(tmp_path)

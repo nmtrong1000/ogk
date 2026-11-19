@@ -1,6 +1,6 @@
-"""Policies are downloaded once at service start; periodic sync arrives with the heartbeat in P11.
-The cached copy is applied first so the device is never without a policy while the server is unreachable.
-run() must not return after the download, because the agent stops when any module task finishes.
+"""Policies are downloaded at service start and again whenever the sync module publishes POLICY_STALE after a
+heartbeat shows a newer version. The cached copy is applied first so the device is never without a policy
+while the server is unreachable. run() must never return, because the agent stops when any module task finishes.
 """
 
 import asyncio
@@ -9,7 +9,7 @@ import logging
 import httpx
 
 from service.core.agent import ModuleContext
-from service.core.bus import POLICY, Bus
+from service.core.bus import POLICY, POLICY_STALE, Bus
 from service.core.device_session import DeviceRevoked, DeviceSession, NotEnrolled
 from service.core.policy_store import PolicyRejected, PolicyStore, SignedPolicy
 from service.core.server_client import ApiError
@@ -22,6 +22,8 @@ class PolicyLoader:
         self._store = store
         self._session = session
         self._bus = bus
+        self._stale = asyncio.Event()
+        bus.subscribe(POLICY_STALE, lambda _payload: self._stale.set())
 
     def _apply(self, policies: dict[int, SignedPolicy], source: str) -> None:
         for policy in policies.values():
@@ -64,7 +66,10 @@ class PolicyLoader:
     async def run(self) -> None:
         await self.load_cached()
         await self.tick()
-        await asyncio.Event().wait()
+        while True:
+            await self._stale.wait()
+            self._stale.clear()
+            await self.tick()
 
 
 def create(context: ModuleContext) -> PolicyLoader:

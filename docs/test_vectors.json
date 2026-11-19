@@ -1,5 +1,5 @@
 {
-  "description": "Shared by ogk-server and ogk-agent tests. The key below is a TEST-ONLY key, never used to sign real policies.",
+  "description": "Shared by ogk-server and ogk-agent tests. The key below is a TEST-ONLY key, never used to sign real policies. The events section lists sample events in the 7-field schema; each invalid case names the field that must be rejected.",
   "key": {
     "test_only_private_seed_hex": "636b5a1c5cc04b6621f26734fda2e17d5d92e8d4ec5fcb1a6fd4a5d3d4728a20",
     "public_key_pem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEANoy5DJ/Fx81Z19ckDHXSCaDcRdQBB8ygKu53YQ9n880=\n-----END PUBLIC KEY-----\n",
@@ -104,5 +104,175 @@
       },
       "signature": "not-a-signature"
     }
-  ]
+  ],
+  "events": {
+    "valid": [
+      {
+        "name": "app_start",
+        "event": {
+          "ts": "2026-11-19T08:00:00Z",
+          "device_id": 3,
+          "child_id": 7,
+          "type": "app_start",
+          "subject": "minecraft.exe",
+          "duration_sec": 0,
+          "policy_id": 4
+        }
+      },
+      {
+        "name": "app_stop_with_duration",
+        "event": {
+          "ts": "2026-11-19T08:30:00Z",
+          "device_id": 3,
+          "child_id": 7,
+          "type": "app_stop",
+          "subject": "minecraft.exe",
+          "duration_sec": 1800,
+          "policy_id": 4
+        }
+      },
+      {
+        "name": "blocked_domain",
+        "event": {
+          "ts": "2026-11-19T08:00:00Z",
+          "device_id": 3,
+          "child_id": 7,
+          "type": "blocked_domain",
+          "subject": "youtube.com",
+          "duration_sec": 0,
+          "policy_id": 4
+        }
+      },
+      {
+        "name": "domain_query_country_sld",
+        "event": {
+          "ts": "2026-11-19T08:00:00Z",
+          "device_id": 3,
+          "child_id": 7,
+          "type": "domain_query",
+          "subject": "vnexpress.net",
+          "duration_sec": 0,
+          "policy_id": 4
+        }
+      },
+      {
+        "name": "locked_default_policy",
+        "event": {
+          "ts": "2026-11-19T08:00:00Z",
+          "device_id": 3,
+          "child_id": 7,
+          "type": "locked",
+          "subject": "",
+          "duration_sec": 0,
+          "policy_id": 0
+        }
+      }
+    ],
+    "invalid": [
+      {
+        "name": "unknown_type",
+        "field": "type",
+        "event": {
+          "ts": "2026-11-19T08:00:00Z",
+          "device_id": 3,
+          "child_id": 7,
+          "type": "screenshot",
+          "subject": "minecraft.exe",
+          "duration_sec": 0,
+          "policy_id": 4
+        }
+      },
+      {
+        "name": "extra_field",
+        "field": "url",
+        "event": {
+          "ts": "2026-11-19T08:00:00Z",
+          "device_id": 3,
+          "child_id": 7,
+          "type": "app_start",
+          "subject": "minecraft.exe",
+          "duration_sec": 0,
+          "policy_id": 4,
+          "url": "https://youtube.com/watch"
+        }
+      },
+      {
+        "name": "missing_field",
+        "field": "policy_id",
+        "event": {
+          "ts": "2026-11-19T08:00:00Z",
+          "device_id": 3,
+          "child_id": 7,
+          "type": "app_start",
+          "subject": "minecraft.exe",
+          "duration_sec": 0
+        }
+      },
+      {
+        "name": "full_url_subject",
+        "field": "subject",
+        "event": {
+          "ts": "2026-11-19T08:00:00Z",
+          "device_id": 3,
+          "child_id": 7,
+          "type": "blocked_domain",
+          "subject": "https://youtube.com/watch?v=1",
+          "duration_sec": 0,
+          "policy_id": 4
+        }
+      },
+      {
+        "name": "domain_with_path",
+        "field": "subject",
+        "event": {
+          "ts": "2026-11-19T08:00:00Z",
+          "device_id": 3,
+          "child_id": 7,
+          "type": "domain_query",
+          "subject": "youtube.com/watch",
+          "duration_sec": 0,
+          "policy_id": 4
+        }
+      },
+      {
+        "name": "bool_as_number",
+        "field": "duration_sec",
+        "event": {
+          "ts": "2026-11-19T08:00:00Z",
+          "device_id": 3,
+          "child_id": 7,
+          "type": "app_start",
+          "subject": "minecraft.exe",
+          "duration_sec": true,
+          "policy_id": 4
+        }
+      },
+      {
+        "name": "negative_duration",
+        "field": "duration_sec",
+        "event": {
+          "ts": "2026-11-19T08:00:00Z",
+          "device_id": 3,
+          "child_id": 7,
+          "type": "app_start",
+          "subject": "minecraft.exe",
+          "duration_sec": -5,
+          "policy_id": 4
+        }
+      },
+      {
+        "name": "ts_without_zone",
+        "field": "ts",
+        "event": {
+          "ts": "2026-11-19T08:00:00",
+          "device_id": 3,
+          "child_id": 7,
+          "type": "app_start",
+          "subject": "minecraft.exe",
+          "duration_sec": 0,
+          "policy_id": 4
+        }
+      }
+    ]
+  }
 }

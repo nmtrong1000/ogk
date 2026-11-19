@@ -21,6 +21,10 @@ erDiagram
     accounts ||--o{ consent_records : "đồng ý"
     devices ||--o{ consent_records : "được đồng ý"
     children ||--o| policies : "có"
+    devices ||--o{ events : "ghi"
+    children ||--o{ events : "thuộc"
+    devices ||--o{ event_batches : "gửi"
+    devices ||--o{ device_alerts : "báo"
     accounts {
         integer id PK
         text email UK
@@ -104,6 +108,32 @@ erDiagram
         integer version
         integer daily_quota_minutes
         datetime updated_at
+    }
+    events {
+        integer id PK
+        datetime ts
+        integer device_id FK
+        integer child_id FK
+        text type
+        text subject
+        integer duration_sec
+        integer policy_id
+    }
+    event_batches {
+        integer id PK
+        integer device_id FK
+        text idempotency_key
+        datetime received_at
+        integer event_count
+    }
+    device_alerts {
+        integer id PK
+        integer device_id FK
+        text type
+        text detail
+        datetime first_seen_at
+        datetime last_seen_at
+        datetime resolved_at
     }
 ```
 
@@ -242,6 +272,47 @@ erDiagram
 | version | `policy_version`; tăng 1 mỗi lần chính sách đổi giá trị. | Số nguyên từ 1 | No | 1 khi tạo |
 | daily_quota_minutes | Trường mẫu: số phút dùng máy mỗi ngày. | Số nguyên từ 0 đến 1440 | No | 120 khi tạo |
 | updated_at | Thời điểm tạo hoặc đổi chính sách gần nhất; dùng làm `issued_at` trong tài liệu đã ký. | Thời điểm UTC | No | None |
+
+### events
+
+**Purpose:** Sự kiện agent gửi lên theo lược đồ 7 trường. Ngoài 7 trường chỉ có khóa thay thế `id`. Cảnh báo thiết bị không nằm ở bảng này.
+
+| Column | Description | Data type | Nullable? | Default |
+|---|---|---|---|---|
+| id | Định danh dòng, không thuộc lược đồ sự kiện. | Số nguyên, tự tăng | No | Tự sinh |
+| ts | Thời điểm xảy ra theo agent. | Thời điểm UTC | No | None |
+| device_id | Thiết bị ghi sự kiện, tham chiếu `devices.id`. | Số nguyên | No | None |
+| child_id | Trẻ đang dùng máy, tham chiếu `children.id`. | Số nguyên | No | None |
+| type | Một trong 9 loại sự kiện. | Văn bản, tối đa 16 ký tự | No | None |
+| subject | Tên ứng dụng hoặc tên miền cấp hai, không phải URL đầy đủ; có thể rỗng. | Văn bản, tối đa 255 ký tự | No | None |
+| duration_sec | Số giây của sự kiện; sự kiện tức thời là 0. | Số nguyên từ 0 đến 86400 | No | None |
+| policy_id | `policy_version` của chính sách đang áp cho trẻ; 0 là chính sách mặc định của agent. | Số nguyên từ 0 | No | None |
+
+### event_batches
+
+**Purpose:** Khóa chống trùng (idempotency key) của các lô sự kiện đã nhận. Lô gửi lại với khóa đã có thì bị bỏ qua.
+
+| Column | Description | Data type | Nullable? | Default |
+|---|---|---|---|---|
+| id | Định danh lô. | Số nguyên, tự tăng | No | Tự sinh |
+| device_id | Thiết bị gửi lô, tham chiếu `devices.id`. | Số nguyên | No | None |
+| idempotency_key | Giá trị header `Idempotency-Key`. | Văn bản 1 đến 64 ký tự `A-Za-z0-9_-` | No | None |
+| received_at | Thời điểm server nhận lô. | Thời điểm UTC | No | None |
+| event_count | Số sự kiện đã lưu từ lô. | Số nguyên từ 1 đến 500 | No | None |
+
+### device_alerts
+
+**Purpose:** Cảnh báo thiết bị agent báo trong heartbeat, như tắt cưỡng chế hoặc chỉnh đồng hồ. Phụ huynh xem trên dashboard.
+
+| Column | Description | Data type | Nullable? | Default |
+|---|---|---|---|---|
+| id | Định danh cảnh báo. | Số nguyên, tự tăng | No | Tự sinh |
+| device_id | Thiết bị báo cảnh báo, tham chiếu `devices.id`. | Số nguyên | No | None |
+| type | `enforcement_disabled` hoặc `clock_tampered`. | Văn bản, tối đa 32 ký tự | No | None |
+| detail | Chi tiết do agent gửi, ví dụ `tray_unavailable`. | Văn bản, tối đa 64 ký tự | Yes | None |
+| first_seen_at | Thời điểm agent ghi nhận lần đầu, không muộn hơn lúc server nhận. | Thời điểm UTC | No | None |
+| last_seen_at | Heartbeat gần nhất còn báo cảnh báo này. | Thời điểm UTC | No | None |
+| resolved_at | Heartbeat đầu tiên không còn báo cảnh báo; `NULL` khi cảnh báo đang mở. | Thời điểm UTC | Yes | None |
 
 ## Integrity Constraints
 
@@ -758,3 +829,125 @@ $$
 
 - `policies`
 - Relevant attributes: `policies.daily_quota_minutes`
+
+### IC-030: Sự kiện thuộc 9 loại quy định
+
+**Statement:** `type` của sự kiện là một trong `app_start`, `app_stop`, `domain_query`, `blocked_app`, `blocked_domain`, `quota_warning`, `locked`, `unlock_request`, `override_granted`.
+
+**Formal Expression:**
+
+$$
+\forall e \in events:\ e.type \in \{app\_start, app\_stop, domain\_query, blocked\_app, blocked\_domain, quota\_warning, locked, unlock\_request, override\_granted\}
+$$
+
+**Context:** DB kiểm tra bằng `ck_events_type`; server kiểm tra trước và trả `422 invalid_event` với `field: "type"`.
+
+**Impacted Data Objects:**
+
+- `events`
+- Relevant attributes: `events.type`
+
+### IC-031: Sự kiện thuộc thiết bị gửi và trẻ cùng phụ huynh
+
+**Statement:** `device_id` của sự kiện là thiết bị đã gửi lô; `child_id` là trẻ của chính phụ huynh sở hữu thiết bị. Xóa trẻ hoặc thiết bị thì xóa sự kiện của nó.
+
+**Formal Expression:**
+
+$$
+\forall e \in events\ \exists d \in devices, c \in children:\ e.device\_id = d.id \land e.child\_id = c.id \land c.owner\_id = d.owner\_id
+$$
+
+**Context:** DB kiểm tra phần tồn tại bằng khóa ngoại với `ON DELETE CASCADE`. Server kiểm tra `device_id` bằng thiết bị của access token và `child_id` thuộc cùng phụ huynh trong `sync/service.py`. Trẻ không bắt buộc đang được gán cho thiết bị vì agent có thể gửi sự kiện đệm từ trước khi phụ huynh đổi gán.
+
+**Impacted Data Objects:**
+
+- `events`
+- `devices`
+- `children`
+- Relevant attributes: `events.device_id`, `events.child_id`, `devices.owner_id`, `children.owner_id`
+
+### IC-032: Giá trị sự kiện hợp lệ
+
+**Statement:** `duration_sec` từ 0 đến 86400; `policy_id` không âm; `subject` không quá 255 ký tự, không chứa `/` hay `\`, và là tên miền chữ thường khi `type` là `domain_query` hoặc `blocked_domain`.
+
+**Formal Expression:**
+
+$$
+\forall e \in events:\ 0 \leq e.duration\_sec \leq 86400 \land e.policy\_id \geq 0 \land |e.subject| \leq 255
+$$
+
+**Context:** DB kiểm tra `ck_events_duration_sec`, `ck_events_policy_id` và độ dài cột. Quy tắc về ký tự và tên miền của `subject` do server kiểm tra.
+
+**Impacted Data Objects:**
+
+- `events`
+- Relevant attributes: `events.duration_sec`, `events.policy_id`, `events.subject`
+
+### IC-033: Khóa chống trùng duy nhất theo thiết bị
+
+**Statement:** Mỗi thiết bị không có hai lô cùng `idempotency_key`.
+
+**Formal Expression:**
+
+$$
+\forall b_1, b_2 \in event\_batches:\ b_1.device\_id = b_2.device\_id \land b_1.idempotency\_key = b_2.idempotency\_key \Rightarrow b_1 = b_2
+$$
+
+**Context:** DB kiểm tra bằng `uq_event_batches_device_key`. Hai request cùng khóa đến đồng thời thì request sau vi phạm ràng buộc, server rollback và trả `duplicate: true`.
+
+**Impacted Data Objects:**
+
+- `event_batches`
+- Relevant attributes: `event_batches.device_id`, `event_batches.idempotency_key`
+
+### IC-034: Lô và sự kiện lưu cùng giao dịch
+
+**Statement:** Mỗi lô trong `event_batches` có đúng `event_count` sự kiện được lưu cùng lúc; một sự kiện sai thì cả lô không được lưu.
+
+**Formal Expression:**
+
+$$
+\forall b \in event\_batches:\ 1 \leq b.event\_count \leq 500
+$$
+
+**Context:** DB không liên kết sự kiện với lô vì lược đồ sự kiện chỉ có 7 trường. Server kiểm tra toàn bộ lô trước, rồi thêm dòng lô và các sự kiện trong một giao dịch ở `sync/service.py`.
+
+**Impacted Data Objects:**
+
+- `event_batches`
+- `events`
+- Relevant attributes: `event_batches.event_count`
+
+### IC-035: Tối đa một cảnh báo mở cho mỗi loại trên thiết bị
+
+**Statement:** Mỗi thiết bị có tối đa một cảnh báo chưa đóng cho mỗi loại; cảnh báo đã đóng không giới hạn.
+
+**Formal Expression:**
+
+$$
+\forall a_1, a_2 \in device\_alerts:\ a_1.resolved\_at = a_2.resolved\_at = NULL \land a_1.device\_id = a_2.device\_id \land a_1.type = a_2.type \Rightarrow a_1 = a_2
+$$
+
+**Context:** DB kiểm tra bằng chỉ mục duy nhất một phần `uq_device_alerts_open` (`WHERE resolved_at IS NULL`). Xóa thiết bị thì xóa cảnh báo bằng khóa ngoại `ON DELETE CASCADE`.
+
+**Impacted Data Objects:**
+
+- `device_alerts`
+- Relevant attributes: `device_alerts.device_id`, `device_alerts.type`, `device_alerts.resolved_at`
+
+### IC-036: Loại cảnh báo hợp lệ và mốc thời gian có thứ tự
+
+**Statement:** `type` của cảnh báo là `enforcement_disabled` hoặc `clock_tampered`; `first_seen_at` không muộn hơn `last_seen_at`; cảnh báo đã đóng có `resolved_at` không sớm hơn `last_seen_at`.
+
+**Formal Expression:**
+
+$$
+\forall a \in device\_alerts:\ a.type \in \{enforcement\_disabled, clock\_tampered\} \land a.first\_seen\_at \leq a.last\_seen\_at \land (a.resolved\_at = NULL \lor a.last\_seen\_at \leq a.resolved\_at)
+$$
+
+**Context:** DB kiểm tra loại bằng `ck_device_alerts_type`. Thứ tự thời gian do server bảo đảm: `first_seen_at` lấy giá trị nhỏ hơn giữa giờ agent báo và giờ server, hai mốc sau dùng giờ server.
+
+**Impacted Data Objects:**
+
+- `device_alerts`
+- Relevant attributes: `device_alerts.type`, `device_alerts.first_seen_at`, `device_alerts.last_seen_at`, `device_alerts.resolved_at`

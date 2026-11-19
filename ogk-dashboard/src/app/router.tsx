@@ -1,4 +1,5 @@
 import { createBrowserRouter, type RouteObject } from 'react-router-dom'
+import { AlertsPage } from '@/features/alerts/index.ts'
 import { AuditPage } from '@/features/audit/index.ts'
 import { AdminAccountsPage, LoginPage, RegisterPage, RequireAuth } from '@/features/auth/index.ts'
 import { AddDevicePage } from '@/features/enrollment/index.ts'
@@ -30,6 +31,7 @@ export const router = createBrowserRouter([
           { path: '/children/:id', element: <ChildDetailPage /> },
           { path: '/devices', element: <DevicesPage /> },
           { path: '/devices/add', element: <AddDevicePage /> },
+          { path: '/alerts', element: <AlertsPage /> },
         ],
       },
       {
