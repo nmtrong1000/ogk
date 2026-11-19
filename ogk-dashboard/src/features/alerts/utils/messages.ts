@@ -9,6 +9,8 @@ const TYPE_LABELS: Record<DeviceAlertType, string> = {
 
 const DETAIL_LABELS: Record<string, string> = {
   tray_unavailable: 'Không bật được ứng dụng khay sau 3 lần thử.',
+  backward: 'Đồng hồ máy bị chỉnh lùi so với giờ thật.',
+  forward: 'Đồng hồ máy bị chỉnh tiến so với giờ thật.',
 }
 
 export function alertTypeLabel(type: string): string {

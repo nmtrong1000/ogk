@@ -1,6 +1,7 @@
 """Every tick sends queued events first, then the heartbeat. Any failed heartbeat counts as offline time, so
 an unreachable server, a revoked device or a pinning failure all lead to the default policy after the limit.
-quota_used is 0 for every child until the screen-time counter exists.
+quota_used is today's counted seconds per child from the screen-time state; device alerts are the
+enforcement alert plus whatever the AlertBoard holds.
 """
 
 import asyncio
@@ -12,13 +13,15 @@ from typing import Any
 import httpx
 
 from service.core.agent import ModuleContext
-from service.core.bus import POLICY_STALE, Bus
+from service.core.alerts import AlertBoard
+from service.core.bus import POLICY_STALE, SERVER_TIME, Bus
 from service.core.device_session import DeviceRevoked, DeviceSession, NotEnrolled
 from service.core.enforcement import Enforcement
 from service.core.event_queue import EventQueue
 from service.core.events import format_ts
 from service.core.offline import OfflineGuard
 from service.core.policy_store import PolicyStore
+from service.core.screen_state import ScreenState
 from service.core.server_client import ApiError
 
 log = logging.getLogger("ogk.sync")
@@ -42,7 +45,11 @@ class SyncModule:
         enforcement: Enforcement,
         bus: Bus,
         interval: float,
+        screen: ScreenState | None = None,
+        alerts: AlertBoard | None = None,
     ) -> None:
+        self._screen = screen
+        self._alerts = alerts
         self._session = session
         self._queue = queue
         self._offline = offline
@@ -65,13 +72,19 @@ class SyncModule:
                     "ts": snapshot["since"] or format_ts(datetime.now(UTC)),
                 }
             )
+        if self._alerts is not None:
+            alerts.extend(
+                {"type": alert.type, "detail": alert.detail, "ts": format_ts(alert.since)}
+                for alert in self._alerts.active()
+            )
+        used = {} if self._screen is None else self._screen.used_today
         return {
             "status": {
                 "uptime": round(time.monotonic() - self._started, 1),
                 "enforcement": snapshot,
                 "policy_mode": self._store.mode,
             },
-            "quota_used": {str(child_id): 0 for child_id in versions},
+            "quota_used": {str(child_id): used.get(child_id, 0) for child_id in versions},
             "policy_versions": {str(child_id): version for child_id, version in versions.items()},
             "alerts": alerts,
         }
@@ -96,12 +109,14 @@ class SyncModule:
             versions = response.get("policy_versions") or {}
         except (NotEnrolled, DeviceRevoked, httpx.HTTPError, ApiError, ValueError, AttributeError) as exc:
             self._log_failure(str(exc) or type(exc).__name__)
+            self._bus.publish(SERVER_TIME, None)
             await asyncio.to_thread(self._offline.offline)
             return False
         if self._last_error is not None:
             log.info("heartbeat ok again")
         self._last_error = None
         await asyncio.to_thread(self._offline.online, server_time)
+        self._bus.publish(SERVER_TIME, server_time)
         if self._stale(versions):
             log.info("server has newer policies %s, local %s; downloading", versions, self._store.versions())
             self._bus.publish(POLICY_STALE)
@@ -122,4 +137,6 @@ def create(context: ModuleContext) -> SyncModule:
         context.enforcement,
         context.bus,
         context.config.heartbeat_interval,
+        context.screen,
+        context.alerts,
     )

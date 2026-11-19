@@ -5,6 +5,7 @@ The schema version lives in PRAGMA user_version; migrate() applies steps above t
 policies rows are not trusted on read: policy_store re-verifies each signature, so this layer stores raw text.
 next_event_batch assigns a batch_key and stores it before the batch is sent, so a resend after a lost response
 carries the same key and the server ignores it; rows keep their key until the server acknowledges the batch.
+usage keeps one row per child, local day and counter; old days stay until P17 reports on them.
 Methods are synchronous; async callers run them in a worker thread.
 """
 
@@ -57,6 +58,22 @@ SCHEMA = [
         offline_seconds REAL NOT NULL CHECK (offline_seconds >= 0),
         last_server_time TEXT,
         last_success_at TEXT
+    )
+    """,
+    """
+    CREATE TABLE usage (
+        child_id INTEGER NOT NULL,
+        day TEXT NOT NULL,
+        counter TEXT NOT NULL,
+        seconds REAL NOT NULL CHECK (seconds >= 0),
+        updated_at TEXT NOT NULL,
+        PRIMARY KEY (child_id, day, counter)
+    )
+    """,
+    """
+    CREATE TABLE clock_state (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        last_trusted TEXT NOT NULL
     )
     """,
 ]
@@ -258,3 +275,29 @@ class LocalDb:
                     None if state.last_success_at is None else _iso(state.last_success_at),
                 ),
             )
+
+    def load_usage(self, day: str) -> dict[tuple[int, str], float]:
+        with closing(self._connect()) as conn:
+            rows = conn.execute("SELECT child_id, counter, seconds FROM usage WHERE day = ?", (day,)).fetchall()
+        return {(child_id, counter): seconds for child_id, counter, seconds in rows}
+
+    def save_usage(self, day: str, values: dict[tuple[int, str], float], updated_at: datetime) -> None:
+        with closing(self._connect()) as conn, conn:
+            conn.executemany(
+                "INSERT INTO usage (child_id, day, counter, seconds, updated_at) VALUES (?, ?, ?, ?, ?) "
+                "ON CONFLICT (child_id, day, counter) DO UPDATE SET seconds = excluded.seconds, "
+                "updated_at = excluded.updated_at",
+                [
+                    (child_id, day, counter, seconds, _iso(updated_at))
+                    for (child_id, counter), seconds in values.items()
+                ],
+            )
+
+    def load_last_trusted(self) -> datetime | None:
+        with closing(self._connect()) as conn:
+            row = conn.execute("SELECT last_trusted FROM clock_state WHERE id = 1").fetchone()
+        return None if row is None else _parse(row[0])
+
+    def save_last_trusted(self, at: datetime) -> None:
+        with closing(self._connect()) as conn, conn:
+            conn.execute("INSERT OR REPLACE INTO clock_state (id, last_trusted) VALUES (1, ?)", (_iso(at),))

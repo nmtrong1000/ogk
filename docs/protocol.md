@@ -497,27 +497,41 @@ Vai trò `parent`. Cần CSRF. Gỡ thiết bị: đặt `revoked_at`, thu hồi
 
 ## Chính sách
 
-Mỗi trẻ có một chính sách. Server ký chính sách bằng Ed25519; agent chỉ áp dụng chính sách có chữ ký đúng. Phase này có một trường mẫu `daily_quota_minutes`; các phase sau thêm luật vào `rules`.
+Mỗi trẻ có một chính sách. Server ký chính sách bằng Ed25519; agent chỉ áp dụng chính sách có chữ ký đúng. Từ P12, `rules` có quota ngày thường, quota cuối tuần và lịch tuần; các phase sau thêm luật vào `rules`.
 
 ### Tài liệu chính sách
 
+Tài liệu được dựng riêng cho từng thiết bị vì `accounts` chỉ chứa SID trên thiết bị đó.
+
 ```json
 {
+  "accounts": ["S-1-5-21-1004336348-1177238915-682003330-1001"],
   "child_id": 7,
   "format": 1,
   "issued_at": "2026-11-18T08:00:00Z",
   "policy_version": 3,
-  "rules": { "daily_quota_minutes": 120 }
+  "rules": {
+    "weekday_quota_minutes": 120,
+    "weekend_quota_minutes": 180,
+    "weekly_schedule": ["000000000000001111111111111111111111111111000000", "... đủ 7 chuỗi ..."]
+  },
+  "set_by": "parent@example.com"
 }
 ```
 
 | Trường | Ý nghĩa |
 | :---- | :---- |
+| `accounts` | SID các tài khoản Windows trên thiết bị đang gán cho trẻ, sắp tăng dần. Agent dùng để biết phiên đang đăng nhập là của trẻ nào; SID không có trong chính sách nào thì không bị áp luật |
 | `child_id` | Trẻ được áp chính sách |
 | `format` | Phiên bản định dạng tài liệu, hiện là `1` |
 | `issued_at` | Thời điểm tạo hoặc đổi chính sách gần nhất; cùng version luôn cùng giá trị nên cùng chữ ký |
-| `policy_version` | Bắt đầu từ 1, tăng đúng 1 mỗi lần chính sách đổi giá trị |
-| `rules.daily_quota_minutes` | Số phút dùng máy mỗi ngày, 0 đến 1440, mặc định 120 |
+| `policy_version` | Bắt đầu từ 1, tăng đúng 1 mỗi lần luật đổi giá trị hoặc danh sách tài khoản gán cho trẻ đổi |
+| `rules.weekday_quota_minutes` | Số phút dùng máy mỗi ngày từ thứ Hai đến thứ Sáu, 0 đến 1440, mặc định 120 |
+| `rules.weekend_quota_minutes` | Số phút dùng máy mỗi ngày thứ Bảy và Chủ nhật, 0 đến 1440, mặc định 120 |
+| `rules.weekly_schedule` | Lịch tuần: mảng 7 chuỗi, chuỗi 0 là thứ Hai, chuỗi 6 là Chủ nhật. Mỗi chuỗi 48 ký tự; ký tự thứ k là ô 30 phút [k x 30 phút, (k + 1) x 30 phút) theo giờ địa phương của máy trẻ; `1` là được dùng, `0` là khóa. Mặc định 07:00 đến 21:00 mỗi ngày |
+| `set_by` | Email phụ huynh sửa chính sách gần nhất, hiện trên Tray UI khi khóa; chuỗi rỗng nếu tài khoản đã bị xóa |
+
+Ngày thường hay cuối tuần và ô của lịch tính theo giờ tin cậy của agent (xem [Quản lý thời gian](#quản-lý-thời-gian)), không theo giờ hệ thống.
 
 ### JSON chuẩn hóa
 
@@ -529,11 +543,13 @@ Chữ ký tính trên bytes của tài liệu ở dạng chuẩn hóa:
 - Chỉ có số nguyên, chuỗi, `true`, `false`, `null`, mảng và object. Số thực bị từ chối vì mỗi thư viện in số thực khác nhau.
 - Mã hóa UTF-8.
 
-Trong Python, cách chuẩn hóa này tương đương `json.dumps(obj, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False).encode()` cộng với bước từ chối số thực. Tài liệu ở ví dụ trên chuẩn hóa thành:
+Trong Python, cách chuẩn hóa này tương đương `json.dumps(obj, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False).encode()` cộng với bước từ chối số thực. Tài liệu ở ví dụ trên (đủ 7 chuỗi lịch giống nhau) chuẩn hóa thành:
 
 ```text
-{"child_id":7,"format":1,"issued_at":"2026-11-18T08:00:00Z","policy_version":3,"rules":{"daily_quota_minutes":120}}
+{"accounts":["S-1-5-21-1004336348-1177238915-682003330-1001"],"child_id":7,"format":1,"issued_at":"2026-11-18T08:00:00Z","policy_version":3,"rules":{"weekday_quota_minutes":120,"weekend_quota_minutes":180,"weekly_schedule":["000000000000001111111111111111111111111111000000",...]},"set_by":"parent@example.com"}
 ```
+
+Dạng đầy đủ là `valid[0].canonical` trong `docs/test_vectors.json`.
 
 ### Chữ ký và khóa
 
@@ -541,11 +557,12 @@ Trong Python, cách chuẩn hóa này tương đương `json.dumps(obj, sort_key
 - `key_id` là 16 ký tự hex đầu của SHA-256 trên 32 byte khóa công khai thô. Agent dùng nó để ghi log, không dùng để chọn khóa.
 - Khóa bí mật là tệp PEM PKCS8 do `python -m app.cli gen-policy-key` tạo, đường dẫn trong `OGK_POLICY_SIGNING_KEY`. Server từ chối khởi động nếu thiếu tệp hoặc nhóm và người khác đọc được tệp (cần `chmod 600`).
 - Khóa công khai `policy_public.pem` đi cùng bộ cài agent: `install.ps1 -PolicyPublicKey` chép vào thư mục dữ liệu và ghi `policy_public_key` trong `config.json`.
-- `docs/test_vectors.json` có khóa chỉ dùng cho test, tài liệu mẫu, dạng chuẩn hóa và chữ ký đúng, cùng các ca sai. Test của server và agent cùng đọc tệp này. Với khóa test, tài liệu ở ví dụ trên có chữ ký `l7KnMqRawBB2XD-6ab-tRQV9X4A5c-4tRK59mkacCyI-LfOm6UNE3FuwS6oKvBZwrmlyh5b9gm5JThlP_wo2Bw`.
+- `docs/test_vectors.json` có khóa chỉ dùng cho test, tài liệu mẫu, dạng chuẩn hóa và chữ ký đúng, các ca sai chữ ký (`invalid`) và các ca đúng chữ ký nhưng sai luật (`invalid_rules`). Test của server và agent cùng đọc tệp này. Với khóa test, tài liệu ở ví dụ trên có chữ ký `c7-G__T8t7avg1y63SMCM8n-3JVTl6VdFUqvXR9VsNsFMJzXnw8o-z0-vR9q9ozUkMSzermDXncfhsu6nNnQAQ`.
 
 ### Agent kiểm tra và lưu
 
 - Agent kiểm tra chữ ký từng chính sách trước khi lưu. Một chính sách sai chữ ký làm cả lô bị từ chối, agent giữ bản đang có.
+- Chữ ký đúng nhưng `accounts` không phải mảng chuỗi, `set_by` không phải chuỗi, quota ngoài 0 đến 1440 hoặc lịch không đúng 7 x 48 ký tự `0`/`1` cũng làm cả lô bị từ chối.
 - Agent từ chối chính sách có `policy_version` thấp hơn bản đang giữ của cùng trẻ.
 - Agent lưu tài liệu chuẩn hóa và chữ ký trong DB cục bộ, kiểm tra lại chữ ký mỗi lần nạp. Dòng bị sửa thì bị bỏ qua và ghi log.
 - Trẻ không còn trong response thì agent xóa chính sách của trẻ đó.
@@ -554,7 +571,9 @@ Trong Python, cách chuẩn hóa này tương đương `json.dumps(obj, sort_key
 
 | Thao tác | `action` | `target_type` | Giá trị ghi |
 | :---- | :---- | :---- | :---- |
-| Sửa chính sách | `update` | `policy` | `{daily_quota_minutes, policy_version}` cũ và mới; `target_id` là id của trẻ; sửa mà giá trị không đổi thì không ghi |
+| Sửa chính sách | `update` | `policy` | Các trường luật đã đổi cộng `policy_version`, cũ và mới; `weekly_schedule` ghi dạng 336 ký tự liền. `target_id` là id của trẻ; sửa mà giá trị không đổi thì không ghi |
+
+Gán hoặc bỏ gán tài khoản Windows tăng version chính sách của trẻ bị ảnh hưởng nhưng chỉ ghi nhật ký `windows_account` như trước.
 
 ### Đối tượng Policy
 
@@ -562,14 +581,19 @@ Trong Python, cách chuẩn hóa này tương đương `json.dumps(obj, sort_key
 {
   "child_id": 7,
   "policy_version": 3,
-  "daily_quota_minutes": 120,
+  "weekday_quota_minutes": 120,
+  "weekend_quota_minutes": 180,
+  "weekly_schedule": ["000000000000001111111111111111111111111111000000", "... đủ 7 chuỗi ..."],
+  "set_by": "parent@example.com",
   "updated_at": "2026-11-18T08:00:00Z"
 }
 ```
 
+`set_by` là `null` nếu tài khoản đã bị xóa.
+
 ### `GET /api/children/{id}/policy`
 
-Vai trò `parent`. Trẻ chưa có chính sách thì server tạo chính sách mặc định, version 1.
+Vai trò `parent`. Trẻ chưa có chính sách thì server tạo chính sách mặc định, version 1, người đặt là chủ của trẻ.
 
 | HTTP | Body |
 | :---- | :---- |
@@ -580,19 +604,47 @@ Vai trò `parent`. Trẻ chưa có chính sách thì server tạo chính sách m
 
 ### `PATCH /api/children/{id}/policy`
 
-Vai trò `parent`. Giá trị khác hiện tại thì version tăng 1 và có một dòng nhật ký kiểm toán.
+Vai trò `parent`. Mọi trường đều tùy chọn; trường bỏ trống giữ nguyên. Có ít nhất một giá trị khác hiện tại thì version tăng 1, có một ảnh chụp version mới và một dòng nhật ký kiểm toán. Một trường sai thì cả request bị từ chối.
 
 ```json
-{ "daily_quota_minutes": 90 }
+{
+  "weekday_quota_minutes": 90,
+  "weekend_quota_minutes": 150,
+  "weekly_schedule": ["000000000000001111111111111111111111111111000000", "... đủ 7 chuỗi ..."]
+}
 ```
 
 | HTTP | Body |
 | :---- | :---- |
 | 200 | Policy sau khi sửa |
 | 404 | `not_found` |
-| 422 | `invalid_quota` |
+| 422 | `invalid_quota`, `invalid_schedule` |
 | 401 | `not_authenticated` |
 | 403 | `forbidden`, `csrf_failed` |
+
+### `GET /api/children/{id}/policy/versions`
+
+Vai trò `parent`. Trả tối đa 50 version gần nhất, mới nhất trước.
+
+```json
+[
+  {
+    "policy_version": 3,
+    "weekday_quota_minutes": 120,
+    "weekend_quota_minutes": 180,
+    "weekly_schedule": ["... 7 chuỗi ..."],
+    "set_by": "parent@example.com",
+    "created_at": "2026-11-18T08:00:00Z"
+  }
+]
+```
+
+| HTTP | Body |
+| :---- | :---- |
+| 200 | Như trên |
+| 404 | `not_found` |
+| 401 | `not_authenticated` |
+| 403 | `forbidden` |
 
 ### `GET /api/device/policy`
 
@@ -602,14 +654,8 @@ Access token thiết bị. Trả chính sách đã ký của mọi trẻ đượ
 {
   "policies": [
     {
-      "policy": {
-        "child_id": 7,
-        "format": 1,
-        "issued_at": "2026-11-18T08:00:00Z",
-        "policy_version": 3,
-        "rules": { "daily_quota_minutes": 120 }
-      },
-      "signature": "l7KnMqRawBB2XD-6ab-tRQV9X4A5c-4tRK59mkacCyI-LfOm6UNE3FuwS6oKvBZwrmlyh5b9gm5JThlP_wo2Bw",
+      "policy": { "accounts": ["..."], "child_id": 7, "format": 1, "...": "như tài liệu chính sách" },
+      "signature": "c7-G__T8t7avg1y63SMCM8n-3JVTl6VdFUqvXR9VsNsFMJzXnw8o-z0-vR9q9ozUkMSzermDXncfhsu6nNnQAQ",
       "key_id": "1bf6796e61f6125c"
     }
   ]
@@ -660,8 +706,8 @@ Mỗi sự kiện có đúng 7 trường. Thiếu trường, thừa trường ho
 | `domain_query` | Trẻ truy cập một tên miền |
 | `blocked_app` | Ứng dụng bị chặn |
 | `blocked_domain` | Tên miền bị chặn |
-| `quota_warning` | Cảnh báo sắp hết quota |
-| `locked` | Máy bị khóa vì hết quota hoặc ngoài lịch |
+| `quota_warning` | Cảnh báo sắp hết giờ; `subject` là số phút còn lại `"10"`, `"5"` hoặc `"1"`; `duration_sec` là số giây đã dùng hôm nay |
+| `locked` | Máy bị khóa; `subject` là `"quota"` (hết quota) hoặc `"schedule"` (ngoài lịch); `duration_sec` là số giây đã dùng hôm nay |
 | `unlock_request` | Trẻ xin thêm thời gian |
 | `override_granted` | Phụ huynh cho thêm thời gian |
 
@@ -672,7 +718,7 @@ Cảnh báo thiết bị không phải sự kiện và không nằm trong bảng
 | `type` | Ý nghĩa |
 | :---- | :---- |
 | `enforcement_disabled` | Service đã tắt cưỡng chế; `detail` là lý do, ví dụ `tray_unavailable` |
-| `clock_tampered` | Giờ hệ thống bị chỉnh lệch so với đồng hồ đơn điệu và giờ server |
+| `clock_tampered` | Giờ hệ thống lệch quá 2 phút so với giờ tin cậy của agent; `detail` là `backward` (lùi) hoặc `forward` (tiến) |
 
 Server giữ tối đa một cảnh báo đang mở cho mỗi cặp thiết bị và loại. Heartbeat có cảnh báo cùng loại thì server cập nhật `last_seen_at` và `detail`; heartbeat không còn loại đó thì server đóng cảnh báo bằng `resolved_at`. Lần sau xuất hiện lại thì mở cảnh báo mới.
 
@@ -693,7 +739,7 @@ Server giữ tối đa một cảnh báo đang mở cho mỗi cặp thiết bị
 
 ### `POST /api/device/heartbeat`
 
-Access token thiết bị. Khóa của `quota_used` và `policy_versions` là `child_id` dạng chuỗi. `quota_used` là số giây đã dùng hôm nay; bộ đếm có từ P12, trước đó agent gửi 0. `alerts` là danh sách cảnh báo đang còn hiệu lực, mỗi loại một lần; danh sách rỗng nghĩa là mọi cảnh báo đã hết.
+Access token thiết bị. Khóa của `quota_used` và `policy_versions` là `child_id` dạng chuỗi. `quota_used` là số giây trẻ đã dùng hôm nay theo bộ đếm của agent; trẻ chưa dùng trên máy này hôm nay có giá trị 0. `alerts` là danh sách cảnh báo đang còn hiệu lực, mỗi loại một lần; danh sách rỗng nghĩa là mọi cảnh báo đã hết.
 
 ```json
 {
@@ -762,7 +808,7 @@ Agent chọn fail-closed có giới hạn:
 - Sự kiện được lưu vào DB cục bộ trước khi gửi. Mỗi lô được gán khóa chống trùng và lưu khóa trước lần gửi đầu, nên gửi lại sau lỗi luôn dùng cùng khóa. Server trả 200 thì agent xóa lô; trả 422 thì agent bỏ lô và ghi log để lô hỏng không chặn hàng đợi.
 - Thời gian mất kết nối tính từ heartbeat thành công gần nhất, lấy giá trị lớn hơn giữa hai cách đo: cộng dồn bằng đồng hồ đơn điệu, lưu trong DB cục bộ; và giờ hệ thống trừ `server_time` lần cuối. Lùi giờ hệ thống không làm giảm thời gian đo được, khởi động lại không làm mất, và thời gian tắt máy vẫn được tính.
 - Dưới 7 ngày, agent áp chính sách đã ký đang giữ.
-- Từ 7 ngày, agent áp `data/default_policy.json` cho mọi trẻ: 120 phút mỗi ngày, cho phép 07:00 đến 21:00 mỗi ngày. Trẻ chưa có chính sách đã ký nào cũng nhận chính sách mặc định. Heartbeat thành công tiếp theo đưa agent về chính sách đã ký.
+- Từ 7 ngày, agent áp `data/default_policy.json` cho mọi trẻ: 120 phút mỗi ngày cả ngày thường và cuối tuần, cho phép 07:00 đến 21:00 mỗi ngày. Agent vẫn dùng `accounts` của chính sách đã ký đang giữ để biết phiên là của trẻ nào. Trẻ chưa có chính sách đã ký nào cũng nhận chính sách mặc định. Heartbeat thành công tiếp theo đưa agent về chính sách đã ký.
 - Sự kiện ghi lúc áp chính sách mặc định có `policy_id` là `0`.
 
 Chính sách mặc định đi cùng bộ cài, không ký:
@@ -772,13 +818,48 @@ Chính sách mặc định đi cùng bộ cài, không ký:
   "format": 1,
   "policy_version": 0,
   "rules": {
-    "daily_quota_minutes": 120,
+    "weekday_quota_minutes": 120,
+    "weekend_quota_minutes": 120,
     "weekly_schedule": ["000000000000001111111111111111111111111111000000", "... 7 chuỗi ..."]
   }
 }
 ```
 
-`weekly_schedule` có 7 chuỗi, mỗi chuỗi 48 ký tự cho 48 khung 30 phút từ 00:00; `1` là được dùng máy, `0` là khóa.
+`rules` theo đúng định dạng của tài liệu chính sách. Chính sách mặc định không có `accounts` và `set_by`.
+
+## Quản lý thời gian
+
+Service đếm thời gian, quyết định cảnh báo và khóa; Tray UI báo thời gian rảnh, hiện cảnh báo và gọi lệnh khóa vì `LockWorkStation` chỉ chạy được trong phiên của người dùng.
+
+### Trẻ nào đang dùng máy
+
+- Service lấy SID của phiên đang hoạt động (Windows: `LookupAccountName` từ tên phiên; Mac: tài khoản giả trong `OGK_FAKE_ACCOUNTS`, chọn bằng `OGK_FAKE_SESSION_USER`).
+- Trẻ là trẻ có SID đó trong `accounts` của chính sách đã ký. SID không thuộc trẻ nào (ví dụ tài khoản của phụ huynh) thì không bị áp luật.
+
+### Giờ tin cậy
+
+- Ngày, ngày thường hay cuối tuần và ô lịch tính theo giờ tin cậy, đổi sang múi giờ của máy: mốc giờ cộng thời gian trôi của đồng hồ đơn điệu.
+- Mốc là `server_time` của heartbeat thành công gần nhất. Lúc khởi động, mốc là giá trị lớn hơn giữa giờ hệ thống và giờ tin cậy đã lưu, nên lùi giờ rồi khởi động lại không làm thời gian lùi theo.
+- Giờ hệ thống chậm hơn giờ tin cậy quá 2 phút: cảnh báo `clock_tampered` với `detail = backward` ngay lập tức.
+- Giờ hệ thống nhanh hơn: khi đang online, cảnh báo `forward` nếu heartbeat tiếp theo cho thấy giờ hệ thống nhanh hơn `server_time` quá 2 phút; chưa tới heartbeat đó thì chờ vì thức dậy sau khi ngủ trông giống hệt. Khi mất kết nối, bước tiến được coi là máy vừa ngủ và trở thành mốc mới.
+- Cảnh báo tự hết khi giờ hệ thống về lại trong khoảng 2 phút.
+
+### Bộ đếm
+
+- Thời gian được tính khi phiên đã đăng nhập, không khóa, và Tray UI báo rảnh dưới 5 phút. Không có tín hiệu từ Tray UI trong 15 giây thì vẫn tính (fail-closed).
+- Mỗi giây cộng khoảng trôi của đồng hồ đơn điệu, tối đa 2 giây một lần, nên chỉnh giờ hệ thống không cộng hay trừ được và thời gian ngủ không bị tính.
+- Bộ đếm lưu vào DB cục bộ mỗi 30 giây và khi khóa hoặc đăng xuất; sang ngày mới theo giờ tin cậy thì bắt đầu từ 0.
+
+### Cảnh báo và khóa
+
+- Thời gian còn lại là giá trị nhỏ hơn giữa quota còn lại của ngày và thời gian tới khi lịch đóng.
+- Thời gian còn lại đi qua 10, 5, 1 phút thì có cảnh báo và sự kiện `quota_warning`. Ngưỡng đã thấp hơn thời gian còn lại lúc bắt đầu thì không cảnh báo.
+- Hết giờ trong lúc dùng: ân hạn 60 giây, rồi khóa và ghi sự kiện `locked`.
+- Đã hết giờ hoặc ngoài lịch lúc đăng nhập, mở khóa, khởi động service hoặc đổi trẻ: khóa ngay, không ân hạn, ghi `locked`.
+- Khi đang khóa mà phiên vẫn mở thì service ra lệnh khóa lại mỗi 5 giây, không ghi thêm sự kiện.
+- Thêm quota, mở lịch hoặc sang ngày mới thì trạng thái về `ok`.
+
+## Kênh IPC giữa service và Tray UI
 
 ## Kênh IPC giữa service và Tray UI
 
@@ -796,14 +877,46 @@ HTTP tại `127.0.0.1`, chỉ phục vụ Tray UI trên cùng máy. Service sinh
 
 ### `POST /ipc/heartbeat`
 
-Tray UI gửi mỗi 5 giây. Body: `{ "pid": 4242 }`.
+Tray UI gửi mỗi 5 giây. Body: `{ "pid": 4242, "idle_seconds": 12.5 }`. `idle_seconds` là số giây từ lần nhập liệu gần nhất (Windows: `GetLastInputInfo`; Mac: tệp `fake_idle`), có thể bỏ trống.
 
 | HTTP | Body |
 | :---- | :---- |
 | 200 | `{ "status": "ok" }` |
-| 400 | `{ "error": "bad_request" }` (body không phải JSON hoặc `pid` không phải số nguyên dương) |
+| 400 | `{ "error": "bad_request" }` (body không phải JSON, `pid` không phải số nguyên dương, hoặc `idle_seconds` không phải số không âm) |
 
 Service tự bật Tray UI trong phiên người dùng đang hoạt động. Nếu không có tín hiệu sống trong 15 giây sau khi bật, hoặc tiến trình thoát trước tín hiệu sống đầu tiên, thì tính là một lần thất bại.
+
+### `GET /ipc/screentime`
+
+Tray UI hỏi mỗi giây.
+
+```json
+{
+  "status": "ok",
+  "child_id": 7,
+  "state": "grace",
+  "counting": true,
+  "used_seconds": 7210,
+  "quota_seconds": 7200,
+  "remaining_seconds": 0,
+  "warning": 1,
+  "warning_seq": 3,
+  "grace_seconds": 42,
+  "lock_reason": "quota",
+  "lock_seq": 0,
+  "set_by": "parent@example.com"
+}
+```
+
+| Trường | Ý nghĩa |
+| :---- | :---- |
+| `state` | `none` (phiên không thuộc trẻ nào), `ok`, `grace` (đang ân hạn), `locked` |
+| `counting` | Giây hiện tại có được tính không |
+| `warning`, `warning_seq` | Cảnh báo gần nhất (phút) và số thứ tự tăng dần; Tray UI hiện mỗi số thứ tự một lần, lần hỏi đầu chỉ ghi nhận mốc |
+| `grace_seconds` | Số giây ân hạn còn lại khi `state = grace` |
+| `lock_reason` | `quota` hoặc `schedule` |
+| `lock_seq` | Số thứ tự lệnh khóa, tăng dần. Khi `state = locked` và `lock_seq` khác lần trước, Tray UI hiện lý do và người đặt luật khoảng 2 giây rồi khóa máy (Windows: `LockWorkStation`; Mac: ghi `fake_lock.jsonl` và thêm sự kiện `lock` vào `fake_session.jsonl`) |
+| `set_by` | Email phụ huynh đặt luật; rỗng khi áp chính sách mặc định |
 
 ### Công cụ phát triển
 

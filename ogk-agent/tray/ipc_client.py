@@ -54,5 +54,11 @@ class IpcClient:
     def status(self) -> dict[str, Any]:
         return self._request("GET", "/ipc/status")
 
-    def heartbeat(self) -> None:
-        self._request("POST", "/ipc/heartbeat", {"pid": os.getpid()})
+    def heartbeat(self, idle_seconds: float | None = None) -> None:
+        body: dict[str, Any] = {"pid": os.getpid()}
+        if idle_seconds is not None:
+            body["idle_seconds"] = round(idle_seconds, 1)
+        self._request("POST", "/ipc/heartbeat", body)
+
+    def screentime(self) -> dict[str, Any]:
+        return self._request("GET", "/ipc/screentime")

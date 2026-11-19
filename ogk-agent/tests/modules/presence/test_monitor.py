@@ -3,7 +3,7 @@ import logging
 
 import pytest
 
-from service.core.bus import SESSION, TRAY_HEARTBEAT, Bus, SessionEvent, SessionInfo
+from service.core.bus import SESSION, TRAY_HEARTBEAT, Bus, SessionEvent, SessionInfo, TrayPing
 from service.core.enforcement import Enforcement
 from service.modules.presence import PresenceMonitor
 
@@ -75,7 +75,7 @@ def env():
 
 
 def _heartbeat(bus, pid):
-    bus.publish(TRAY_HEARTBEAT, pid)
+    bus.publish(TRAY_HEARTBEAT, TrayPing(pid))
 
 
 @pytest.mark.anyio

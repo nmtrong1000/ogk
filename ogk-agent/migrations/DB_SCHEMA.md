@@ -42,6 +42,17 @@ erDiagram
         text last_server_time
         text last_success_at
     }
+    usage {
+        integer child_id PK
+        text day PK
+        text counter PK
+        real seconds
+        text updated_at
+    }
+    clock_state {
+        integer id PK
+        text last_trusted
+    }
 ```
 
 ## Table Definitions
@@ -96,6 +107,27 @@ erDiagram
 | offline_seconds | Số giây mất kết nối cộng dồn bằng đồng hồ đơn điệu từ heartbeat thành công gần nhất. | Số thực không âm | No | None |
 | last_server_time | `server_time` của heartbeat thành công gần nhất. | Văn bản ISO 8601 UTC | Yes | None |
 | last_success_at | Giờ hệ thống lúc heartbeat thành công gần nhất. | Văn bản ISO 8601 UTC | Yes | None |
+
+### usage
+
+**Purpose:** Số giây đã dùng máy theo trẻ, ngày và bộ đếm, để khởi động lại service không mất thời gian đã dùng. Ngày cũ được giữ lại cho báo cáo sau này.
+
+| Column | Description | Data type | Nullable? | Default |
+|---|---|---|---|---|
+| child_id | Trẻ được đếm, lấy từ chính sách đã ký có SID của phiên. Không có khóa ngoại vì chính sách của trẻ có thể bị xóa khi server bỏ gán. | Số nguyên | No | None |
+| day | Ngày theo giờ địa phương của đồng hồ tin cậy, không theo giờ hệ thống. | Văn bản `YYYY-MM-DD` | No | None |
+| counter | Tên bộ đếm: `child` là tổng thời gian của trẻ; các phase sau thêm bộ đếm khác, ví dụ theo nhóm ứng dụng. | Văn bản | No | None |
+| seconds | Số giây đã đếm trong ngày. | Số thực không âm | No | None |
+| updated_at | Giờ tin cậy lúc ghi gần nhất. | Văn bản ISO 8601 UTC | No | None |
+
+### clock_state
+
+**Purpose:** Giờ tin cậy gần nhất đã lưu, để lùi giờ hệ thống rồi khởi động lại không làm thời gian lùi theo. Có tối đa một dòng.
+
+| Column | Description | Data type | Nullable? | Default |
+|---|---|---|---|---|
+| id | Luôn bằng 1 để bảng chỉ có một dòng. | Số nguyên | No | None |
+| last_trusted | Giờ tin cậy lúc lưu gần nhất; lúc khởi động, đồng hồ tin cậy bắt đầu từ giá trị lớn hơn giữa cột này và giờ hệ thống. | Văn bản ISO 8601 UTC | No | None |
 
 ## Integrity Constraints
 
@@ -235,3 +267,37 @@ $$
 
 - `sync_state`
 - Relevant attributes: `sync_state.id`, `sync_state.offline_seconds`
+
+### IC-009: Thời gian đã dùng không âm và duy nhất theo ngày
+
+**Statement:** Mỗi bộ (trẻ, ngày, bộ đếm) có tối đa một dòng và `seconds` không âm. Thời gian chỉ tăng trong ngày.
+
+**Formal Expression:**
+
+$$
+\forall u_1, u_2 \in usage:\ (u_1.child\_id, u_1.day, u_1.counter) = (u_2.child\_id, u_2.day, u_2.counter) \Rightarrow u_1 = u_2 \quad \land \quad \forall u \in usage:\ u.seconds \geq 0 \land u'.seconds \geq u.seconds
+$$
+
+**Context:** DB kiểm tra bằng khóa chính ghép và `CHECK (seconds >= 0)`. $u'$ là dòng sau khi ghi; việc chỉ tăng do `CounterSet` bảo đảm vì nó chỉ cộng các khoảng không âm của đồng hồ đơn điệu, mỗi tick tối đa 2 giây.
+
+**Impacted Data Objects:**
+
+- `usage`
+- Relevant attributes: `usage.child_id`, `usage.day`, `usage.counter`, `usage.seconds`
+
+### IC-010: Chỉ một mốc giờ tin cậy
+
+**Statement:** `clock_state` có tối đa một dòng với `id = 1`.
+
+**Formal Expression:**
+
+$$
+\forall c \in clock\_state:\ c.id = 1
+$$
+
+**Context:** DB kiểm tra bằng `CHECK (id = 1)`; `TrustedClock.save` ghi bằng `INSERT OR REPLACE`.
+
+**Impacted Data Objects:**
+
+- `clock_state`
+- Relevant attributes: `clock_state.id`, `clock_state.last_trusted`

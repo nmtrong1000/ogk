@@ -3,7 +3,8 @@ from datetime import timedelta
 
 import pytest
 
-from service.core.bus import Bus
+from service.core.alerts import AlertBoard
+from service.core.bus import SERVER_TIME, Bus
 from service.core.clock import SyncClock
 from service.core.device_session import DeviceSession
 from service.core.enforcement import Enforcement
@@ -11,6 +12,7 @@ from service.core.event_queue import EventQueue
 from service.core.local_db import LocalDb
 from service.core.offline import OfflineGuard
 from service.core.policy_store import MODE_CACHED, MODE_DEFAULT, PolicyStore
+from service.core.screen_state import ScreenState
 from service.modules.policy import PolicyLoader
 from service.modules.sync import SyncModule
 from tests.core.test_default_policy import DEFAULT
@@ -36,8 +38,18 @@ class Rig:
         self.enforcement = Enforcement()
         self.queue = EventQueue(db, self.session)
         self.loader = PolicyLoader(self.store, self.session, self.bus)
+        self.screen = ScreenState()
+        self.alerts = AlertBoard()
         self.sync = SyncModule(
-            self.session, self.queue, self.offline, self.store, self.enforcement, self.bus, interval=0.01
+            self.session,
+            self.queue,
+            self.offline,
+            self.store,
+            self.enforcement,
+            self.bus,
+            interval=0.01,
+            screen=self.screen,
+            alerts=self.alerts,
         )
 
     def publish_policy(self, version: int, quota: int) -> None:
@@ -71,7 +83,7 @@ async def test_policy_edit_reaches_agent_on_next_heartbeat(rig):
     await run_until(lambda: rig.store.versions() == {7: 1}, [rig.loader.run, rig.sync.run])
     rig.publish_policy(2, 45)
     await run_until(lambda: rig.store.versions() == {7: 2}, [rig.loader.run, rig.sync.run])
-    assert rig.store.rules_for(7).rules == {"daily_quota_minutes": 45}
+    assert rig.store.rules_for(7).rules["weekday_quota_minutes"] == 45
 
 
 async def test_heartbeat_body_reports_versions_and_mode(rig):
@@ -95,6 +107,26 @@ async def test_enforcement_disabled_sends_alert(rig):
     rig.enforcement.enable()
     await rig.sync.tick()
     assert rig.server.heartbeats[-1]["alerts"] == []
+
+
+async def test_quota_used_and_clock_alert_are_sent(rig):
+    rig.publish_policy(3, 120)
+    await rig.loader.tick()
+    rig.screen.used_today = {7: 1234}
+    rig.alerts.raise_("clock_tampered", "backward", rig.server.now)
+    await rig.sync.tick()
+    sent = rig.server.heartbeats[-1]
+    assert sent["quota_used"] == {"7": 1234}
+    assert [(a["type"], a["detail"]) for a in sent["alerts"]] == [("clock_tampered", "backward")]
+
+
+async def test_heartbeat_outcome_published_as_server_time(rig):
+    seen = []
+    rig.bus.subscribe(SERVER_TIME, seen.append)
+    await rig.sync.tick()
+    rig.server.offline = True
+    await rig.sync.tick()
+    assert seen == [rig.server.now, None]
 
 
 async def test_tick_flushes_queued_events(rig):
@@ -137,7 +169,7 @@ async def test_seven_days_offline_switches_to_default_policy(rig):
     rig.server.offline = False
     await rig.sync.tick()
     assert rig.store.mode == MODE_CACHED
-    assert rig.store.rules_for(7).rules == {"daily_quota_minutes": 45}
+    assert rig.store.rules_for(7).rules["weekday_quota_minutes"] == 45
 
 
 async def test_unenrolled_device_does_not_send(data_dir):

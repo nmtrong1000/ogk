@@ -12,7 +12,7 @@ from collections.abc import Callable
 from types import ModuleType
 
 from service.core.agent import ModuleContext
-from service.core.bus import SESSION, TRAY_HEARTBEAT, Bus, SessionEvent
+from service.core.bus import SESSION, TRAY_HEARTBEAT, Bus, SessionEvent, TrayPing
 from service.core.enforcement import Enforcement
 
 log = logging.getLogger("ogk.presence")
@@ -66,12 +66,12 @@ class PresenceMonitor:
             self._session = None
             self._last_heartbeat = None
 
-    def _on_heartbeat(self, pid: int) -> None:
+    def _on_heartbeat(self, ping: TrayPing) -> None:
         if self._session is None:
             return
         self._last_heartbeat = self._clock()
         if self._launched_at is not None:
-            log.info("tray ui is up (pid %d)", pid)
+            log.info("tray ui is up (pid %d)", ping.pid)
             self._launched_at = None
         self._failures = 0
         self._enforcement.enable()

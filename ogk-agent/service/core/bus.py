@@ -1,5 +1,6 @@
 """Handlers run synchronously in the event loop thread; publishers on other threads must hop onto the loop
 first (call_soon_threadsafe) before calling publish.
+SERVER_TIME carries the server_time of a successful heartbeat, or None when a heartbeat fails.
 """
 
 import logging
@@ -15,6 +16,7 @@ TRAY_HEARTBEAT = "tray_heartbeat"
 POLICY = "policy"
 POLICY_STALE = "policy_stale"
 POLICY_MODE = "policy_mode"
+SERVER_TIME = "server_time"
 
 SessionKind = Literal["logon", "logoff", "lock", "unlock"]
 SESSION_KINDS: tuple[SessionKind, ...] = ("logon", "logoff", "lock", "unlock")
@@ -30,6 +32,13 @@ class SessionEvent:
 class SessionInfo:
     session_id: int
     username: str
+    sid: str = ""
+
+
+@dataclass(frozen=True)
+class TrayPing:
+    pid: int
+    idle_seconds: float | None = None
 
 
 Handler = Callable[[Any], None]

@@ -80,6 +80,10 @@ function ChildDetail({ id }: { id: number }) {
         <p className="mt-1 text-ink-muted">
           Sinh năm {data.birth_year} ({ageFrom(data.birth_year)} tuổi)
         </p>
+        <nav className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-sm font-medium">
+          <Link to={`/children/${id}/screentime`}>Thời gian dùng máy</Link>
+          <Link to={`/children/${id}/policy`}>Chính sách</Link>
+        </nav>
       </div>
 
       <Card title="Sửa thông tin">

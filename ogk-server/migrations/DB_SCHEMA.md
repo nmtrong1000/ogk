@@ -21,6 +21,9 @@ erDiagram
     accounts ||--o{ consent_records : "đồng ý"
     devices ||--o{ consent_records : "được đồng ý"
     children ||--o| policies : "có"
+    accounts |o--o{ policies : "sửa gần nhất"
+    children ||--o{ policy_versions : "có lịch sử"
+    accounts |o--o{ policy_versions : "đặt"
     devices ||--o{ events : "ghi"
     children ||--o{ events : "thuộc"
     devices ||--o{ event_batches : "gửi"
@@ -106,8 +109,21 @@ erDiagram
     policies {
         integer child_id PK, FK
         integer version
-        integer daily_quota_minutes
+        integer weekday_quota_minutes
+        integer weekend_quota_minutes
+        text weekly_schedule
+        integer updated_by FK
         datetime updated_at
+    }
+    policy_versions {
+        integer id PK
+        integer child_id FK
+        integer version
+        integer weekday_quota_minutes
+        integer weekend_quota_minutes
+        text weekly_schedule
+        integer set_by FK
+        datetime created_at
     }
     events {
         integer id PK
@@ -270,8 +286,26 @@ erDiagram
 |---|---|---|---|---|
 | child_id | Trẻ sở hữu chính sách, tham chiếu `children.id`; cũng là khóa chính nên mỗi trẻ có tối đa một chính sách. | Số nguyên | No | None |
 | version | `policy_version`; tăng 1 mỗi lần chính sách đổi giá trị. | Số nguyên từ 1 | No | 1 khi tạo |
-| daily_quota_minutes | Trường mẫu: số phút dùng máy mỗi ngày. | Số nguyên từ 0 đến 1440 | No | 120 khi tạo |
+| weekday_quota_minutes | Số phút dùng máy mỗi ngày từ thứ Hai đến thứ Sáu. | Số nguyên từ 0 đến 1440 | No | 120 khi tạo |
+| weekend_quota_minutes | Số phút dùng máy mỗi ngày thứ Bảy và Chủ nhật. | Số nguyên từ 0 đến 1440 | No | 120 khi tạo |
+| weekly_schedule | Lịch tuần 7 x 48 ghép thành một chuỗi: 7 đoạn 48 ký tự, đoạn đầu là thứ Hai; ký tự thứ k của một đoạn là ô 30 phút bắt đầu lúc k x 30 phút theo giờ máy trẻ, `1` là được dùng, `0` là khóa. API và tài liệu đã ký tách thành mảng 7 chuỗi. | Văn bản đúng 336 ký tự `0`/`1` | No | 07:00 đến 21:00 mỗi ngày khi tạo |
+| updated_by | Phụ huynh tạo hoặc sửa chính sách gần nhất, tham chiếu `accounts.id`; email của tài khoản này là `set_by` trong tài liệu đã ký. Xóa tài khoản thì đặt NULL. | Số nguyên | Yes | Chủ của trẻ khi tạo |
 | updated_at | Thời điểm tạo hoặc đổi chính sách gần nhất; dùng làm `issued_at` trong tài liệu đã ký. | Thời điểm UTC | No | None |
+
+### policy_versions
+
+**Purpose:** Ảnh chụp đầy đủ phần luật của mỗi version chính sách, để dashboard hiện lịch sử. Mỗi lần `policies.version` tăng, kể cả khi tăng do gán tài khoản Windows, server thêm một dòng trong cùng giao dịch.
+
+| Column | Description | Data type | Nullable? | Default |
+|---|---|---|---|---|
+| id | Khóa chính. | Số nguyên tự tăng | No | Tự tăng |
+| child_id | Trẻ sở hữu chính sách, tham chiếu `children.id`. | Số nguyên | No | None |
+| version | Version được chụp. | Số nguyên từ 1 | No | None |
+| weekday_quota_minutes | Như `policies.weekday_quota_minutes` tại version này. | Số nguyên từ 0 đến 1440 | No | None |
+| weekend_quota_minutes | Như `policies.weekend_quota_minutes` tại version này. | Số nguyên từ 0 đến 1440 | No | None |
+| weekly_schedule | Như `policies.weekly_schedule` tại version này. | Văn bản đúng 336 ký tự `0`/`1` | No | None |
+| set_by | Phụ huynh tạo ra version này, tham chiếu `accounts.id`. Xóa tài khoản thì đặt NULL. | Số nguyên | Yes | None |
+| created_at | Thời điểm tạo version, bằng `policies.updated_at` lúc đó. | Thời điểm UTC | No | None |
 
 ### events
 
@@ -797,15 +831,15 @@ $$
 
 ### IC-028: Phiên bản chính sách chỉ tăng
 
-**Statement:** `version` bắt đầu từ 1 và tăng đúng 1 mỗi lần giá trị chính sách thay đổi; sửa mà giá trị không đổi thì giữ nguyên version. Mỗi lần tăng có đúng một dòng nhật ký kiểm toán.
+**Statement:** `version` bắt đầu từ 1 và tăng đúng 1 mỗi lần giá trị chính sách thay đổi hoặc danh sách tài khoản Windows gán cho trẻ thay đổi; sửa mà giá trị không đổi thì giữ nguyên version. Mỗi lần sửa luật có đúng một dòng nhật ký kiểm toán `policy`; lần tăng do gán tài khoản đã có nhật ký `windows_account`.
 
 **Formal Expression:**
 
 $$
-p.version \geq 1 \quad \land \quad p' \neq p \Rightarrow p'.version = p.version + 1 \land \exists! a \in audit\_logs:\ a.target\_type = \text{'policy'} \land a.target\_id = p.child\_id \land a.new\_value.policy\_version = p'.version
+p.version \geq 1 \quad \land \quad rules(p') \neq rules(p) \Rightarrow p'.version = p.version + 1 \land \exists! a \in audit\_logs:\ a.target\_type = \text{'policy'} \land a.target\_id = p.child\_id \land a.new\_value.policy\_version = p'.version
 $$
 
-**Context:** $p$ là dòng trước khi sửa, $p'$ là dòng sau khi sửa. DB chỉ kiểm tra `version >= 1` bằng `ck_policies_version`. Server tăng version ngay trong câu `UPDATE` (`version = version + 1`) nên hai lần sửa đồng thời không trùng version, và ghi nhật ký trong cùng giao dịch. Agent dựa vào điều này để từ chối chính sách có version thấp hơn bản đang giữ.
+**Context:** $p$ là dòng trước khi sửa, $p'$ là dòng sau khi sửa. DB chỉ kiểm tra `version >= 1` bằng `ck_policies_version`. Server tăng version ngay trong câu `UPDATE` (`version = version + 1`) nên hai lần sửa đồng thời không trùng version, và ghi nhật ký trong cùng giao dịch. Agent dựa vào điều này để từ chối chính sách có version thấp hơn bản đang giữ. Tài liệu đã ký chứa SID của trẻ trên thiết bị, nên `assign_account` tăng version của mọi trẻ bị ảnh hưởng đã có chính sách để agent tải lại.
 
 **Impacted Data Objects:**
 
@@ -813,22 +847,23 @@ $$
 - `audit_logs`
 - Relevant attributes: `policies.version`, `audit_logs.target_type`, `audit_logs.target_id`, `audit_logs.new_value`
 
-### IC-029: Phút dùng mỗi ngày trong giới hạn
+### IC-029: Quota và lịch tuần hợp lệ
 
-**Statement:** `daily_quota_minutes` nằm trong khoảng 0 đến 1440.
+**Statement:** Hai quota nằm trong khoảng 0 đến 1440 phút; lịch tuần có đúng 336 ký tự, mỗi ký tự là `0` hoặc `1`. Áp dụng cho cả `policies` và `policy_versions`.
 
 **Formal Expression:**
 
 $$
-\forall p \in policies:\ 0 \leq p.daily\_quota\_minutes \leq 1440
+\forall p \in policies \cup policy\_versions:\ 0 \leq p.weekday\_quota\_minutes \leq 1440 \land 0 \leq p.weekend\_quota\_minutes \leq 1440 \land |p.weekly\_schedule| = 336 \land p.weekly\_schedule \in \{0,1\}^{336}
 $$
 
-**Context:** DB kiểm tra bằng `ck_policies_daily_quota_minutes`; server kiểm tra trước và trả `422 invalid_quota`.
+**Context:** DB kiểm tra khoảng và độ dài bằng `ck_policies_weekday_quota_minutes`, `ck_policies_weekend_quota_minutes`, `ck_policies_weekly_schedule` và các ràng buộc `ck_policy_versions_*` tương ứng. Chỉ chứa `0`/`1` do server kiểm tra vì SQLite không có regex trong CHECK. Server kiểm tra trước và trả `422 invalid_quota` hoặc `422 invalid_schedule`.
 
 **Impacted Data Objects:**
 
 - `policies`
-- Relevant attributes: `policies.daily_quota_minutes`
+- `policy_versions`
+- Relevant attributes: `policies.weekday_quota_minutes`, `policies.weekend_quota_minutes`, `policies.weekly_schedule`, `policy_versions.weekday_quota_minutes`, `policy_versions.weekend_quota_minutes`, `policy_versions.weekly_schedule`
 
 ### IC-030: Sự kiện thuộc 9 loại quy định
 
@@ -951,3 +986,21 @@ $$
 
 - `device_alerts`
 - Relevant attributes: `device_alerts.type`, `device_alerts.first_seen_at`, `device_alerts.last_seen_at`, `device_alerts.resolved_at`
+
+### IC-037: Mỗi version chính sách có đúng một ảnh chụp
+
+**Statement:** Mỗi cặp (trẻ, version) có tối đa một dòng `policy_versions`, và version hiện hành của mỗi chính sách luôn có ảnh chụp khớp giá trị hiện hành. Xóa trẻ thì xóa lịch sử.
+
+**Formal Expression:**
+
+$$
+\forall v_1, v_2 \in policy\_versions:\ (v_1.child\_id, v_1.version) = (v_2.child\_id, v_2.version) \Rightarrow v_1 = v_2 \quad \land \quad \forall p \in policies\ \exists v \in policy\_versions:\ v.child\_id = p.child\_id \land v.version = p.version \land rules(v) = rules(p)
+$$
+
+**Context:** DB kiểm tra phần đầu bằng `uq_policy_versions_child_version` và khóa ngoại `ON DELETE CASCADE` tới `children.id`. Phần sau do server bảo đảm: dòng `policies` mới và mỗi lần tăng version đều thêm ảnh chụp trong cùng giao dịch; migration 0009 chụp version hiện hành của mọi chính sách đã có.
+
+**Impacted Data Objects:**
+
+- `policy_versions`
+- `policies`
+- Relevant attributes: `policy_versions.child_id`, `policy_versions.version`, `policies.version`

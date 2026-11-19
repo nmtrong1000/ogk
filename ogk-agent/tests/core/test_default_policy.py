@@ -15,28 +15,25 @@ from service.core.policy_store import (
     PolicyStore,
     load_default_policy,
 )
-from tests.policy_vectors import body, document, write_public_key
+from tests.policy_vectors import ALLOWED_DAY, body, document, rules, write_public_key
 
 DEFAULT = load_default_policy(bundled_data_dir() / DEFAULT_POLICY_FILE)
-ALLOWED_DAY = "0" * 14 + "1" * 28 + "0" * 6
 
 
 def test_shipped_default_policy_has_quota_and_weekly_schedule():
-    assert DEFAULT.rules == {"daily_quota_minutes": 120, "weekly_schedule": [ALLOWED_DAY] * 7}
+    assert DEFAULT.rules == rules(120)
 
 
 @pytest.mark.parametrize(
     "doc",
     [
         {"format": 2, "policy_version": 0, "rules": {}},
-        {"format": 1, "policy_version": 1, "rules": {"daily_quota_minutes": 120, "weekly_schedule": [ALLOWED_DAY] * 7}},
-        {
-            "format": 1,
-            "policy_version": 0,
-            "rules": {"daily_quota_minutes": 2000, "weekly_schedule": [ALLOWED_DAY] * 7},
-        },
-        {"format": 1, "policy_version": 0, "rules": {"daily_quota_minutes": 120, "weekly_schedule": [ALLOWED_DAY] * 6}},
-        {"format": 1, "policy_version": 0, "rules": {"daily_quota_minutes": 120, "weekly_schedule": ["2" * 48] * 7}},
+        {"format": 1, "policy_version": 1, "rules": rules(120)},
+        {"format": 1, "policy_version": 0, "rules": rules(2000)},
+        {"format": 1, "policy_version": 0, "rules": rules(120, weekend=-1)},
+        {"format": 1, "policy_version": 0, "rules": {"daily_quota_minutes": 120, "weekly_schedule": [ALLOWED_DAY] * 7}},
+        {"format": 1, "policy_version": 0, "rules": rules(120, schedule=[ALLOWED_DAY] * 6)},
+        {"format": 1, "policy_version": 0, "rules": rules(120, schedule=["2" * 48] * 7)},
     ],
 )
 def test_invalid_default_policy_rejected(tmp_path, doc):
@@ -61,7 +58,7 @@ def test_signed_policy_applies_while_fresh(data_dir):
     store = make_store(data_dir)
     assert store.mode == MODE_CACHED
     effective = store.rules_for(7)
-    assert (effective.version, effective.rules, effective.source) == (3, {"daily_quota_minutes": 45}, MODE_CACHED)
+    assert (effective.version, effective.rules, effective.source) == (3, rules(45), MODE_CACHED)
 
 
 def test_child_without_signed_policy_gets_default(data_dir):

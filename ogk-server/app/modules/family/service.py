@@ -3,6 +3,8 @@ create flushes to get the child id, then the child and its audit entry commit in
 An update that changes nothing writes no audit entry and keeps updated_at.
 create_device and revoke_device do not commit: enrollment commits them together with tokens and consent.
 A revoked device is hidden from every parent query, so it behaves as removed.
+assign_account bumps the policy of every child it touches because signed policies carry the child's SIDs;
+policy imports this module, so the policy service is imported inside the function.
 """
 
 from dataclasses import dataclass
@@ -167,6 +169,23 @@ async def get_device(db: AsyncSession, device_id: int) -> Device | None:
     return await db.get(Device, device_id)
 
 
+async def sids_by_child_on_device(db: AsyncSession, device_id: int) -> dict[int, list[str]]:
+    stmt = select(WindowsAccount.child_id, WindowsAccount.sid).where(
+        WindowsAccount.device_id == device_id, WindowsAccount.child_id.is_not(None)
+    )
+    result: dict[int, list[str]] = {}
+    for child_id, sid in await db.execute(stmt):
+        result.setdefault(child_id, []).append(sid)
+    return {child_id: sorted(sids) for child_id, sids in result.items()}
+
+
+async def owner_ids(db: AsyncSession, child_ids: list[int]) -> dict[int, int]:
+    if not child_ids:
+        return {}
+    rows = await db.execute(select(Child.id, Child.owner_id).where(Child.id.in_(child_ids)))
+    return {child_id: owner_id for child_id, owner_id in rows}
+
+
 async def child_ids_on_device(db: AsyncSession, device_id: int) -> list[int]:
     stmt = (
         select(WindowsAccount.child_id)
@@ -232,5 +251,8 @@ async def assign_account(
     old = account.child_id
     account.child_id = child_id
     audit.record(db, actor, "update", AUDIT_WINDOWS_ACCOUNT, account.id, {"child_id": old}, {"child_id": child_id})
+    from app.modules.policy import service as policy
+
+    await policy.bump_for_accounts(db, [c for c in (old, child_id) if c is not None], actor=actor)
     await db.commit()
     return account

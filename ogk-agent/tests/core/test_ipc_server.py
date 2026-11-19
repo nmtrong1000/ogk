@@ -5,6 +5,7 @@ import stat
 import httpx
 import pytest
 
+from service.core.bus import TrayPing
 from service.core.ipc_server import IPC_FILE, IpcServer
 
 
@@ -93,7 +94,16 @@ async def test_heartbeat_with_token_reaches_handler(ipc_with_heartbeat, tmp_path
     response = await _post(server.port, {"pid": 4242}, {"Authorization": f"Bearer {token}"})
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
-    assert pids == [4242]
+    assert pids == [TrayPing(4242, None)]
+
+
+@pytest.mark.anyio
+async def test_heartbeat_carries_idle_seconds(ipc_with_heartbeat, tmp_path):
+    server, pids = ipc_with_heartbeat
+    token = _read(tmp_path)["token"]
+    response = await _post(server.port, {"pid": 4242, "idle_seconds": 301}, {"Authorization": f"Bearer {token}"})
+    assert response.status_code == 200
+    assert pids == [TrayPing(4242, 301.0)]
 
 
 @pytest.mark.anyio
@@ -105,7 +115,20 @@ async def test_heartbeat_without_token_rejected(ipc_with_heartbeat):
 
 
 @pytest.mark.anyio
-@pytest.mark.parametrize("body", [None, [], {}, {"pid": "1"}, {"pid": True}, {"pid": 0}])
+@pytest.mark.parametrize(
+    "body",
+    [
+        None,
+        [],
+        {},
+        {"pid": "1"},
+        {"pid": True},
+        {"pid": 0},
+        {"pid": 1, "idle_seconds": -1},
+        {"pid": 1, "idle_seconds": "5"},
+        {"pid": 1, "idle_seconds": True},
+    ],
+)
 async def test_heartbeat_bad_body_rejected(ipc_with_heartbeat, tmp_path, body):
     server, pids = ipc_with_heartbeat
     token = _read(tmp_path)["token"]
@@ -113,3 +136,19 @@ async def test_heartbeat_bad_body_rejected(ipc_with_heartbeat, tmp_path, body):
     assert response.status_code == 400
     assert response.json() == {"error": "bad_request"}
     assert pids == []
+
+
+@pytest.mark.anyio
+async def test_screentime_route_returns_snapshot(tmp_path):
+    server = IpcServer(tmp_path, 0, dict, screen_provider=lambda: {"state": "locked", "lock_seq": 2})
+    await server.start()
+    token = _read(tmp_path)["token"]
+    try:
+        async with httpx.AsyncClient() as client:
+            url = f"http://127.0.0.1:{server.port}/ipc/screentime"
+            ok = await client.get(url, headers={"Authorization": f"Bearer {token}"})
+            denied = await client.get(url)
+    finally:
+        await server.stop()
+    assert ok.json() == {"status": "ok", "state": "locked", "lock_seq": 2}
+    assert denied.status_code == 401
