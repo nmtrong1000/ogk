@@ -1,8 +1,9 @@
 """Development seed data, created through the module services so audit entries, policy versions and the
 encryption of names happen exactly as they would through the API.
 Every seed account shares the password from OGK_SEED_PASSWORD; without it the command refuses to run, which
-keeps it from being used on a real deployment by accident. Seeding runs once: if the seed admin already
-exists nothing is created, so running it again is safe.
+keeps it from being used on a real deployment by accident. Each seed account is checked on its own: an
+account that already exists is left untouched together with its children and device, so running it again
+is safe and an admin created earlier with create-admin keeps its own password.
 The sample device can never connect: its secret is random and thrown away. A real agent pairs with the
 code from --pairing-code instead.
 """
@@ -168,30 +169,32 @@ async def _seed_device(db: AsyncSession, parent_id: int, spec: ParentSeed, child
 
 async def seed(db: AsyncSession, password: str, now: datetime, pairing_code: bool = False) -> SeedReport:
     auth.validate_password(password)
-    existing = await auth.get_by_email(db, ADMIN_EMAIL)
-    report = SeedReport(created=existing is None)
-    if existing is None:
+    report = SeedReport(created=False)
+    if await auth.get_by_email(db, ADMIN_EMAIL) is None:
         await auth.create_account(db, ADMIN_EMAIL, password, role=ROLE_ADMIN)
         report.accounts.append(ADMIN_EMAIL)
-        for spec in PARENTS:
-            parent = await auth.create_account(db, spec.email, password)
-            report.accounts.append(spec.email)
-            actor = Actor(parent.id, SEED_IP)
-            children: dict[str, int] = {}
-            for child in spec.children:
-                created = await family.create_child(db, parent.id, child.name, child.birth_year, actor=actor)
-                children[child.name] = created.id
-                changes = {
-                    "weekday_quota_minutes": child.weekday_minutes,
-                    "weekend_quota_minutes": child.weekend_minutes,
-                    "weekly_schedule": schedule_for(child),
-                }
-                await policy.update_policy(db, created.id, parent.id, changes, actor=actor)
-            report.children[spec.email] = list(children)
-            if spec.device_name:
-                device, count = await _seed_device(db, parent.id, spec, children, now)
-                report.devices.append(device.name)
-                report.events += count
+    for spec in PARENTS:
+        if await auth.get_by_email(db, spec.email) is not None:
+            continue
+        parent = await auth.create_account(db, spec.email, password)
+        report.accounts.append(spec.email)
+        actor = Actor(parent.id, SEED_IP)
+        children: dict[str, int] = {}
+        for child in spec.children:
+            created = await family.create_child(db, parent.id, child.name, child.birth_year, actor=actor)
+            children[child.name] = created.id
+            changes = {
+                "weekday_quota_minutes": child.weekday_minutes,
+                "weekend_quota_minutes": child.weekend_minutes,
+                "weekly_schedule": schedule_for(child),
+            }
+            await policy.update_policy(db, created.id, parent.id, changes, actor=actor)
+        report.children[spec.email] = list(children)
+        if spec.device_name:
+            device, count = await _seed_device(db, parent.id, spec, children, now)
+            report.devices.append(device.name)
+            report.events += count
+    report.created = bool(report.accounts)
     if pairing_code:
         parent = await auth.get_by_email(db, PARENT1_EMAIL)
         code = await enrollment.create_pairing_code(db, parent.id, True, SEED_IP)
