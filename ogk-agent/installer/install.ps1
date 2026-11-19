@@ -3,10 +3,12 @@ param(
     [Parameter(Mandatory = $true)] [string]$ServerUrl,
     [Parameter(Mandatory = $true)] [string]$CaCert,
     [Parameter(Mandatory = $true)] [string]$PolicyPublicKey,
-    [string]$Exe = (Join-Path $PSScriptRoot "..\dist\ogk-service.exe"),
-    [string]$TrayExe = (Join-Path $PSScriptRoot "..\dist\ogk-tray.exe")
+    [string]$Exe,
+    [string]$TrayExe
 )
 $ErrorActionPreference = "Stop"
+if (-not $Exe) { $Exe = Join-Path $PSScriptRoot "..\dist\ogk-service.exe" }
+if (-not $TrayExe) { $TrayExe = Join-Path $PSScriptRoot "..\dist\ogk-tray.exe" }
 
 $ServiceName = "OGKAgent"
 $InstallDir = Join-Path $env:ProgramFiles "OGK"

@@ -6,6 +6,9 @@ The CA check still applies; the pin is an extra condition on top of it.
 With capture_pin, no pin is enforced and the SHA-256 of the certificate seen is kept in peer_cert_sha256;
 enrollment uses this to learn the pin over a CA-verified connection.
 trust_env is off so an environment proxy cannot replace the pinned transport.
+The pinned pool is built directly on httpcore, whose default keeps idle connections forever. Uvicorn closes
+them after 5 seconds, and on Windows the closed socket is not noticed before reuse, so every request after
+a pause failed; idle connections are therefore dropped after KEEPALIVE_SECONDS, below the server's 5.
 """
 
 import hashlib
@@ -99,10 +102,15 @@ class _PinnedBackend(httpcore.AsyncNetworkBackend):
         await self._inner.sleep(seconds)
 
 
+KEEPALIVE_SECONDS = 4.0
+
+
 class PinnedTransport(httpx.AsyncHTTPTransport):
     def __init__(self, context: ssl.SSLContext, state: _PinState) -> None:
         super().__init__(verify=context)
-        self._pool = httpcore.AsyncConnectionPool(ssl_context=context, network_backend=_PinnedBackend(state))
+        self._pool = httpcore.AsyncConnectionPool(
+            ssl_context=context, keepalive_expiry=KEEPALIVE_SECONDS, network_backend=_PinnedBackend(state)
+        )
 
 
 def _error_code(response: httpx.Response) -> str:

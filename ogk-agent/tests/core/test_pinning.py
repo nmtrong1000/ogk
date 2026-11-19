@@ -1,7 +1,7 @@
 import httpx
 import pytest
 
-from service.core.server_client import CertificatePinError, ServerClient, cert_sha256
+from service.core.server_client import KEEPALIVE_SECONDS, CertificatePinError, ServerClient, cert_sha256
 
 pytestmark = pytest.mark.anyio
 
@@ -82,3 +82,12 @@ async def test_rejected_before_request_is_sent(https_server, monkeypatch):
 def test_pinning_needs_ca():
     with pytest.raises(ValueError):
         ServerClient("https://server", pin_sha256="0" * 64)
+
+
+async def test_pinned_pool_drops_idle_connections_before_server_does(https_server):
+    client = ServerClient(https_server.url, https_server.ca_path, pin_sha256=cert_sha256(https_server.cert_der))
+    try:
+        pool = client._client._transport._pool
+        assert pool._keepalive_expiry == KEEPALIVE_SECONDS < 5
+    finally:
+        await client.aclose()

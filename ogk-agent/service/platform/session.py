@@ -3,6 +3,8 @@
 LocalSystem, so this cannot be exercised from an ordinary shell.
 The session SID is looked up from DOMAIN\\user because screen time maps SIDs, not user names, to children.
 An empty SID means the lookup failed, and such a session is never matched to a child.
+pywin32 does not export the WTS_SESSION_* codes of WM_WTSSESSION_CHANGE, so their fixed Windows values are
+defined here.
 """
 
 import sys
@@ -21,11 +23,16 @@ from service.core.bus import SessionEvent, SessionInfo
 NO_SESSION = 0xFFFFFFFF
 TRAY_EXE = "ogk-tray.exe"
 
+WTS_SESSION_LOGON = 5
+WTS_SESSION_LOGOFF = 6
+WTS_SESSION_LOCK = 7
+WTS_SESSION_UNLOCK = 8
+
 EVENT_KINDS = {
-    win32ts.WTS_SESSION_LOGON: "logon",
-    win32ts.WTS_SESSION_LOGOFF: "logoff",
-    win32ts.WTS_SESSION_LOCK: "lock",
-    win32ts.WTS_SESSION_UNLOCK: "unlock",
+    WTS_SESSION_LOGON: "logon",
+    WTS_SESSION_LOGOFF: "logoff",
+    WTS_SESSION_LOCK: "lock",
+    WTS_SESSION_UNLOCK: "unlock",
 }
 
 
