@@ -11,7 +11,7 @@ PLANNING -> DESIGN -> IMPLEMENTATION -> TESTING -> REVIEW -> RESOLVE FEEDBACK ->
 | PLANNING | Tạo branch của phase từ `main`; đọc file phase trong `plan/`, xác định phạm vi, task và câu hỏi còn mở | Kế hoạch chạy phase | User duyệt kế hoạch |
 | DESIGN | Thiết kế API, lược đồ DB, module và giao thức cho phase | Thiết kế; cập nhật `docs/protocol.md` khi giao thức thay đổi; cập nhật `DB_SCHEMA.md` trong thư mục migrations của app khi lược đồ DB thay đổi | Thiết kế khớp kế hoạch đã duyệt |
 | IMPLEMENTATION | Viết code theo task ID, đúng quy tắc module trong PLAN.md | Code và test của phase | Làm xong mọi task của phase |
-| TESTING | Chạy test tự động và mọi mục kiểm tra nghiệm thu của phase; lint và format qua (mục 6) | Kết quả từng mục, kèm lỗi nếu có | Mọi test, mục nghiệm thu, lint và format qua |
+| TESTING | Chạy test tự động và mọi mục kiểm tra nghiệm thu của phase; lint và format qua (mục 6). Từ P13, phase có ogk-agent build và cập nhật agent trên máy ảo Windows rồi chạy các mục nghiệm thu liên quan máy trẻ ở đó | Kết quả từng mục, kèm lỗi nếu có | Mọi test, mục nghiệm thu, lint và format qua |
 | REVIEW | Tự review thay đổi: đúng yêu cầu, bảo mật, quy tắc module, quy định comment và ngôn ngữ, quy định import, không có tệp bí mật, `DB_SCHEMA.md` khớp model và migration | Danh sách vấn đề | Đã có danh sách vấn đề, kể cả khi rỗng |
 | RESOLVE FEEDBACK | Sửa từng vấn đề, chạy lại TESTING | Code đã sửa, kết quả test mới | Không còn vấn đề và test qua |
 | HUMAN REVIEW | Trình bày cho user: thay đổi, kết quả test, chỗ lệch so với kế hoạch | Quyết định của user | User approve. Nếu user yêu cầu sửa thì quay lại RESOLVE FEEDBACK |
