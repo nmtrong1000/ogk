@@ -6,6 +6,8 @@ from sqlalchemy import func, select
 from app import cli
 from app.core.db import get_sessionmaker
 from app.modules.audit.models import AuditLog
+from app.modules.auth import service as auth
+from app.modules.auth.models import ROLE_ADMIN
 from app.modules.sync.models import DeviceAlert, Event
 from app.seed import ADMIN_EMAIL, PARENT1_EMAIL, PARENT2_EMAIL, seed, window
 from tests.conftest import login
@@ -83,6 +85,16 @@ async def test_running_again_creates_nothing(app):
     report = await run_seed()
     assert not report.created
     assert (await count(Event), await count(AuditLog)) == before
+
+
+async def test_existing_admin_is_kept_and_parents_still_seeded(app, client):
+    async with get_sessionmaker()() as db:
+        await auth.create_account(db, ADMIN_EMAIL, "mat-khau-rieng-1", role=ROLE_ADMIN)
+    report = await run_seed()
+    assert report.created
+    assert report.accounts == [PARENT1_EMAIL, PARENT2_EMAIL]
+    assert (await login(client, ADMIN_EMAIL, PASSWORD)).status_code == 401
+    assert (await login(client, ADMIN_EMAIL, "mat-khau-rieng-1")).status_code == 200
 
 
 async def test_pairing_code_on_request(app):
