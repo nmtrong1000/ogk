@@ -161,5 +161,14 @@ class ServerClient:
     async def device_policy(self, access_token: str) -> Any:
         return await self._json("GET", "/api/device/policy", headers={"Authorization": f"Bearer {access_token}"})
 
+    async def heartbeat(self, access_token: str, body: dict[str, Any]) -> Any:
+        return await self._json(
+            "POST", "/api/device/heartbeat", json=body, headers={"Authorization": f"Bearer {access_token}"}
+        )
+
+    async def post_events(self, access_token: str, events: list[dict[str, Any]], idempotency_key: str) -> Any:
+        headers = {"Authorization": f"Bearer {access_token}", "Idempotency-Key": idempotency_key}
+        return await self._json("POST", "/api/device/events", json={"events": events}, headers=headers)
+
     async def aclose(self) -> None:
         await self._client.aclose()

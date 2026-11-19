@@ -7,7 +7,7 @@ import json
 import logging
 import os
 import secrets
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Any
 
@@ -31,11 +31,13 @@ class IpcServer:
         port: int,
         status_provider: StatusProvider,
         heartbeat_handler: HeartbeatHandler | None = None,
+        extra_routes: Sequence[web.AbstractRouteDef] = (),
     ) -> None:
         self._file = data_dir / IPC_FILE
         self._port = port
         self._status = status_provider
         self._heartbeat = heartbeat_handler
+        self._extra_routes = list(extra_routes)
         self._token = ""
         self._runner: web.AppRunner | None = None
 
@@ -48,6 +50,7 @@ class IpcServer:
         app = web.Application(middlewares=[self._auth])
         app.router.add_get("/ipc/status", self._handle_status)
         app.router.add_post("/ipc/heartbeat", self._handle_heartbeat)
+        app.router.add_routes(self._extra_routes)
         self._runner = web.AppRunner(app, access_log=None)
         await self._runner.setup()
         site = web.TCPSite(self._runner, IPC_HOST, self._port)

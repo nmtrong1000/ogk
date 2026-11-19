@@ -30,6 +30,18 @@ erDiagram
         text signature
         text received_at
     }
+    event_outbox {
+        integer id PK
+        text payload
+        text batch_key
+        text created_at
+    }
+    sync_state {
+        integer id PK
+        real offline_seconds
+        text last_server_time
+        text last_success_at
+    }
 ```
 
 ## Table Definitions
@@ -62,6 +74,28 @@ erDiagram
 | payload | Tài liệu chính sách ở dạng JSON chuẩn hóa, đúng bytes mà server đã ký. | Văn bản UTF-8 | No | None |
 | signature | Chữ ký Ed25519 của `payload`, base64url không có `=`. | Văn bản | No | None |
 | received_at | Thời điểm agent nhận và lưu lô chính sách này. | Văn bản ISO 8601 UTC | No | None |
+
+### event_outbox
+
+**Purpose:** Sự kiện chờ gửi lên server. Sự kiện được ghi vào đây trước mọi lần gửi nên mất mạng hay khởi động lại không làm mất sự kiện; dòng bị xóa khi server xác nhận lô.
+
+| Column | Description | Data type | Nullable? | Default |
+|---|---|---|---|---|
+| id | Thứ tự ghi; lô lấy các dòng cũ nhất trước. | Số nguyên, tự tăng | No | Tự sinh |
+| payload | Sự kiện 7 trường dạng JSON, đã kiểm tra lược đồ trước khi ghi. | Văn bản UTF-8 | No | None |
+| batch_key | Idempotency key của lô chứa dòng này; gán và lưu trước lần gửi đầu, giữ nguyên qua mọi lần gửi lại. Rỗng khi dòng chưa vào lô nào. | Văn bản UUID4 | Yes | None |
+| created_at | Thời điểm agent ghi sự kiện vào hàng đợi. | Văn bản ISO 8601 UTC | No | None |
+
+### sync_state
+
+**Purpose:** Trạng thái kết nối để đo thời gian mất kết nối qua các lần khởi động lại. Có tối đa một dòng.
+
+| Column | Description | Data type | Nullable? | Default |
+|---|---|---|---|---|
+| id | Luôn bằng 1 để bảng chỉ có một dòng. | Số nguyên | No | None |
+| offline_seconds | Số giây mất kết nối cộng dồn bằng đồng hồ đơn điệu từ heartbeat thành công gần nhất. | Số thực không âm | No | None |
+| last_server_time | `server_time` của heartbeat thành công gần nhất. | Văn bản ISO 8601 UTC | Yes | None |
+| last_success_at | Giờ hệ thống lúc heartbeat thành công gần nhất. | Văn bản ISO 8601 UTC | Yes | None |
 
 ## Integrity Constraints
 
@@ -150,3 +184,54 @@ $$
 
 - `policies`
 - Relevant attributes: `policies.child_id`, `policies.version`
+
+### IC-006: Sự kiện chờ gửi đúng lược đồ
+
+**Statement:** Mỗi `payload` trong `event_outbox` là một sự kiện đúng 7 trường với `type` thuộc 9 loại quy định.
+
+**Formal Expression:**
+
+$$
+\forall e \in event\_outbox:\ keys(e.payload) = \{ts, device\_id, child\_id, type, subject, duration\_sec, policy\_id\} \land e.payload.type \in Types
+$$
+
+**Context:** $Types$ là 9 loại trong `service/core/events.py`. `EventQueue.enqueue` kiểm tra bằng `validate_event` trước khi ghi; sự kiện sai làm cả lần ghi bị từ chối. DB không kiểm tra.
+
+**Impacted Data Objects:**
+
+- `event_outbox`
+- Relevant attributes: `event_outbox.payload`
+
+### IC-007: Khóa lô cố định cho tới khi server xác nhận
+
+**Statement:** Một dòng đã có `batch_key` thì giữ nguyên khóa đó cho tới khi bị xóa. Các dòng cùng khóa luôn được gửi cùng nhau, và tại mỗi thời điểm chỉ có tối đa một khóa đang chờ.
+
+**Formal Expression:**
+
+$$
+\forall e \in event\_outbox,\ e' \in event\_outbox':\ e.id = e'.id \land e.batch\_key \neq NULL \Rightarrow e'.batch\_key = e.batch\_key \quad \land \quad |\{e.batch\_key \mid e \in event\_outbox,\ e.batch\_key \neq NULL\}| \leq 1
+$$
+
+**Context:** $event\_outbox'$ là trạng thái sau một thao tác bất kỳ. `LocalDb.next_event_batch` trả lô đang chờ nếu có, chỉ gán khóa mới khi không còn lô chờ, và lưu khóa trong cùng giao dịch trước khi gửi. Nhờ đó gửi lại sau lỗi mạng hay khởi động lại luôn dùng cùng khóa và server không đếm trùng. DB không kiểm tra.
+
+**Impacted Data Objects:**
+
+- `event_outbox`
+- Relevant attributes: `event_outbox.id`, `event_outbox.batch_key`
+
+### IC-008: Chỉ một trạng thái đồng bộ
+
+**Statement:** `sync_state` có tối đa một dòng với `id = 1`, và `offline_seconds` không âm.
+
+**Formal Expression:**
+
+$$
+\forall s \in sync\_state:\ s.id = 1 \land s.offline\_seconds \geq 0
+$$
+
+**Context:** DB kiểm tra bằng `CHECK (id = 1)` và `CHECK (offline_seconds >= 0)`. `SyncClock` chỉ cộng các khoảng không âm của đồng hồ đơn điệu và đặt lại về 0 khi heartbeat thành công.
+
+**Impacted Data Objects:**
+
+- `sync_state`
+- Relevant attributes: `sync_state.id`, `sync_state.offline_seconds`

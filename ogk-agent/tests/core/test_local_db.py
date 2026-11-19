@@ -2,7 +2,7 @@ import sqlite3
 from contextlib import closing
 from datetime import UTC, datetime, timedelta
 
-from service.core.local_db import DB_FILE, SCHEMA, Credentials, LocalDb, PolicyRow
+from service.core.local_db import DB_FILE, SCHEMA, Credentials, LocalDb, PolicyRow, SyncState
 
 
 def creds(**overrides) -> Credentials:
@@ -78,6 +78,31 @@ def test_upgrade_from_version_1_keeps_credentials(data_dir):
         conn.execute("PRAGMA user_version = 1")
     db = LocalDb(data_dir)
     db.save(creds())
-    assert db.schema_version() == 2
+    assert db.schema_version() == len(SCHEMA)
     assert db.load() == creds()
     assert db.load_policies() == []
+
+
+def test_event_batch_keeps_key_until_deleted(data_dir):
+    at = datetime(2026, 11, 18, 10, 0, tzinfo=UTC)
+    db = LocalDb(data_dir)
+    db.add_events(["a", "b", "c"], at)
+    keys = iter(["k1", "k2"])
+    first = db.next_event_batch(2, lambda: next(keys))
+    assert (first.key, first.payloads) == ("k1", ["a", "b"])
+    db.add_events(["d"], at)
+    assert db.next_event_batch(2, lambda: next(keys)) == first
+    db.delete_event_batch("k1")
+    second = db.next_event_batch(2, lambda: next(keys))
+    assert (second.key, second.payloads) == ("k2", ["c", "d"])
+    db.delete_event_batch("k2")
+    assert db.next_event_batch(2, lambda: "unused") is None
+    assert db.pending_events() == 0
+
+
+def test_sync_state_round_trip(data_dir):
+    db = LocalDb(data_dir)
+    assert db.load_sync_state() == SyncState()
+    state = SyncState(12.5, datetime(2026, 11, 18, 10, 0, tzinfo=UTC), datetime(2026, 11, 18, 10, 1, tzinfo=UTC))
+    db.save_sync_state(state)
+    assert db.load_sync_state() == state

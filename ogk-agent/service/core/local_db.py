@@ -3,10 +3,13 @@ the certificate pin are plain. open() locks the data directory and the DB file t
 every time, because the installer or an older version may have left wider permissions.
 The schema version lives in PRAGMA user_version; migrate() applies steps above the stored version.
 policies rows are not trusted on read: policy_store re-verifies each signature, so this layer stores raw text.
+next_event_batch assigns a batch_key and stores it before the batch is sent, so a resend after a lost response
+carries the same key and the server ignores it; rows keep their key until the server acknowledges the batch.
 Methods are synchronous; async callers run them in a worker thread.
 """
 
 import sqlite3
+from collections.abc import Callable
 from contextlib import closing
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime
@@ -40,6 +43,22 @@ SCHEMA = [
         received_at TEXT NOT NULL
     )
     """,
+    """
+    CREATE TABLE event_outbox (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        payload TEXT NOT NULL,
+        batch_key TEXT,
+        created_at TEXT NOT NULL
+    )
+    """,
+    """
+    CREATE TABLE sync_state (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        offline_seconds REAL NOT NULL CHECK (offline_seconds >= 0),
+        last_server_time TEXT,
+        last_success_at TEXT
+    )
+    """,
 ]
 
 
@@ -49,6 +68,20 @@ class PolicyRow:
     version: int
     payload: str
     signature: str
+
+
+@dataclass(frozen=True)
+class OutboxBatch:
+    key: str
+    ids: list[int]
+    payloads: list[str]
+
+
+@dataclass(frozen=True)
+class SyncState:
+    offline_seconds: float = 0.0
+    last_server_time: datetime | None = None
+    last_success_at: datetime | None = None
 
 
 @dataclass(frozen=True)
@@ -170,4 +203,58 @@ class LocalDb:
             conn.executemany(
                 "INSERT INTO policies (child_id, version, payload, signature, received_at) VALUES (?, ?, ?, ?, ?)",
                 [(r.child_id, r.version, r.payload, r.signature, _iso(received_at)) for r in rows],
+            )
+
+    def add_events(self, payloads: list[str], created_at: datetime) -> None:
+        with closing(self._connect()) as conn, conn:
+            conn.executemany(
+                "INSERT INTO event_outbox (payload, created_at) VALUES (?, ?)",
+                [(payload, _iso(created_at)) for payload in payloads],
+            )
+
+    def next_event_batch(self, limit: int, new_key: Callable[[], str]) -> OutboxBatch | None:
+        with closing(self._connect()) as conn, conn:
+            row = conn.execute(
+                "SELECT batch_key FROM event_outbox WHERE batch_key IS NOT NULL ORDER BY id LIMIT 1"
+            ).fetchone()
+            if row is not None:
+                key = row[0]
+            else:
+                ids = [r[0] for r in conn.execute("SELECT id FROM event_outbox ORDER BY id LIMIT ?", (limit,))]
+                if not ids:
+                    return None
+                key = new_key()
+                conn.executemany("UPDATE event_outbox SET batch_key = ? WHERE id = ?", [(key, i) for i in ids])
+            rows = conn.execute(
+                "SELECT id, payload FROM event_outbox WHERE batch_key = ? ORDER BY id", (key,)
+            ).fetchall()
+        return OutboxBatch(key, [r[0] for r in rows], [r[1] for r in rows])
+
+    def delete_event_batch(self, key: str) -> None:
+        with closing(self._connect()) as conn, conn:
+            conn.execute("DELETE FROM event_outbox WHERE batch_key = ?", (key,))
+
+    def pending_events(self) -> int:
+        with closing(self._connect()) as conn:
+            return conn.execute("SELECT COUNT(*) FROM event_outbox").fetchone()[0]
+
+    def load_sync_state(self) -> SyncState:
+        with closing(self._connect()) as conn:
+            row = conn.execute(
+                "SELECT offline_seconds, last_server_time, last_success_at FROM sync_state WHERE id = 1"
+            ).fetchone()
+        if row is None:
+            return SyncState()
+        return SyncState(row[0], _parse(row[1]), _parse(row[2]))
+
+    def save_sync_state(self, state: SyncState) -> None:
+        with closing(self._connect()) as conn, conn:
+            conn.execute(
+                "INSERT OR REPLACE INTO sync_state (id, offline_seconds, last_server_time, last_success_at) "
+                "VALUES (1, ?, ?, ?)",
+                (
+                    state.offline_seconds,
+                    None if state.last_server_time is None else _iso(state.last_server_time),
+                    None if state.last_success_at is None else _iso(state.last_success_at),
+                ),
             )

@@ -1,5 +1,7 @@
 """In-memory stand-in for the OGK server's device API, served through httpx.MockTransport.
-It mirrors the server contract: rotating refresh tokens, token_expired, device_revoked, invalid_refresh.
+It mirrors the server contract: rotating refresh tokens, token_expired, device_revoked, invalid_refresh,
+heartbeat versions and idempotent event batches. offline makes every request fail like a dropped connection;
+drop_response stores an event batch and then fails, like a response lost on the way back.
 """
 
 import json
@@ -24,6 +26,13 @@ class FakeServer:
         self.requests: list[tuple[str, str]] = []
         self.enroll_bodies: list[dict] = []
         self.policy_body: dict = {"policies": []}
+        self.versions: dict[int, int] = {}
+        self.offline = False
+        self.drop_response = False
+        self.reject_events = False
+        self.heartbeats: list[dict] = []
+        self.batch_keys: list[str] = []
+        self.events: list[dict] = []
 
     def _tokens(self) -> dict:
         self.counter += 1
@@ -49,7 +58,22 @@ class FakeServer:
             return httpx.Response(401, json={"detail": "token_expired"})
         return None
 
+    def _events(self, request: httpx.Request) -> httpx.Response:
+        if self.reject_events:
+            return httpx.Response(422, json={"detail": "invalid_event", "index": 0, "field": "type"})
+        key = request.headers["idempotency-key"]
+        if key in self.batch_keys:
+            return httpx.Response(200, json={"accepted": 0, "duplicate": True})
+        events = json.loads(request.content)["events"]
+        self.batch_keys.append(key)
+        self.events.extend(events)
+        if self.drop_response:
+            raise httpx.ReadError("response lost", request=request)
+        return httpx.Response(200, json={"accepted": len(events), "duplicate": False})
+
     def handle(self, request: httpx.Request) -> httpx.Response:
+        if self.offline:
+            raise httpx.ConnectError("network down", request=request)
         self.requests.append((request.method, request.url.path))
         path = request.url.path
         if path == "/api/enroll":
@@ -66,12 +90,21 @@ class FakeServer:
             if self.revoked:
                 return httpx.Response(401, json={"detail": "device_revoked"})
             return httpx.Response(200, json=self._tokens())
-        if path in ("/api/device/me", "/api/device/policy"):
+        if path in ("/api/device/me", "/api/device/policy", "/api/device/heartbeat", "/api/device/events"):
             denied = self._check_access(request)
             if denied is not None:
                 return denied
             if path == "/api/device/policy":
                 return httpx.Response(200, json=self.policy_body)
+            if path == "/api/device/heartbeat":
+                self.heartbeats.append(json.loads(request.content))
+                versions = {str(child_id): version for child_id, version in self.versions.items()}
+                server_time = self.now.isoformat().replace("+00:00", "Z")
+                return httpx.Response(
+                    200, json={"policy_versions": versions, "commands": [], "server_time": server_time}
+                )
+            if path == "/api/device/events":
+                return self._events(request)
             return httpx.Response(200, json={"id": 1, "name": "PC"})
         return httpx.Response(404, json={"detail": "not_found"})
 

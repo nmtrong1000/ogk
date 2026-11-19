@@ -149,6 +149,12 @@ class DeviceSession:
     async def policy(self) -> Any:
         return await self.call(lambda client, token: client.device_policy(token))
 
+    async def heartbeat(self, body: dict[str, Any]) -> Any:
+        return await self.call(lambda client, token: client.heartbeat(token, body))
+
+    async def post_events(self, events: list[dict[str, Any]], idempotency_key: str) -> Any:
+        return await self.call(lambda client, token: client.post_events(token, events, idempotency_key))
+
     async def _close_client(self) -> None:
         if self._client is not None:
             await self._client.aclose()
