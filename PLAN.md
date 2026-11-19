@@ -35,7 +35,8 @@
 
 | Vấn đề | Lựa chọn | Lý do |
 | :---- | :---- | :---- |
-| Môi trường phát triển | Cả 4 app viết và chạy trên macOS (Apple Silicon); agent dùng bản giả của `platform/` khi chạy trên Mac; P20 kiểm thử agent trên máy ảo Windows 11 ARM (UTM hoặc Parallels); demo trên máy ảo | Phát triển nhanh, không phụ thuộc máy ảo; agent cần pywin32 và quyền SYSTEM nên phần gọi API Windows chỉ kiểm tra được trên Windows; Mac dùng chip ARM nên máy ảo chỉ chạy được Windows 11 ARM; báo cáo nêu rõ agent chưa được kiểm thử trên Windows 10 và máy x64 thật |
+| Môi trường phát triển | Cả 4 app viết trên macOS (Apple Silicon); pytest của agent chạy trên Mac với bản giả của `platform/`. Từ P13, mọi mục nghiệm thu liên quan máy trẻ chạy trên máy ảo Windows 11 ARM ngay trong phase đó; P12 là phase đầu tiên đã kiểm tra trên máy ảo. Không dùng máy Windows thật; demo trên máy ảo | Lỗi chỉ có trên Windows lộ ra ngay trong phase gây ra nó thay vì dồn tới cuối; agent cần pywin32 và quyền SYSTEM nên phần gọi API Windows chỉ kiểm tra được trên Windows; Mac dùng chip ARM nên máy ảo chỉ chạy được Windows 11 ARM; báo cáo nêu rõ agent chưa được kiểm thử trên Windows 10 và máy x64 thật |
+| Máy ảo kiểm thử | UTM trên Mac, Windows 11 Pro ARM64, một tài khoản admin và một tài khoản trẻ chuẩn không thuộc Administrators; một bản clone sạch làm điểm khôi phục. Agent được build ngay trong máy ảo bằng Python 3.12 x64 và cài bằng `installer/`; Mac điều khiển máy ảo qua SSH bằng khóa. Server chạy trên Mac, máy ảo gọi tới IP LAN của Mac có trong chứng chỉ server. Cập nhật agent bằng cách build lại và thay exe tại chỗ, không gỡ cài đặt | Miễn phí; mỗi phase cài và kiểm tra lại trong vài phút; gỡ cài đặt xóa dữ liệu ghép đôi nên chỉ dùng khi cần cài mới |
 | Phiên bản Python | Python 3.12 cho cả server và agent | Đáp ứng yêu cầu 3.11+; pywin32, psutil, PyInstaller, argon2 có bản dựng sẵn |
 | Kiến trúc bản build agent | x64, chạy trên Windows 11 ARM qua giả lập x64 | Đúng nền tảng x64 của đề; thư viện có đủ bản dựng x64 |
 | Quản lý mã nguồn | Một git repo chung cho cả 3 app | Đổi giao thức thì sửa server và agent trong cùng một commit |
@@ -186,8 +187,8 @@ doan/
 | :---- | :---- |
 | ogk-server | Mỗi module sở hữu bảng của mình. Module khác muốn dùng thì gọi qua `service.py` của module đó, không truy vấn thẳng bảng. Mỗi module gồm `router.py`, `service.py`, `models.py`, `schemas.py` |
 | ogk-dashboard | Mỗi feature tự chứa trang, component và hàm gọi API của nó. Feature không import lẫn nhau, chỉ dùng chung qua `shared/` |
-| ogk-agent/service | Các module không import lẫn nhau, chỉ trao đổi qua `core/`. Chỉ `platform/` được import pywin32; `platform/` có bản giả để chạy trên Mac |
-| ogk-agent/tray | Mỗi feature là một màn hình. Mọi xử lý đều gọi sang service qua `ipc_client.py`. Chỉ `platform/` được gọi API Windows; `platform/` có bản giả để chạy trên Mac |
+| ogk-agent/service | Các module không import lẫn nhau, chỉ trao đổi qua `core/`. Chỉ `platform/` được import pywin32; `platform/` có bản giả để chạy pytest trên Mac, bản thật được kiểm tra trên máy ảo Windows |
+| ogk-agent/tray | Mỗi feature là một màn hình. Mọi xử lý đều gọi sang service qua `ipc_client.py`. Chỉ `platform/` được gọi API Windows; `platform/` có bản giả để chạy pytest trên Mac, bản thật được kiểm tra trên máy ảo Windows |
 
 Module cùng tên ở các app thuộc cùng một phase.
 
@@ -205,7 +206,7 @@ Server đọc vị trí bản build dashboard từ biến cấu hình `DASHBOARD
 
 ## 4. Các phase
 
-P1 đến P4 dựng khung cho 4 app, chưa có chức năng nào. P5 đến P18, mỗi phase là một module chức năng của đề bài. P19 là phase tùy chọn cho mục NÊN CÓ. P1 đến P19 chạy và kiểm tra trên Mac. P20 kiểm thử agent trên Windows. P21 đóng gói, nghiệm thu, viết báo cáo và chuẩn bị vấn đáp.
+P1 đến P4 dựng khung cho 4 app, chưa có chức năng nào. P5 đến P18, mỗi phase là một module chức năng của đề bài. P19 là phase tùy chọn cho mục NÊN CÓ. P1 đến P11 chạy và kiểm tra trên Mac. Máy ảo Windows được dựng trong P12. Từ P13, mỗi phase có ogk-agent chạy pytest trên Mac rồi build, cập nhật agent và chạy các mục nghiệm thu liên quan máy trẻ trên máy ảo Windows. P20 kiểm thử hồi quy toàn bộ trên bản clone sạch của máy ảo. P21 đóng gói, nghiệm thu, viết báo cáo và chuẩn bị vấn đáp.
 
 Mỗi phase nằm trong một file riêng ở thư mục `plan/`, gồm mục tiêu, kiểm tra nghiệm thu, kết quả, phase con và task.
 
@@ -229,14 +230,14 @@ Mỗi phase nằm trong một file riêng ở thư mục `plan/`, gồm mục ti
 | P10 | [Chính sách](plan/P10.md) | P7, P8 | server, service | Sửa một byte chính sách thì agent từ chối |
 | P11 | [Đồng bộ và sự kiện](plan/P11.md) | P10 | server, dashboard, service | Đổi chính sách có hiệu lực trong 60 giây; rút mạng không mất và không trùng sự kiện |
 | P12 | [Quản lý thời gian](plan/P12.md) | P9, P11 | server, dashboard, service, tray | Quota 3 phút khóa đúng hạn |
-| P13 | [Kiểm soát ứng dụng](plan/P13.md) | P9, P11 | server, dashboard, service, tray | Đổi tên notepad.exe thành game.exe vẫn bị chặn |
-| P14 | [Lọc website](plan/P14.md) | P9, P11 | server, dashboard, service, tray | Chặn ít nhất 95%, không chặn nhầm tên miền giáo dục |
-| P15 | [Lệnh khẩn](plan/P15.md) | P12 | server, dashboard, service, tray | Lệnh khẩn có hiệu lực dưới 5 giây |
-| P16 | [Yêu cầu của trẻ](plan/P16.md) | P14, P15 | server, dashboard, service, tray | Trẻ xin thêm giờ, phụ huynh duyệt, trẻ thấy kết quả |
-| P17 | [Báo cáo](plan/P17.md) | P13, P14, P16 | server, dashboard, service, tray | Dashboard đủ biểu đồ; trẻ xem được báo cáo và nhật ký thay đổi luật |
-| P18 | [Lưu trữ và xóa dữ liệu](plan/P18.md) | P17 | server, dashboard, service | Xóa toàn bộ dữ liệu của con thì sạch cả server và agent |
-| P19 | [Ngân sách theo nhóm ứng dụng](plan/P19.md) | P12, P13 | server, dashboard, service, tray | Hai bộ đếm theo nhóm chạy độc lập |
-| P20 | [Kiểm thử trên Windows](plan/P20.md) | P18 | service, tray | Agent chạy đúng trên máy ảo Windows như trên Mac |
+| P13 | [Kiểm soát ứng dụng](plan/P13.md) | P9, P11 | server, dashboard, service, tray | Trên máy ảo, đổi tên notepad.exe thành game.exe vẫn bị chặn |
+| P14 | [Lọc website](plan/P14.md) | P9, P11 | server, dashboard, service, tray | Chặn ít nhất 95%, không chặn nhầm tên miền giáo dục; trình duyệt trên máy ảo bị chặn đúng |
+| P15 | [Lệnh khẩn](plan/P15.md) | P12 | server, dashboard, service, tray | Lệnh khẩn có hiệu lực trên máy ảo dưới 5 giây |
+| P16 | [Yêu cầu của trẻ](plan/P16.md) | P14, P15 | server, dashboard, service, tray | Trẻ xin thêm giờ trên máy ảo, phụ huynh duyệt, trẻ thấy kết quả |
+| P17 | [Báo cáo](plan/P17.md) | P13, P14, P16 | server, dashboard, service, tray | Dashboard đủ biểu đồ; trẻ mở được báo cáo và nhật ký thay đổi luật từ Tray UI trên máy ảo |
+| P18 | [Lưu trữ và xóa dữ liệu](plan/P18.md) | P17 | server, dashboard, service | Xóa toàn bộ dữ liệu của con thì sạch cả server và agent trên máy ảo |
+| P19 | [Ngân sách theo nhóm ứng dụng](plan/P19.md) | P12, P13 | server, dashboard, service, tray | Hai bộ đếm theo nhóm chạy độc lập trên máy ảo |
+| P20 | [Kiểm thử hồi quy trên máy ảo Windows](plan/P20.md) | P18 | service, tray | Cài mới trên bản clone sạch, mọi mục nghiệm thu máy trẻ của P12 đến P19 qua; gỡ cài đặt hoàn trả máy |
 | P21 | [Nghiệm thu, báo cáo và vấn đáp](plan/P21.md) | P20 | server, dashboard, service, tray | Mỗi tiêu chí có bằng chứng; cài và gỡ agent sạch |
 
 ## 5. Rủi ro và cách xử lý
@@ -246,7 +247,8 @@ Mỗi phase nằm trong một file riêng ở thư mục `plan/`, gồm mục ti
 | Một người không kịp khối lượng của ba người | Làm theo thứ tự BẮT BUỘC trước; giữ giao diện đơn giản |
 | Service không tương tác được với màn hình | Mọi thao tác giao diện đi qua Tray UI |
 | Cổng 53 bị chiếm hoặc trình duyệt dùng DoH | Kiểm tra cổng khi khởi động, ghi log rõ ràng; tắt DoH bằng chính sách trình duyệt |
-| Thư viện lỗi hoặc chậm khi chạy Python x64 trên Windows 11 ARM qua giả lập | Chỉ dùng thư viện có bản dựng x64; kiểm tra cài đặt thư viện và build PyInstaller ở P20 |
-| Lỗi chỉ xuất hiện trên Windows bị phát hiện muộn | Giữ mọi lệnh gọi API Windows trong `platform/` và giữ `platform/` mỏng; P20 dành thời gian sửa lỗi |
-| Khóa nhầm làm hỏng máy ảo | Chụp snapshot máy ảo trước mỗi lần thử; luôn có script gỡ cài đặt |
+| Thư viện lỗi hoặc chậm khi chạy Python x64 trên Windows 11 ARM qua giả lập | Chỉ dùng thư viện có bản dựng x64; mỗi phase thêm thư viện thì build PyInstaller và chạy trên máy ảo ngay trong phase đó |
+| Lỗi chỉ xuất hiện trên Windows bị phát hiện muộn | Giữ mọi lệnh gọi API Windows trong `platform/` và giữ `platform/` mỏng; từ P13 mỗi phase chạy nghiệm thu trên máy ảo và sửa lỗi Windows trong chính phase đó |
+| Khóa nhầm làm hỏng máy ảo | Giữ bản clone sạch của máy ảo để khôi phục; tài khoản admin không gán cho trẻ nào nên luôn đăng nhập được; luôn có script gỡ cài đặt |
+| Máy ảo không gọi được server | IP LAN của Mac phải có trong chứng chỉ server; đổi mạng thì cấp lại chứng chỉ và ghép đôi lại; múi giờ của máy ảo phải đúng vì lịch tuần tính theo giờ máy trẻ |
 | Trễ tiến độ | Xong mỗi phase thì đối chiếu mốc kiểm tra; trễ thì cắt mục NÊN CÓ trước |
