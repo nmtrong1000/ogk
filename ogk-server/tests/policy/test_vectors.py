@@ -39,6 +39,19 @@ def test_invalid_vectors(case):
     assert not signing.verify(PUBLIC_KEY, case["policy"], case["signature"])
 
 
+@pytest.mark.parametrize("case", VECTORS["invalid_rules"], ids=lambda c: c["name"])
+def test_invalid_rules_are_signed_correctly(case):
+    assert signing.verify(PUBLIC_KEY, case["policy"], case["signature"])
+
+
 def test_server_document_matches_vector_shape():
-    policy = Policy(child_id=7, version=3, daily_quota_minutes=120, updated_at=datetime(2026, 11, 18, 8, tzinfo=UTC))
-    assert document(policy) == VECTORS["valid"][0]["policy"]
+    expected = VECTORS["valid"][0]["policy"]
+    policy = Policy(
+        child_id=7,
+        version=3,
+        weekday_quota_minutes=120,
+        weekend_quota_minutes=180,
+        weekly_schedule="".join(expected["rules"]["weekly_schedule"]),
+        updated_at=datetime(2026, 11, 18, 8, tzinfo=UTC),
+    )
+    assert document(policy, expected["accounts"], expected["set_by"]) == expected

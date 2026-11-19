@@ -1,5 +1,5 @@
 {
-  "description": "Shared by ogk-server and ogk-agent tests. The key below is a TEST-ONLY key, never used to sign real policies. The events section lists sample events in the 7-field schema; each invalid case names the field that must be rejected.",
+  "description": "Shared by ogk-server and ogk-agent tests. The key below is a TEST-ONLY key, never used to sign real policies. The events section lists sample events in the 7-field schema; each invalid case names the field that must be rejected. invalid_rules are correctly signed but must still be rejected by the agent because their rules or accounts are malformed.",
   "key": {
     "test_only_private_seed_hex": "636b5a1c5cc04b6621f26734fda2e17d5d92e8d4ec5fcb1a6fd4a5d3d4728a20",
     "public_key_pem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEANoy5DJ/Fx81Z19ckDHXSCaDcRdQBB8ygKu53YQ9n880=\n-----END PUBLIC KEY-----\n",
@@ -23,84 +23,196 @@
   ],
   "valid": [
     {
-      "name": "quota_120",
+      "name": "weekday_120_weekend_180",
       "policy": {
+        "accounts": [
+          "S-1-5-21-1004336348-1177238915-682003330-1001"
+        ],
         "child_id": 7,
         "format": 1,
         "issued_at": "2026-11-18T08:00:00Z",
         "policy_version": 3,
         "rules": {
-          "daily_quota_minutes": 120
-        }
+          "weekday_quota_minutes": 120,
+          "weekend_quota_minutes": 180,
+          "weekly_schedule": [
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000"
+          ]
+        },
+        "set_by": "parent@example.com"
       },
-      "canonical": "{\"child_id\":7,\"format\":1,\"issued_at\":\"2026-11-18T08:00:00Z\",\"policy_version\":3,\"rules\":{\"daily_quota_minutes\":120}}",
-      "signature": "l7KnMqRawBB2XD-6ab-tRQV9X4A5c-4tRK59mkacCyI-LfOm6UNE3FuwS6oKvBZwrmlyh5b9gm5JThlP_wo2Bw"
+      "canonical": "{\"accounts\":[\"S-1-5-21-1004336348-1177238915-682003330-1001\"],\"child_id\":7,\"format\":1,\"issued_at\":\"2026-11-18T08:00:00Z\",\"policy_version\":3,\"rules\":{\"weekday_quota_minutes\":120,\"weekend_quota_minutes\":180,\"weekly_schedule\":[\"000000000000001111111111111111111111111111000000\",\"000000000000001111111111111111111111111111000000\",\"000000000000001111111111111111111111111111000000\",\"000000000000001111111111111111111111111111000000\",\"000000000000001111111111111111111111111111000000\",\"000000000000001111111111111111111111111111000000\",\"000000000000001111111111111111111111111111000000\"]},\"set_by\":\"parent@example.com\"}",
+      "signature": "c7-G__T8t7avg1y63SMCM8n-3JVTl6VdFUqvXR9VsNsFMJzXnw8o-z0-vR9q9ozUkMSzermDXncfhsu6nNnQAQ"
     },
     {
-      "name": "quota_0",
+      "name": "quota_0_closed_schedule",
       "policy": {
+        "accounts": [
+          "S-1-5-21-1004336348-1177238915-682003330-1001",
+          "S-1-5-21-1004336348-1177238915-682003330-1002"
+        ],
         "child_id": 8,
         "format": 1,
         "issued_at": "2026-11-18T09:30:15Z",
         "policy_version": 1,
         "rules": {
-          "daily_quota_minutes": 0
-        }
+          "weekday_quota_minutes": 0,
+          "weekend_quota_minutes": 0,
+          "weekly_schedule": [
+            "000000000000000000000000000000000000000000000000",
+            "000000000000000000000000000000000000000000000000",
+            "000000000000000000000000000000000000000000000000",
+            "000000000000000000000000000000000000000000000000",
+            "000000000000000000000000000000000000000000000000",
+            "000000000000000000000000000000000000000000000000",
+            "000000000000000000000000000000000000000000000000"
+          ]
+        },
+        "set_by": "phụ.huynh@example.com"
       },
-      "canonical": "{\"child_id\":8,\"format\":1,\"issued_at\":\"2026-11-18T09:30:15Z\",\"policy_version\":1,\"rules\":{\"daily_quota_minutes\":0}}",
-      "signature": "7wkmHuOMxamXjEjxSjJ4FX2jhqmcF2QIp16W400oMYasUD7TOeNfkwxGTE71oZN1HxOlZgMDqBGZlCqnBZ8WDw"
+      "canonical": "{\"accounts\":[\"S-1-5-21-1004336348-1177238915-682003330-1001\",\"S-1-5-21-1004336348-1177238915-682003330-1002\"],\"child_id\":8,\"format\":1,\"issued_at\":\"2026-11-18T09:30:15Z\",\"policy_version\":1,\"rules\":{\"weekday_quota_minutes\":0,\"weekend_quota_minutes\":0,\"weekly_schedule\":[\"000000000000000000000000000000000000000000000000\",\"000000000000000000000000000000000000000000000000\",\"000000000000000000000000000000000000000000000000\",\"000000000000000000000000000000000000000000000000\",\"000000000000000000000000000000000000000000000000\",\"000000000000000000000000000000000000000000000000\",\"000000000000000000000000000000000000000000000000\"]},\"set_by\":\"phụ.huynh@example.com\"}",
+      "signature": "sIoD_kH9h6HUO71diVWd2G7JJLcTY5ayS7k8wUO-g7ZtUo3S4ySyCggwD1M5ZUi73IW8HEc-V2sFidbf9L1DAw"
     }
   ],
   "invalid": [
     {
       "name": "tampered_byte",
       "policy": {
+        "accounts": [
+          "S-1-5-21-1004336348-1177238915-682003330-1001"
+        ],
         "child_id": 7,
         "format": 1,
         "issued_at": "2026-11-18T08:00:00Z",
         "policy_version": 3,
         "rules": {
-          "daily_quota_minutes": 121
-        }
+          "weekday_quota_minutes": 121,
+          "weekend_quota_minutes": 180,
+          "weekly_schedule": [
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000"
+          ]
+        },
+        "set_by": "parent@example.com"
       },
-      "signature": "l7KnMqRawBB2XD-6ab-tRQV9X4A5c-4tRK59mkacCyI-LfOm6UNE3FuwS6oKvBZwrmlyh5b9gm5JThlP_wo2Bw"
+      "signature": "c7-G__T8t7avg1y63SMCM8n-3JVTl6VdFUqvXR9VsNsFMJzXnw8o-z0-vR9q9ozUkMSzermDXncfhsu6nNnQAQ"
     },
     {
       "name": "altered_version",
       "policy": {
+        "accounts": [
+          "S-1-5-21-1004336348-1177238915-682003330-1001"
+        ],
         "child_id": 7,
         "format": 1,
         "issued_at": "2026-11-18T08:00:00Z",
         "policy_version": 4,
         "rules": {
-          "daily_quota_minutes": 120
-        }
+          "weekday_quota_minutes": 120,
+          "weekend_quota_minutes": 180,
+          "weekly_schedule": [
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000"
+          ]
+        },
+        "set_by": "parent@example.com"
       },
-      "signature": "l7KnMqRawBB2XD-6ab-tRQV9X4A5c-4tRK59mkacCyI-LfOm6UNE3FuwS6oKvBZwrmlyh5b9gm5JThlP_wo2Bw"
+      "signature": "c7-G__T8t7avg1y63SMCM8n-3JVTl6VdFUqvXR9VsNsFMJzXnw8o-z0-vR9q9ozUkMSzermDXncfhsu6nNnQAQ"
+    },
+    {
+      "name": "swapped_account",
+      "policy": {
+        "accounts": [
+          "S-1-5-21-1004336348-1177238915-682003330-1002"
+        ],
+        "child_id": 7,
+        "format": 1,
+        "issued_at": "2026-11-18T08:00:00Z",
+        "policy_version": 3,
+        "rules": {
+          "weekday_quota_minutes": 120,
+          "weekend_quota_minutes": 180,
+          "weekly_schedule": [
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000"
+          ]
+        },
+        "set_by": "parent@example.com"
+      },
+      "signature": "c7-G__T8t7avg1y63SMCM8n-3JVTl6VdFUqvXR9VsNsFMJzXnw8o-z0-vR9q9ozUkMSzermDXncfhsu6nNnQAQ"
     },
     {
       "name": "wrong_key",
       "policy": {
+        "accounts": [
+          "S-1-5-21-1004336348-1177238915-682003330-1001"
+        ],
         "child_id": 7,
         "format": 1,
         "issued_at": "2026-11-18T08:00:00Z",
         "policy_version": 3,
         "rules": {
-          "daily_quota_minutes": 120
-        }
+          "weekday_quota_minutes": 120,
+          "weekend_quota_minutes": 180,
+          "weekly_schedule": [
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000"
+          ]
+        },
+        "set_by": "parent@example.com"
       },
-      "signature": "0_RlH1zHM8UAlEuh5VoPyQpvIr-4iTWjEnbeEq12OAVXmwpANu8Au3ZiOfMxXMepWfy77HgF3uLQCDqbuCreDw"
+      "signature": "h3jW7hCVZrLF9_0a0kXlOvyxJEt060pn7smflSNZuQZi_yvN0nEH2WRtF5mFiYKhdliAMU25z9RR1vTiAzs0AQ"
     },
     {
       "name": "malformed_signature",
       "policy": {
+        "accounts": [
+          "S-1-5-21-1004336348-1177238915-682003330-1001"
+        ],
         "child_id": 7,
         "format": 1,
         "issued_at": "2026-11-18T08:00:00Z",
         "policy_version": 3,
         "rules": {
-          "daily_quota_minutes": 120
-        }
+          "weekday_quota_minutes": 120,
+          "weekend_quota_minutes": 180,
+          "weekly_schedule": [
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000"
+          ]
+        },
+        "set_by": "parent@example.com"
       },
       "signature": "not-a-signature"
     }
@@ -165,6 +277,30 @@
           "subject": "",
           "duration_sec": 0,
           "policy_id": 0
+        }
+      },
+      {
+        "name": "quota_warning_1",
+        "event": {
+          "ts": "2026-11-19T08:00:00Z",
+          "device_id": 3,
+          "child_id": 7,
+          "type": "quota_warning",
+          "subject": "1",
+          "duration_sec": 7140,
+          "policy_id": 3
+        }
+      },
+      {
+        "name": "locked_schedule",
+        "event": {
+          "ts": "2026-11-19T21:00:00Z",
+          "device_id": 3,
+          "child_id": 7,
+          "type": "locked",
+          "subject": "schedule",
+          "duration_sec": 3600,
+          "policy_id": 3
         }
       }
     ],
@@ -274,5 +410,112 @@
         }
       }
     ]
-  }
+  },
+  "invalid_rules": [
+    {
+      "name": "schedule_wrong_length",
+      "policy": {
+        "accounts": [
+          "S-1-5-21-1004336348-1177238915-682003330-1001"
+        ],
+        "child_id": 7,
+        "format": 1,
+        "issued_at": "2026-11-18T08:00:00Z",
+        "policy_version": 3,
+        "rules": {
+          "weekday_quota_minutes": 120,
+          "weekend_quota_minutes": 180,
+          "weekly_schedule": [
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000"
+          ]
+        },
+        "set_by": "parent@example.com"
+      },
+      "signature": "MN-t3jTxY8ysfI5_92CGZfD_-uL9AeN-riWNRhUkIWofTwYbrgICJj8cvCkTmxkmRMQa6LB5MAfbfm86OO0AAQ"
+    },
+    {
+      "name": "schedule_bad_char",
+      "policy": {
+        "accounts": [
+          "S-1-5-21-1004336348-1177238915-682003330-1001"
+        ],
+        "child_id": 7,
+        "format": 1,
+        "issued_at": "2026-11-18T08:00:00Z",
+        "policy_version": 3,
+        "rules": {
+          "weekday_quota_minutes": 120,
+          "weekend_quota_minutes": 180,
+          "weekly_schedule": [
+            "000000000000001111111111111111111111111111000002",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000"
+          ]
+        },
+        "set_by": "parent@example.com"
+      },
+      "signature": "T9PWP1dkvH-SxGZmYG3Xtt1Uyt1FnlRm6L8YyXCZ2HundUZMYx-VHTHmkq-Tildha83yKzQuIx08-Smoix7QDA"
+    },
+    {
+      "name": "quota_over_limit",
+      "policy": {
+        "accounts": [
+          "S-1-5-21-1004336348-1177238915-682003330-1001"
+        ],
+        "child_id": 7,
+        "format": 1,
+        "issued_at": "2026-11-18T08:00:00Z",
+        "policy_version": 3,
+        "rules": {
+          "weekday_quota_minutes": 120,
+          "weekend_quota_minutes": 1441,
+          "weekly_schedule": [
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000"
+          ]
+        },
+        "set_by": "parent@example.com"
+      },
+      "signature": "k3X66b1gmNXchOZ55xtuTL6D5xA8d6W2uAY8aa3OCdOxDB3IKvbcShkpVDb0k4ry61tECmZo7B9lg_D4dVgNBw"
+    },
+    {
+      "name": "accounts_not_list",
+      "policy": {
+        "accounts": "S-1-5-21-1004336348-1177238915-682003330-1001",
+        "child_id": 7,
+        "format": 1,
+        "issued_at": "2026-11-18T08:00:00Z",
+        "policy_version": 3,
+        "rules": {
+          "weekday_quota_minutes": 120,
+          "weekend_quota_minutes": 180,
+          "weekly_schedule": [
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000"
+          ]
+        },
+        "set_by": "parent@example.com"
+      },
+      "signature": "tIumV-xSk4bXkdc9XqW_8xzWiMS1wSPqqZidBwX9mRRAZEVw57yt1Zxp2N9BSgxDgUDz_rzrvDR4rTp3bZdCBQ"
+    }
+  ]
 }

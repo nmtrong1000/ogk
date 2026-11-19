@@ -10,7 +10,7 @@ from app.modules.auth.service import require_parent
 from app.modules.enrollment.service import current_device
 from app.modules.family.models import Device
 from app.modules.policy import service
-from app.modules.policy.schemas import DevicePoliciesOut, PolicyOut, PolicyUpdate
+from app.modules.policy.schemas import DevicePoliciesOut, PolicyOut, PolicyUpdate, PolicyVersionOut
 
 router = APIRouter(prefix="/api/children", tags=["policy"], dependencies=[Depends(require_parent)])
 device_router = APIRouter(tags=["device"])
@@ -29,7 +29,12 @@ async def update_policy(
     actor: Actor = Depends(current_actor),
     db: AsyncSession = Depends(get_db),
 ):
-    return await service.update_policy(db, child_id, account.id, body.daily_quota_minutes, actor=actor)
+    return await service.update_policy(db, child_id, account.id, body.model_dump(), actor=actor)
+
+
+@router.get("/{child_id}/policy/versions", response_model=list[PolicyVersionOut])
+async def list_versions(child_id: int, account: Account = Depends(require_parent), db: AsyncSession = Depends(get_db)):
+    return await service.list_versions(db, child_id, account.id)
 
 
 @device_router.get("/api/device/policy", response_model=DevicePoliciesOut)

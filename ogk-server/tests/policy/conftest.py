@@ -3,11 +3,16 @@ import pytest
 
 from tests.conftest import csrf_headers, make_client, register
 
+DEFAULT_DAY = "0" * 14 + "1" * 28 + "0" * 6
+DEFAULT_SCHEDULE = [DEFAULT_DAY] * 7
+
+
+async def patch_policy(c: httpx.AsyncClient, child_id: int, **body) -> httpx.Response:
+    return await c.patch(f"/api/children/{child_id}/policy", json=body, headers=await csrf_headers(c))
+
 
 async def set_quota(c: httpx.AsyncClient, child_id: int, minutes) -> httpx.Response:
-    return await c.patch(
-        f"/api/children/{child_id}/policy", json={"daily_quota_minutes": minutes}, headers=await csrf_headers(c)
-    )
+    return await patch_policy(c, child_id, weekday_quota_minutes=minutes)
 
 
 async def assign(c: httpx.AsyncClient, device_id: int, account_id: int, child_id: int | None) -> httpx.Response:
