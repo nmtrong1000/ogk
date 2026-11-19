@@ -179,6 +179,11 @@ async def sids_by_child_on_device(db: AsyncSession, device_id: int) -> dict[int,
     return {child_id: sorted(sids) for child_id, sids in result.items()}
 
 
+async def windows_account_by_sid(db: AsyncSession, device_id: int, sid: str) -> WindowsAccount | None:
+    stmt = select(WindowsAccount).where(WindowsAccount.device_id == device_id, WindowsAccount.sid == sid)
+    return (await db.execute(stmt)).scalar_one_or_none()
+
+
 async def owner_ids(db: AsyncSession, child_ids: list[int]) -> dict[int, int]:
     if not child_ids:
         return {}
