@@ -51,7 +51,7 @@ async def test_restart_loads_newest_policy(server, data_dir, caplog):
         await restarted.tick()
     assert "policy loaded from cache: child=7 version=1" in caplog.text
     assert "policy loaded from server: child=7 version=2" in caplog.text
-    assert restarted._store.current()[7].document["rules"] == {"daily_quota_minutes": 45}
+    assert restarted._store.current()[7].document["rules"]["weekday_quota_minutes"] == 45
 
 
 async def test_bad_signature_from_server_keeps_cache(server, data_dir, caplog):

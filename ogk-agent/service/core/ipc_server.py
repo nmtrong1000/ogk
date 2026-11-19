@@ -1,5 +1,6 @@
 """ipc.json is the one file in the locked data directory that the Tray UI, running as the child, must read,
 so it is the only file given a user-readable ACL.
+idle_seconds in a heartbeat is optional so an older Tray UI still counts as alive.
 """
 
 import hmac
@@ -13,6 +14,7 @@ from typing import Any
 
 from aiohttp import web
 
+from service.core.bus import TrayPing
 from service.platform import get_platform
 
 log = logging.getLogger("ogk.ipc")
@@ -21,7 +23,8 @@ IPC_HOST = "127.0.0.1"
 IPC_FILE = "ipc.json"
 
 StatusProvider = Callable[[], dict[str, Any]]
-HeartbeatHandler = Callable[[int], None]
+HeartbeatHandler = Callable[[TrayPing], None]
+ScreenProvider = Callable[[], dict[str, Any]]
 
 
 class IpcServer:
@@ -32,8 +35,10 @@ class IpcServer:
         status_provider: StatusProvider,
         heartbeat_handler: HeartbeatHandler | None = None,
         extra_routes: Sequence[web.AbstractRouteDef] = (),
+        screen_provider: ScreenProvider | None = None,
     ) -> None:
         self._file = data_dir / IPC_FILE
+        self._screen = screen_provider
         self._port = port
         self._status = status_provider
         self._heartbeat = heartbeat_handler
@@ -50,6 +55,7 @@ class IpcServer:
         app = web.Application(middlewares=[self._auth])
         app.router.add_get("/ipc/status", self._handle_status)
         app.router.add_post("/ipc/heartbeat", self._handle_heartbeat)
+        app.router.add_get("/ipc/screentime", self._handle_screentime)
         app.router.add_routes(self._extra_routes)
         self._runner = web.AppRunner(app, access_log=None)
         await self._runner.setup()
@@ -92,6 +98,14 @@ class IpcServer:
         pid = body.get("pid") if isinstance(body, dict) else None
         if isinstance(pid, bool) or not isinstance(pid, int) or pid <= 0:
             return web.json_response({"error": "bad_request"}, status=400)
+        idle = body.get("idle_seconds")
+        if idle is not None and (isinstance(idle, bool) or not isinstance(idle, int | float) or not 0 <= idle < 1e9):
+            return web.json_response({"error": "bad_request"}, status=400)
         if self._heartbeat is not None:
-            self._heartbeat(pid)
+            self._heartbeat(TrayPing(pid, None if idle is None else float(idle)))
         return web.json_response({"status": "ok"})
+
+    async def _handle_screentime(self, request: web.Request) -> web.Response:
+        if self._screen is None:
+            return web.json_response({"error": "not_available"}, status=404)
+        return web.json_response({"status": "ok", **self._screen()})

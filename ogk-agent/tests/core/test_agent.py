@@ -6,7 +6,7 @@ import httpx
 import pytest
 
 from service.core.agent import Agent
-from service.core.bus import TRAY_HEARTBEAT, Bus
+from service.core.bus import TRAY_HEARTBEAT, Bus, TrayPing
 from service.core.config import Config
 from service.core.enforcement import Enforcement
 from service.core.local_db import LocalDb
@@ -166,7 +166,7 @@ async def test_ipc_heartbeat_is_published_on_bus(tmp_path):
     stop_event.set()
     await asyncio.wait_for(run, 1)
     assert response.status_code == 200
-    assert pids == [7]
+    assert pids == [TrayPing(7, None)]
 
 
 @pytest.mark.anyio

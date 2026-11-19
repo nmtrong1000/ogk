@@ -20,13 +20,36 @@ def write_public_key(directory: Path) -> Path:
     return path
 
 
-def document(child_id: int, version: int, quota: int = 120) -> dict:
+OPEN_DAY = "1" * 48
+ALLOWED_DAY = "0" * 14 + "1" * 28 + "0" * 6
+
+
+def rules(quota: int = 120, weekend: int | None = None, schedule: list[str] | None = None) -> dict:
     return {
+        "weekday_quota_minutes": quota,
+        "weekend_quota_minutes": quota if weekend is None else weekend,
+        "weekly_schedule": [ALLOWED_DAY] * 7 if schedule is None else schedule,
+    }
+
+
+def document(
+    child_id: int,
+    version: int,
+    quota: int = 120,
+    *,
+    accounts: list[str] | None = None,
+    weekend: int | None = None,
+    schedule: list[str] | None = None,
+    set_by: str = "parent@example.com",
+) -> dict:
+    return {
+        "accounts": [] if accounts is None else accounts,
         "child_id": child_id,
         "format": 1,
         "issued_at": "2026-11-18T08:00:00Z",
         "policy_version": version,
-        "rules": {"daily_quota_minutes": quota},
+        "rules": rules(quota, weekend, schedule),
+        "set_by": set_by,
     }
 
 

@@ -5,6 +5,7 @@ import threading
 
 import pytest
 
+from service.core.bus import TrayPing
 from service.core.ipc_server import IpcServer
 from tray.features.presence.window import describe, describe_error
 from tray.ipc_client import IpcClient, IpcError
@@ -70,15 +71,32 @@ def test_heartbeat_reaches_service(tmp_path):
     asyncio.run_coroutine_threadsafe(server.start(), loop).result(5)
     try:
         IpcClient(tmp_path).heartbeat()
+        IpcClient(tmp_path).heartbeat(312.04)
     finally:
         asyncio.run_coroutine_threadsafe(server.stop(), loop).result(5)
         loop.call_soon_threadsafe(loop.stop)
         thread.join(5)
         loop.close()
-    assert pids == [os.getpid()]
+    assert pids == [TrayPing(os.getpid(), None), TrayPing(os.getpid(), 312.0)]
 
 
 def test_heartbeat_without_service_raises(tmp_path):
     with pytest.raises(IpcError) as info:
         IpcClient(tmp_path).heartbeat()
     assert info.value.code == "not_running"
+
+
+def test_screentime_reaches_service(tmp_path):
+    loop = asyncio.new_event_loop()
+    thread = threading.Thread(target=loop.run_forever, daemon=True)
+    thread.start()
+    server = IpcServer(tmp_path, 0, dict, screen_provider=lambda: {"state": "ok", "remaining_seconds": 60})
+    asyncio.run_coroutine_threadsafe(server.start(), loop).result(5)
+    try:
+        snapshot = IpcClient(tmp_path).screentime()
+    finally:
+        asyncio.run_coroutine_threadsafe(server.stop(), loop).result(5)
+        loop.call_soon_threadsafe(loop.stop)
+        thread.join(5)
+        loop.close()
+    assert snapshot == {"status": "ok", "state": "ok", "remaining_seconds": 60}

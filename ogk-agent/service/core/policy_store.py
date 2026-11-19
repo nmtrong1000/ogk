@@ -6,6 +6,9 @@ key every policy is rejected (fail closed).
 The default policy (data/default_policy.json) is unsigned because it ships inside the installer, not from the
 server. It applies to every child while expired is set, and to any child with no signed policy at all, so a
 child is never left without rules.
+A correctly signed policy whose rules, accounts or set_by are malformed is rejected like a bad signature, so
+enforcement never has to guess. child_for_sid uses the signed accounts even while the policies are expired,
+because the default policy still needs to know which child is logged on.
 Methods are synchronous; async callers run them in a worker thread.
 """
 
@@ -58,6 +61,7 @@ class EffectivePolicy:
     version: int
     rules: dict[str, Any]
     source: str
+    set_by: str = ""
 
 
 def _check_value(value: Any) -> None:
@@ -96,6 +100,19 @@ def _is_int(value: Any) -> bool:
     return isinstance(value, int) and not isinstance(value, bool)
 
 
+def _quota_ok(value: Any) -> bool:
+    return _is_int(value) and 0 <= value <= MAX_QUOTA_MINUTES
+
+
+def rules_ok(rules: Any) -> bool:
+    return (
+        isinstance(rules, dict)
+        and _quota_ok(rules.get("weekday_quota_minutes"))
+        and _quota_ok(rules.get("weekend_quota_minutes"))
+        and _schedule_ok(rules.get("weekly_schedule"))
+    )
+
+
 def verify_bytes(public_key: Ed25519PublicKey, canonical: bytes, signature: str) -> SignedPolicy:
     try:
         public_key.verify(_b64url_decode(signature), canonical)
@@ -107,6 +124,13 @@ def verify_bytes(public_key: Ed25519PublicKey, canonical: bytes, signature: str)
     child_id, version = document.get("child_id"), document.get("policy_version")
     if not _is_int(child_id) or not _is_int(version) or version < 1:
         raise PolicyRejected("policy is missing child_id or policy_version")
+    accounts = document.get("accounts")
+    if not isinstance(accounts, list) or not all(isinstance(sid, str) and sid for sid in accounts):
+        raise PolicyRejected("policy accounts must be a list of SIDs")
+    if not isinstance(document.get("set_by"), str):
+        raise PolicyRejected("policy set_by must be a string")
+    if not rules_ok(document.get("rules")):
+        raise PolicyRejected("policy rules are malformed")
     return SignedPolicy(child_id, version, document, canonical.decode(), signature)
 
 
@@ -138,11 +162,11 @@ def load_default_policy(path: Path) -> DefaultPolicy:
     if document.get("policy_version") != DEFAULT_VERSION:
         raise PolicyRejected(f"default policy must have policy_version {DEFAULT_VERSION}: {path}")
     rules = document.get("rules")
-    quota = rules.get("daily_quota_minutes") if isinstance(rules, dict) else None
-    if not _is_int(quota) or not 0 <= quota <= MAX_QUOTA_MINUTES:
-        raise PolicyRejected(f"default policy has an invalid daily_quota_minutes: {path}")
-    if not _schedule_ok(rules.get("weekly_schedule")):
-        raise PolicyRejected(f"default policy weekly_schedule must be 7 strings of 48 '0'/'1' slots: {path}")
+    if not rules_ok(rules):
+        raise PolicyRejected(
+            f"default policy needs weekday/weekend quotas of 0-{MAX_QUOTA_MINUTES} minutes and a weekly_schedule "
+            f"of 7 strings of 48 '0'/'1' slots: {path}"
+        )
     return DefaultPolicy(rules)
 
 
@@ -171,7 +195,9 @@ class PolicyStore:
     def rules_for(self, child_id: int) -> EffectivePolicy | None:
         signed = self._current.get(child_id)
         if self.mode == MODE_CACHED and signed is not None:
-            return EffectivePolicy(child_id, signed.version, dict(signed.document["rules"]), MODE_CACHED)
+            return EffectivePolicy(
+                child_id, signed.version, dict(signed.document["rules"]), MODE_CACHED, signed.document["set_by"]
+            )
         if self._default is None:
             return None
         return self._default_for(child_id)
@@ -189,6 +215,14 @@ class PolicyStore:
                 log.error("%s; every policy is rejected", exc)
                 raise
         return self._key
+
+    def child_for_sid(self, sid: str) -> int | None:
+        if not sid:
+            return None
+        for child_id, policy in sorted(self._current.items()):
+            if sid in policy.document["accounts"]:
+                return child_id
+        return None
 
     def current(self) -> dict[int, SignedPolicy]:
         return dict(self._current)

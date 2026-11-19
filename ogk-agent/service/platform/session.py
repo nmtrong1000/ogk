@@ -1,15 +1,19 @@
 """Windows-only. The Tray UI is started with the console user's token so it runs on that user's desktop
 (winsta0\\default) instead of in Session 0, where it would be invisible. WTSQueryUserToken only works for
 LocalSystem, so this cannot be exercised from an ordinary shell.
+The session SID is looked up from DOMAIN\\user because screen time maps SIDs, not user names, to children.
+An empty SID means the lookup failed, and such a session is never matched to a child.
 """
 
 import sys
 from pathlib import Path
 
+import pywintypes
 import win32con
 import win32event
 import win32process
 import win32profile
+import win32security
 import win32ts
 
 from service.core.bus import SessionEvent, SessionInfo
@@ -40,7 +44,16 @@ def current_session() -> SessionInfo | None:
     username = win32ts.WTSQuerySessionInformation(win32ts.WTS_CURRENT_SERVER_HANDLE, session_id, win32ts.WTSUserName)
     if not username:
         return None
-    return SessionInfo(session_id, username)
+    domain = win32ts.WTSQuerySessionInformation(win32ts.WTS_CURRENT_SERVER_HANDLE, session_id, win32ts.WTSDomainName)
+    return SessionInfo(session_id, username, session_sid(domain, username))
+
+
+def session_sid(domain: str, username: str) -> str:
+    try:
+        sid, _, _ = win32security.LookupAccountName(None, f"{domain}\\{username}" if domain else username)
+    except pywintypes.error:
+        return ""
+    return win32security.ConvertSidToStringSid(sid)
 
 
 class TrayProcess:

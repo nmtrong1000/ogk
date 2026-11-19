@@ -2,7 +2,8 @@
   "format": 1,
   "policy_version": 0,
   "rules": {
-    "daily_quota_minutes": 120,
+    "weekday_quota_minutes": 120,
+    "weekend_quota_minutes": 120,
     "weekly_schedule": [
       "000000000000001111111111111111111111111111000000",
       "000000000000001111111111111111111111111111000000",

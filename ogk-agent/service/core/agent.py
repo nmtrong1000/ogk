@@ -19,7 +19,8 @@ from typing import Any, Protocol
 import httpx
 from aiohttp import web
 
-from service.core.bus import SESSION, TRAY_HEARTBEAT, Bus
+from service.core.alerts import AlertBoard
+from service.core.bus import SERVER_TIME, SESSION, TRAY_HEARTBEAT, Bus
 from service.core.clock import SyncClock
 from service.core.config import DEFAULT_POLICY_FILE, Config, bundled_data_dir, load_config
 from service.core.device_session import DeviceRevoked, DeviceSession, NotEnrolled
@@ -29,7 +30,9 @@ from service.core.ipc_server import IpcServer
 from service.core.local_db import LocalDb
 from service.core.offline import OfflineGuard
 from service.core.policy_store import PolicyStore, load_default_policy
+from service.core.screen_state import ScreenState
 from service.core.server_client import ApiError, CertificatePinError, ServerClient
+from service.core.trusted_clock import TrustedClock
 from service.platform import get_platform
 
 log = logging.getLogger("ogk.agent")
@@ -49,6 +52,10 @@ class ModuleContext:
     config: Config | None = None
     event_queue: EventQueue | None = None
     offline: OfflineGuard | None = None
+    db: LocalDb | None = None
+    clock: TrustedClock | None = None
+    alerts: AlertBoard | None = None
+    screen: ScreenState | None = None
 
 
 class Module(Protocol):
@@ -70,6 +77,7 @@ class Agent:
         enforcement: Enforcement | None = None,
         policy_store: PolicyStore | None = None,
         offline: OfflineGuard | None = None,
+        screen: ScreenState | None = None,
         modules: Sequence[Module] = (),
         extra_routes: Sequence[web.AbstractRouteDef] = (),
     ) -> None:
@@ -86,8 +94,9 @@ class Agent:
             data_dir,
             config.ipc_port,
             self.status,
-            lambda pid: self._bus.publish(TRAY_HEARTBEAT, pid),
+            lambda ping: self._bus.publish(TRAY_HEARTBEAT, ping),
             extra_routes,
+            None if screen is None else screen.snapshot,
         )
         self._started = time.monotonic()
         self._server_reachable: bool | None = None
@@ -202,6 +211,9 @@ async def run_agent(data_dir: Path, stop_event: asyncio.Event, modules: Sequence
     policy_store = PolicyStore(db, config.policy_public_key, default_policy)
     offline = OfflineGuard(SyncClock(db), policy_store, bus, config.offline_limit_days)
     await asyncio.to_thread(offline.start)
+    clock = TrustedClock(db)
+    bus.subscribe(SERVER_TIME, lambda at: clock.offline() if at is None else clock.online(at))
+    screen = ScreenState()
     context = ModuleContext(
         bus,
         enforcement,
@@ -212,6 +224,10 @@ async def run_agent(data_dir: Path, stop_event: asyncio.Event, modules: Sequence
         config=config,
         event_queue=EventQueue(db, session),
         offline=offline,
+        db=db,
+        clock=clock,
+        alerts=AlertBoard(),
+        screen=screen,
     )
     instances = [factory(context) for factory in modules]
     platform.set_session_listener(lambda event: bus.publish(SESSION, event))
@@ -224,6 +240,7 @@ async def run_agent(data_dir: Path, stop_event: asyncio.Event, modules: Sequence
         enforcement=enforcement,
         policy_store=policy_store,
         offline=offline,
+        screen=screen,
         modules=instances,
         extra_routes=dev_routes(context),
     )

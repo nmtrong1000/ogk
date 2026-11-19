@@ -34,6 +34,31 @@ def test_invalid_vectors(case, data_dir):
         verify_document(key, case["policy"], case["signature"])
 
 
+@pytest.mark.parametrize("case", VECTORS["invalid_rules"], ids=lambda c: c["name"])
+def test_signed_but_malformed_rules_rejected(case, data_dir):
+    key = load_public_key(write_public_key(data_dir))
+    with pytest.raises(PolicyRejected):
+        verify_document(key, case["policy"], case["signature"])
+
+
+def test_malformed_rules_reject_whole_batch(store):
+    store.save(body(document(7, 3)))
+    bad = document(8, 1)
+    bad["rules"]["weekly_schedule"] = ["1" * 48] * 6
+    with pytest.raises(PolicyRejected):
+        store.save(body(document(7, 4), bad))
+    assert store.versions() == {7: 3}
+
+
+def test_child_for_sid_uses_signed_accounts(store):
+    store.save(body(document(7, 3, accounts=["S-1-5-21-1", "S-1-5-21-2"]), document(8, 1, accounts=["S-1-5-21-3"])))
+    assert store.child_for_sid("S-1-5-21-2") == 7
+    assert store.child_for_sid("S-1-5-21-3") == 8
+    assert store.child_for_sid("S-1-5-21-9") is None
+    assert store.child_for_sid("") is None
+    assert store.rules_for(7).set_by == "parent@example.com"
+
+
 def test_save_then_load_from_db(store, data_dir):
     store.save(body(document(7, 3), document(8, 1)))
     fresh = PolicyStore(LocalDb(data_dir), write_public_key(data_dir))

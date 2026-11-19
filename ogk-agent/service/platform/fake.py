@@ -4,7 +4,8 @@ dir and DB, world-readable for files the Tray UI must read.
 Session changes: run `python ogk_service.py fake-session logon|logoff|lock|unlock` while the service runs;
 the command appends to fake_session.jsonl and the service polls that file, reading only lines added after
 it started. OGK_FAKE_TRAY_CMD replaces the Tray UI command line, e.g. /usr/bin/false to simulate a Tray UI
-that cannot start.
+that cannot start. OGK_FAKE_SESSION_USER picks which fake account is logged on (default: the first one), so its
+SID is what screen time matches against the signed policies.
 """
 
 import asyncio
@@ -82,7 +83,11 @@ def set_session_listener(listener: Callable[[SessionEvent], None] | None) -> Non
 
 
 def current_session() -> SessionInfo | None:
-    return SessionInfo(FAKE_SESSION_ID, getpass.getuser()) if _logged_on else None
+    if not _logged_on:
+        return None
+    accounts = dict(list_windows_accounts())
+    username = os.environ.get("OGK_FAKE_SESSION_USER") or next(iter(accounts), getpass.getuser())
+    return SessionInfo(FAKE_SESSION_ID, username, accounts.get(username, ""))
 
 
 def session_command(argv: list[str], directory: Path) -> int:
