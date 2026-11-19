@@ -37,8 +37,9 @@ def _fake_key() -> bytes:
 def protect(data: bytes) -> bytes:
     if sys.platform == "win32":
         import win32crypt
+        import win32cryptcon
 
-        return win32crypt.CryptProtectData(data, None, ENTROPY, None, None, win32crypt.CRYPTPROTECT_LOCAL_MACHINE)
+        return win32crypt.CryptProtectData(data, None, ENTROPY, None, None, win32cryptcon.CRYPTPROTECT_LOCAL_MACHINE)
     nonce = os.urandom(12)
     return FAKE_PREFIX + nonce + AESGCM(_fake_key()).encrypt(nonce, data, ENTROPY)
 
