@@ -621,6 +621,165 @@ Access token thiết bị. Trả chính sách đã ký của mọi trẻ đượ
 | 200 | Như trên |
 | 401 | `invalid_token`, `token_expired`, `device_revoked` |
 
+## Đồng bộ
+
+Agent gọi heartbeat mỗi 60 giây. Heartbeat mang trạng thái thiết bị và cảnh báo; server trả `policy_version` mới nhất của từng trẻ, lệnh chờ và giờ server. Version nào trên server cao hơn bản agent đang giữ, hoặc có trẻ mới, thì agent gọi `GET /api/device/policy`. Sự kiện đi riêng qua `POST /api/device/events` theo lô.
+
+### Sự kiện
+
+Mỗi sự kiện có đúng 7 trường. Thiếu trường, thừa trường hoặc sai kiểu thì cả lô bị từ chối.
+
+```json
+{
+  "ts": "2026-11-19T08:00:00Z",
+  "device_id": 3,
+  "child_id": 7,
+  "type": "blocked_domain",
+  "subject": "youtube.com",
+  "duration_sec": 0,
+  "policy_id": 4
+}
+```
+
+| Trường | Ý nghĩa |
+| :---- | :---- |
+| `ts` | Thời điểm xảy ra, dạng `YYYY-MM-DDTHH:MM:SSZ` |
+| `device_id` | Thiết bị ghi sự kiện; phải là thiết bị đang gọi |
+| `child_id` | Trẻ đang dùng máy; phải là trẻ của cùng phụ huynh sở hữu thiết bị |
+| `type` | Một trong 9 loại ở bảng dưới |
+| `subject` | Tên ứng dụng hoặc tên miền cấp hai, không phải URL đầy đủ; 0 đến 255 ký tự, không chứa `/` hay `\`. Với `domain_query` và `blocked_domain` phải là tên miền chữ thường có ít nhất hai nhãn, không có cổng |
+| `duration_sec` | Số giây, số nguyên từ 0 đến 86400; sự kiện tức thời ghi 0 |
+| `policy_id` | `policy_version` của chính sách đang áp cho trẻ lúc xảy ra; `0` là chính sách mặc định khi mất kết nối |
+
+`device_id`, `child_id`, `duration_sec` và `policy_id` là số nguyên JSON; `true`/`false` không được coi là số.
+
+| `type` | Khi nào |
+| :---- | :---- |
+| `app_start` | Ứng dụng bắt đầu chạy |
+| `app_stop` | Ứng dụng dừng; `duration_sec` là thời gian chạy |
+| `domain_query` | Trẻ truy cập một tên miền |
+| `blocked_app` | Ứng dụng bị chặn |
+| `blocked_domain` | Tên miền bị chặn |
+| `quota_warning` | Cảnh báo sắp hết quota |
+| `locked` | Máy bị khóa vì hết quota hoặc ngoài lịch |
+| `unlock_request` | Trẻ xin thêm thời gian |
+| `override_granted` | Phụ huynh cho thêm thời gian |
+
+### Cảnh báo thiết bị
+
+Cảnh báo thiết bị không phải sự kiện và không nằm trong bảng sự kiện. Agent gửi cảnh báo đang còn hiệu lực trong mỗi heartbeat.
+
+| `type` | Ý nghĩa |
+| :---- | :---- |
+| `enforcement_disabled` | Service đã tắt cưỡng chế; `detail` là lý do, ví dụ `tray_unavailable` |
+| `clock_tampered` | Giờ hệ thống bị chỉnh lệch so với đồng hồ đơn điệu và giờ server |
+
+Server giữ tối đa một cảnh báo đang mở cho mỗi cặp thiết bị và loại. Heartbeat có cảnh báo cùng loại thì server cập nhật `last_seen_at` và `detail`; heartbeat không còn loại đó thì server đóng cảnh báo bằng `resolved_at`. Lần sau xuất hiện lại thì mở cảnh báo mới.
+
+### Đối tượng Alert
+
+```json
+{
+  "id": 12,
+  "device_id": 3,
+  "device_name": "PC phòng khách",
+  "type": "enforcement_disabled",
+  "detail": "tray_unavailable",
+  "first_seen_at": "2026-11-19T08:00:00Z",
+  "last_seen_at": "2026-11-19T08:05:00Z",
+  "resolved_at": null
+}
+```
+
+### `POST /api/device/heartbeat`
+
+Access token thiết bị. Khóa của `quota_used` và `policy_versions` là `child_id` dạng chuỗi. `quota_used` là số giây đã dùng hôm nay; bộ đếm có từ P12, trước đó agent gửi 0. `alerts` là danh sách cảnh báo đang còn hiệu lực, mỗi loại một lần; danh sách rỗng nghĩa là mọi cảnh báo đã hết.
+
+```json
+{
+  "status": {
+    "uptime": 3600.5,
+    "enforcement": { "enabled": false, "reason": "tray_unavailable", "since": "2026-11-19T08:00:00Z" },
+    "policy_mode": "cached"
+  },
+  "quota_used": { "7": 0 },
+  "policy_versions": { "7": 3 },
+  "alerts": [{ "type": "enforcement_disabled", "detail": "tray_unavailable", "ts": "2026-11-19T08:00:00Z" }]
+}
+```
+
+Response 200:
+
+```json
+{
+  "policy_versions": { "7": 4 },
+  "commands": [],
+  "server_time": "2026-11-19T08:05:00Z"
+}
+```
+
+`policy_versions` gồm mọi trẻ được gán cho thiết bị, giống danh sách của `GET /api/device/policy`. `commands` luôn rỗng cho tới khi có kênh lệnh. `server_time` là mốc agent dùng để đo thời gian mất kết nối.
+
+| HTTP | Body |
+| :---- | :---- |
+| 200 | Như trên |
+| 422 | Body sai lược đồ (lỗi kiểm tra mặc định của FastAPI) |
+| 401 | `invalid_token`, `token_expired`, `device_revoked` |
+
+### `POST /api/device/events`
+
+Access token thiết bị. Header `Idempotency-Key` bắt buộc, 1 đến 64 ký tự `A-Z a-z 0-9 - _`; agent dùng UUID4. Body có 1 đến 500 sự kiện:
+
+```json
+{ "events": [ { "ts": "2026-11-19T08:00:00Z", "device_id": 3, "child_id": 7, "type": "app_start", "subject": "minecraft.exe", "duration_sec": 0, "policy_id": 4 } ] }
+```
+
+Server lưu khóa đã nhận theo thiết bị cùng cả lô trong một giao dịch. Gửi lại lô với khóa đã nhận thì server không lưu gì và trả `duplicate: true`, nên agent gửi lại sau lỗi mạng không làm sự kiện bị đếm hai lần. Khóa thuộc riêng từng thiết bị.
+
+| HTTP | Body |
+| :---- | :---- |
+| 200 | `{ "accepted": 1, "duplicate": false }`; lô trùng: `{ "accepted": 0, "duplicate": true }` |
+| 400 | `invalid_idempotency_key` (thiếu hoặc sai định dạng) |
+| 422 | `invalid_batch` (body không phải object chỉ có `events`, hoặc số sự kiện ngoài 1 đến 500) |
+| 422 | `invalid_event`, kèm `index` (vị trí trong lô) và `field` (trường sai; `null` nếu sự kiện không phải object; tên trường lạ nếu thừa trường) |
+| 401 | `invalid_token`, `token_expired`, `device_revoked` |
+
+### `GET /api/alerts?device_id=`
+
+Vai trò `parent`. Trả cảnh báo của các thiết bị chưa gỡ thuộc phụ huynh, mới nhất trước theo `last_seen_at`, tối đa 200. `device_id` lọc theo một thiết bị.
+
+| HTTP | Body |
+| :---- | :---- |
+| 200 | Danh sách Alert |
+| 404 | `not_found` (thiết bị không thuộc phụ huynh hoặc đã gỡ) |
+| 401 | `not_authenticated` |
+| 403 | `forbidden` |
+
+### Mất kết nối và chính sách hết hạn
+
+Agent chọn fail-closed có giới hạn:
+
+- Sự kiện được lưu vào DB cục bộ trước khi gửi. Mỗi lô được gán khóa chống trùng và lưu khóa trước lần gửi đầu, nên gửi lại sau lỗi luôn dùng cùng khóa. Server trả 200 thì agent xóa lô; trả 422 thì agent bỏ lô và ghi log để lô hỏng không chặn hàng đợi.
+- Thời gian mất kết nối tính từ heartbeat thành công gần nhất, lấy giá trị lớn hơn giữa hai cách đo: cộng dồn bằng đồng hồ đơn điệu, lưu trong DB cục bộ; và giờ hệ thống trừ `server_time` lần cuối. Lùi giờ hệ thống không làm giảm thời gian đo được, khởi động lại không làm mất, và thời gian tắt máy vẫn được tính.
+- Dưới 7 ngày, agent áp chính sách đã ký đang giữ.
+- Từ 7 ngày, agent áp `data/default_policy.json` cho mọi trẻ: 120 phút mỗi ngày, cho phép 07:00 đến 21:00 mỗi ngày. Trẻ chưa có chính sách đã ký nào cũng nhận chính sách mặc định. Heartbeat thành công tiếp theo đưa agent về chính sách đã ký.
+- Sự kiện ghi lúc áp chính sách mặc định có `policy_id` là `0`.
+
+Chính sách mặc định đi cùng bộ cài, không ký:
+
+```json
+{
+  "format": 1,
+  "policy_version": 0,
+  "rules": {
+    "daily_quota_minutes": 120,
+    "weekly_schedule": ["000000000000001111111111111111111111111111000000", "... 7 chuỗi ..."]
+  }
+}
+```
+
+`weekly_schedule` có 7 chuỗi, mỗi chuỗi 48 ký tự cho 48 khung 30 phút từ 00:00; `1` là được dùng máy, `0` là khóa.
+
 ## Kênh IPC giữa service và Tray UI
 
 HTTP tại `127.0.0.1`, chỉ phục vụ Tray UI trên cùng máy. Service sinh token mới mỗi lần khởi động và ghi `{ "port": ..., "token": "..." }` vào `ipc.json` trong thư mục dữ liệu. Chỉ tệp này cho người dùng thường đọc được. Mọi request mang header `Authorization: Bearer <token>`; thiếu hoặc sai token thì trả 401 `{ "error": "unauthorized" }`.
@@ -629,7 +788,9 @@ HTTP tại `127.0.0.1`, chỉ phục vụ Tray UI trên cùng máy. Service sinh
 
 | HTTP | Body |
 | :---- | :---- |
-| 200 | `{ "status": "ok", "uptime": 12.3, "server_reachable": true, "enrollment": "active", "enforcement": { "enabled": true, "reason": null, "since": "2026-11-18T08:00:00Z" } }` |
+| 200 | `{ "status": "ok", "uptime": 12.3, "server_reachable": true, "enrollment": "active", "enforcement": { "enabled": true, "reason": null, "since": "2026-11-18T08:00:00Z" }, "policies": { "7": 3 }, "policy_mode": "cached", "offline_seconds": 0 }` |
+
+`policy_mode` là `cached` khi agent áp chính sách đã ký, `default` khi áp chính sách mặc định. `offline_seconds` là thời gian mất kết nối đã đo.
 
 `enforcement.enabled` là `false` khi service đã tắt cưỡng chế. Khi đó `reason` cho biết lý do: `tray_unavailable` nghĩa là bật lại Tray UI thất bại 3 lần liên tiếp. Cưỡng chế bật lại ngay khi nhận được tín hiệu sống từ Tray UI.
 
@@ -643,3 +804,12 @@ Tray UI gửi mỗi 5 giây. Body: `{ "pid": 4242 }`.
 | 400 | `{ "error": "bad_request" }` (body không phải JSON hoặc `pid` không phải số nguyên dương) |
 
 Service tự bật Tray UI trong phiên người dùng đang hoạt động. Nếu không có tín hiệu sống trong 15 giây sau khi bật, hoặc tiến trình thoát trước tín hiệu sống đầu tiên, thì tính là một lần thất bại.
+
+### Công cụ phát triển
+
+Chỉ có khi service chạy với biến môi trường `OGK_DEV=1` và gói `service.devtools` có trong bản build. Bản phát hành build với `--exclude-module service.devtools` nên không có các route này; gọi tới thì nhận 404. Dùng qua `python -m service.devtools`.
+
+| Route | Body | Tác dụng |
+| :---- | :---- | :---- |
+| `POST /ipc/dev/events` | `{ "events": [...] }` hoặc `{ "vector": "<tên>", "child_id": 7, "count": 1 }` | Đưa sự kiện vào hàng đợi; `vector` lấy sự kiện mẫu hợp lệ trong `docs/test_vectors.json`, thay `ts` bằng giờ hiện tại, `child_id` bằng giá trị gửi lên hoặc trẻ đầu tiên có chính sách, `policy_id` bằng version đang áp. `device_id` luôn được thay bằng thiết bị hiện tại. Trả `{ "queued": n, "pending": m }`; sự kiện sai trả 400 `{ "error": "invalid_event", "field": "..." }`; chưa ghép đôi trả 409 `{ "error": "not_enrolled" }` |
+| `POST /ipc/dev/offline` | `{ "days": 7 }` | Cộng thêm số ngày mất kết nối giả lập rồi kiểm tra hạn chính sách ngay. Trả `{ "offline_seconds": ..., "policy_mode": "default" }` |
