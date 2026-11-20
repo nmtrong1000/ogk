@@ -45,6 +45,10 @@ async def test_seed_creates_accounts_children_and_policies(app, client):
     assert (policy["weekday_quota_minutes"], policy["weekend_quota_minutes"]) == (120, 180)
     assert policy["weekly_schedule"][0] == window("16:00", "21:00")
     assert policy["weekly_schedule"][6] == window("08:00", "21:00")
+    assert [(r["name"], r["action"]) for r in policy["app_rules"]] == [
+        ("chrome.exe", "allow"),
+        ("minecraft.exe", "block"),
+    ]
     versions = (await client.get(f"/api/children/{children['An']['id']}/policy/versions")).json()
     assert len(versions) >= 2
     assert await count(AuditLog) > 0

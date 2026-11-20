@@ -497,7 +497,7 @@ Vai trò `parent`. Cần CSRF. Gỡ thiết bị: đặt `revoked_at`, thu hồi
 
 ## Chính sách
 
-Mỗi trẻ có một chính sách. Server ký chính sách bằng Ed25519; agent chỉ áp dụng chính sách có chữ ký đúng. Từ P12, `rules` có quota ngày thường, quota cuối tuần và lịch tuần; các phase sau thêm luật vào `rules`.
+Mỗi trẻ có một chính sách. Server ký chính sách bằng Ed25519; agent chỉ áp dụng chính sách có chữ ký đúng. Từ P12, `rules` có quota ngày thường, quota cuối tuần và lịch tuần; từ P13 có thêm luật ứng dụng; các phase sau thêm luật vào `rules`.
 
 ### Tài liệu chính sách
 
@@ -513,7 +513,11 @@ Tài liệu được dựng riêng cho từng thiết bị vì `accounts` chỉ 
   "rules": {
     "weekday_quota_minutes": 120,
     "weekend_quota_minutes": 180,
-    "weekly_schedule": ["000000000000001111111111111111111111111111000000", "... đủ 7 chuỗi ..."]
+    "weekly_schedule": ["000000000000001111111111111111111111111111000000", "... đủ 7 chuỗi ..."],
+    "app_rules": [
+      { "action": "block", "name": "game.exe", "sha256": null },
+      { "action": "block", "name": "notepad.exe", "sha256": "abab...ab (64 ký tự hex)" }
+    ]
   },
   "set_by": "parent@example.com"
 }
@@ -529,7 +533,8 @@ Tài liệu được dựng riêng cho từng thiết bị vì `accounts` chỉ 
 | `rules.weekday_quota_minutes` | Số phút dùng máy mỗi ngày từ thứ Hai đến thứ Sáu, 0 đến 1440, mặc định 120 |
 | `rules.weekend_quota_minutes` | Số phút dùng máy mỗi ngày thứ Bảy và Chủ nhật, 0 đến 1440, mặc định 120 |
 | `rules.weekly_schedule` | Lịch tuần: mảng 7 chuỗi, chuỗi 0 là thứ Hai, chuỗi 6 là Chủ nhật. Mỗi chuỗi 48 ký tự; ký tự thứ k là ô 30 phút [k x 30 phút, (k + 1) x 30 phút) theo giờ địa phương của máy trẻ; `1` là được dùng, `0` là khóa. Mặc định 07:00 đến 21:00 mỗi ngày |
-| `set_by` | Email phụ huynh sửa chính sách gần nhất, hiện trên Tray UI khi khóa; chuỗi rỗng nếu tài khoản đã bị xóa |
+| `rules.app_rules` | Luật ứng dụng: mảng tối đa 200 object, sắp theo `name`, rồi `sha256` (null trước), rồi `action`. `name` là tên tệp thực thi chữ thường, 1 đến 255 ký tự, không chứa `/` hay `\`; `sha256` là SHA-256 của tệp thực thi dạng 64 ký tự hex chữ thường, hoặc `null` nếu chỉ so theo tên; `action` là `block` hoặc `allow`. Mỗi cặp (`name`, `sha256`) có tối đa một luật. Mặc định `[]`. Cách áp xem [Kiểm soát ứng dụng](#kiểm-soát-ứng-dụng) |
+| `set_by` | Email phụ huynh sửa chính sách gần nhất, hiện trên Tray UI khi khóa hoặc chặn ứng dụng; chuỗi rỗng nếu tài khoản đã bị xóa |
 
 Ngày thường hay cuối tuần và ô của lịch tính theo giờ tin cậy của agent (xem [Quản lý thời gian](#quản-lý-thời-gian)), không theo giờ hệ thống.
 
@@ -543,10 +548,10 @@ Chữ ký tính trên bytes của tài liệu ở dạng chuẩn hóa:
 - Chỉ có số nguyên, chuỗi, `true`, `false`, `null`, mảng và object. Số thực bị từ chối vì mỗi thư viện in số thực khác nhau.
 - Mã hóa UTF-8.
 
-Trong Python, cách chuẩn hóa này tương đương `json.dumps(obj, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False).encode()` cộng với bước từ chối số thực. Tài liệu ở ví dụ trên (đủ 7 chuỗi lịch giống nhau) chuẩn hóa thành:
+Trong Python, cách chuẩn hóa này tương đương `json.dumps(obj, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False).encode()` cộng với bước từ chối số thực. Tài liệu ở ví dụ trên (đủ 7 chuỗi lịch giống nhau, `sha256` là `ab` lặp 32 lần) chuẩn hóa thành:
 
 ```text
-{"accounts":["S-1-5-21-1004336348-1177238915-682003330-1001"],"child_id":7,"format":1,"issued_at":"2026-11-18T08:00:00Z","policy_version":3,"rules":{"weekday_quota_minutes":120,"weekend_quota_minutes":180,"weekly_schedule":["000000000000001111111111111111111111111111000000",...]},"set_by":"parent@example.com"}
+{"accounts":["S-1-5-21-1004336348-1177238915-682003330-1001"],"child_id":7,"format":1,"issued_at":"2026-11-18T08:00:00Z","policy_version":3,"rules":{"app_rules":[{"action":"block","name":"game.exe","sha256":null},{"action":"block","name":"notepad.exe","sha256":"abab...ab"}],"weekday_quota_minutes":120,"weekend_quota_minutes":180,"weekly_schedule":["000000000000001111111111111111111111111111000000",...]},"set_by":"parent@example.com"}
 ```
 
 Dạng đầy đủ là `valid[0].canonical` trong `docs/test_vectors.json`.
@@ -557,12 +562,12 @@ Dạng đầy đủ là `valid[0].canonical` trong `docs/test_vectors.json`.
 - `key_id` là 16 ký tự hex đầu của SHA-256 trên 32 byte khóa công khai thô. Agent dùng nó để ghi log, không dùng để chọn khóa.
 - Khóa bí mật là tệp PEM PKCS8 do `python -m app.cli gen-policy-key` tạo, đường dẫn trong `OGK_POLICY_SIGNING_KEY`. Server từ chối khởi động nếu thiếu tệp hoặc nhóm và người khác đọc được tệp (cần `chmod 600`).
 - Khóa công khai `policy_public.pem` đi cùng bộ cài agent: `install.ps1 -PolicyPublicKey` chép vào thư mục dữ liệu và ghi `policy_public_key` trong `config.json`.
-- `docs/test_vectors.json` có khóa chỉ dùng cho test, tài liệu mẫu, dạng chuẩn hóa và chữ ký đúng, các ca sai chữ ký (`invalid`) và các ca đúng chữ ký nhưng sai luật (`invalid_rules`). Test của server và agent cùng đọc tệp này. Với khóa test, tài liệu ở ví dụ trên có chữ ký `c7-G__T8t7avg1y63SMCM8n-3JVTl6VdFUqvXR9VsNsFMJzXnw8o-z0-vR9q9ozUkMSzermDXncfhsu6nNnQAQ`.
+- `docs/test_vectors.json` có khóa chỉ dùng cho test, tài liệu mẫu, dạng chuẩn hóa và chữ ký đúng, các ca sai chữ ký (`invalid`) và các ca đúng chữ ký nhưng sai luật (`invalid_rules`). Test của server và agent cùng đọc tệp này. Với khóa test, tài liệu ở ví dụ trên có chữ ký `-5r2Fsh0Om0X4CA5UIis5S5-PwEewAdPuil1kSRyRWAiYWBcD_t38_O8MThuPWaY6Pu7hj_NYa0mDC6e-qK1Bw`.
 
 ### Agent kiểm tra và lưu
 
 - Agent kiểm tra chữ ký từng chính sách trước khi lưu. Một chính sách sai chữ ký làm cả lô bị từ chối, agent giữ bản đang có.
-- Chữ ký đúng nhưng `accounts` không phải mảng chuỗi, `set_by` không phải chuỗi, quota ngoài 0 đến 1440 hoặc lịch không đúng 7 x 48 ký tự `0`/`1` cũng làm cả lô bị từ chối.
+- Chữ ký đúng nhưng `accounts` không phải mảng chuỗi, `set_by` không phải chuỗi, quota ngoài 0 đến 1440, lịch không đúng 7 x 48 ký tự `0`/`1`, hoặc `app_rules` không phải mảng hay có luật sai định dạng ở trên cũng làm cả lô bị từ chối. Thiếu `app_rules` thì agent hiểu là `[]`: chính sách ký từ trước P13 không có trường này, vẫn nạp được và giữ nguyên quota cùng lịch; vector `pre_p13_without_app_rules` kiểm tra trường hợp này.
 - Agent từ chối chính sách có `policy_version` thấp hơn bản đang giữ của cùng trẻ.
 - Agent lưu tài liệu chuẩn hóa và chữ ký trong DB cục bộ, kiểm tra lại chữ ký mỗi lần nạp. Dòng bị sửa thì bị bỏ qua và ghi log.
 - Trẻ không còn trong response thì agent xóa chính sách của trẻ đó.
@@ -571,7 +576,7 @@ Dạng đầy đủ là `valid[0].canonical` trong `docs/test_vectors.json`.
 
 | Thao tác | `action` | `target_type` | Giá trị ghi |
 | :---- | :---- | :---- | :---- |
-| Sửa chính sách | `update` | `policy` | Các trường luật đã đổi cộng `policy_version`, cũ và mới; `weekly_schedule` ghi dạng 336 ký tự liền. `target_id` là id của trẻ; sửa mà giá trị không đổi thì không ghi |
+| Sửa chính sách | `update` | `policy` | Các trường luật đã đổi cộng `policy_version`, cũ và mới; `weekly_schedule` ghi dạng 336 ký tự liền; `app_rules` ghi cả danh sách cũ và mới. `target_id` là id của trẻ; sửa mà giá trị không đổi thì không ghi |
 
 Gán hoặc bỏ gán tài khoản Windows tăng version chính sách của trẻ bị ảnh hưởng nhưng chỉ ghi nhật ký `windows_account` như trước.
 
@@ -584,6 +589,7 @@ Gán hoặc bỏ gán tài khoản Windows tăng version chính sách của tr�
   "weekday_quota_minutes": 120,
   "weekend_quota_minutes": 180,
   "weekly_schedule": ["000000000000001111111111111111111111111111000000", "... đủ 7 chuỗi ..."],
+  "app_rules": [{ "action": "block", "name": "game.exe", "sha256": null }],
   "set_by": "parent@example.com",
   "updated_at": "2026-11-18T08:00:00Z"
 }
@@ -610,15 +616,18 @@ Vai trò `parent`. Mọi trường đều tùy chọn; trường bỏ trống gi
 {
   "weekday_quota_minutes": 90,
   "weekend_quota_minutes": 150,
-  "weekly_schedule": ["000000000000001111111111111111111111111111000000", "... đủ 7 chuỗi ..."]
+  "weekly_schedule": ["000000000000001111111111111111111111111111000000", "... đủ 7 chuỗi ..."],
+  "app_rules": [{ "name": "Game.exe", "sha256": null, "action": "block" }]
 }
 ```
+
+`app_rules` thay cả danh sách; gửi `[]` để xóa hết. Server bỏ khoảng trắng hai đầu, đổi `name` và `sha256` sang chữ thường rồi sắp xếp, nên danh sách chỉ khác thứ tự hoặc hoa thường không làm tăng version. `sha256` bỏ trống được coi là `null`.
 
 | HTTP | Body |
 | :---- | :---- |
 | 200 | Policy sau khi sửa |
 | 404 | `not_found` |
-| 422 | `invalid_quota`, `invalid_schedule` |
+| 422 | `invalid_quota`, `invalid_schedule`, `invalid_app_rules` (luật sai định dạng, trùng cặp `name` và `sha256`, hoặc quá 200 luật) |
 | 401 | `not_authenticated` |
 | 403 | `forbidden`, `csrf_failed` |
 
@@ -633,6 +642,7 @@ Vai trò `parent`. Trả tối đa 50 version gần nhất, mới nhất trướ
     "weekday_quota_minutes": 120,
     "weekend_quota_minutes": 180,
     "weekly_schedule": ["... 7 chuỗi ..."],
+    "app_rules": [],
     "set_by": "parent@example.com",
     "created_at": "2026-11-18T08:00:00Z"
   }
@@ -655,7 +665,7 @@ Access token thiết bị. Trả chính sách đã ký của mọi trẻ đượ
   "policies": [
     {
       "policy": { "accounts": ["..."], "child_id": 7, "format": 1, "...": "như tài liệu chính sách" },
-      "signature": "c7-G__T8t7avg1y63SMCM8n-3JVTl6VdFUqvXR9VsNsFMJzXnw8o-z0-vR9q9ozUkMSzermDXncfhsu6nNnQAQ",
+      "signature": "-5r2Fsh0Om0X4CA5UIis5S5-PwEewAdPuil1kSRyRWAiYWBcD_t38_O8MThuPWaY6Pu7hj_NYa0mDC6e-qK1Bw",
       "key_id": "1bf6796e61f6125c"
     }
   ]
@@ -701,10 +711,10 @@ Mỗi sự kiện có đúng 7 trường. Thiếu trường, thừa trường ho
 
 | `type` | Khi nào |
 | :---- | :---- |
-| `app_start` | Ứng dụng bắt đầu chạy |
-| `app_stop` | Ứng dụng dừng; `duration_sec` là thời gian chạy |
+| `app_start` | Ứng dụng lên cửa sổ trước; `subject` là tên tệp thực thi chữ thường |
+| `app_stop` | Ứng dụng rời cửa sổ trước; `duration_sec` là thời gian ở cửa sổ trước |
 | `domain_query` | Trẻ truy cập một tên miền |
-| `blocked_app` | Ứng dụng bị chặn |
+| `blocked_app` | Ứng dụng bị chặn và bị kết thúc; `subject` là tên tệp thực thi chữ thường |
 | `blocked_domain` | Tên miền bị chặn |
 | `quota_warning` | Cảnh báo sắp hết giờ; `subject` là số phút còn lại `"10"`, `"5"` hoặc `"1"`; `duration_sec` là số giây đã dùng hôm nay |
 | `locked` | Máy bị khóa; `subject` là `"quota"` (hết quota) hoặc `"schedule"` (ngoài lịch); `duration_sec` là số giây đã dùng hôm nay |
@@ -820,7 +830,8 @@ Chính sách mặc định đi cùng bộ cài, không ký:
   "rules": {
     "weekday_quota_minutes": 120,
     "weekend_quota_minutes": 120,
-    "weekly_schedule": ["000000000000001111111111111111111111111111000000", "... 7 chuỗi ..."]
+    "weekly_schedule": ["000000000000001111111111111111111111111111000000", "... 7 chuỗi ..."],
+    "app_rules": []
   }
 }
 ```
@@ -859,7 +870,36 @@ Service đếm thời gian, quyết định cảnh báo và khóa; Tray UI báo 
 - Khi đang khóa mà phiên vẫn mở thì service ra lệnh khóa lại mỗi 5 giây, không ghi thêm sự kiện.
 - Thêm quota, mở lịch hoặc sang ngày mới thì trạng thái về `ok`.
 
-## Kênh IPC giữa service và Tray UI
+## Kiểm soát ứng dụng
+
+Service so luật, kết thúc tiến trình bị chặn và tính thời lượng ứng dụng; Tray UI báo ứng dụng ở cửa sổ trước và hiện cửa sổ giải thích khi chặn.
+
+### So luật
+
+- Mỗi giây service liệt kê tiến trình và chỉ xét tiến trình mới, nhận diện bằng cặp (pid, thời điểm tạo).
+- Tên là tên tệp thực thi chữ thường. SHA-256 tính trên tệp thực thi ở thread phụ, đệm theo đường dẫn, kích thước và thời điểm sửa tệp nên tệp không đổi thì không tính lại. Không đọc được tệp thì chỉ so theo tên.
+- Luật `block` khớp tiến trình nếu `name` bằng tên tiến trình, hoặc `sha256` khác `null` và bằng SHA-256 của tệp. Vì vậy đổi tên `notepad.exe` thành `game.exe` vẫn bị luật chặn có SHA-256 của notepad nhận ra.
+- Luật `allow` chỉ có tác dụng khi `sha256` khác `null` và bằng SHA-256 của tệp; khi đó tiến trình được chạy dù có luật `block` khớp. Luật `allow` có `sha256` là `null` chỉ dùng làm ghi chú.
+- Thứ tự quyết định: `allow` khớp theo SHA-256, rồi `block` khớp, còn lại cho chạy.
+- Khớp `block` theo tên thì chặn ngay khi thấy tiến trình, trừ khi chính sách có luật `allow` có SHA-256; khi đó, và khi chỉ có thể khớp theo SHA-256, service quyết định sau khi tính xong SHA-256.
+
+### Không bao giờ kết thúc
+
+Service không kết thúc:
+
+- Tiến trình ngoài phiên của trẻ đang đăng nhập, pid 0 và 4.
+- Tiến trình hệ thống quan trọng: tên thuộc danh sách cố định (ví dụ `csrss.exe`, `wininit.exe`, `winlogon.exe`, `services.exe`, `lsass.exe`, `smss.exe`, `svchost.exe`, `dwm.exe`, `explorer.exe`, `ogk-service.exe`, `ogk-tray.exe`) **và** tệp thực thi nằm dưới thư mục Windows hoặc thư mục cài OGK. Một tệp khác đổi tên thành `explorer.exe` trong thư mục của trẻ vẫn bị chặn.
+
+### Khi chặn
+
+- Chỉ chặn khi phiên thuộc một trẻ và cưỡng chế đang bật, để không chặn im lặng lúc Tray UI không chạy.
+- Service kết thúc tiến trình, ghi sự kiện `blocked_app` (tối đa một sự kiện mỗi tên trong 5 giây khi trẻ mở lại liên tục) và tăng `block_seq` trong `GET /ipc/appcontrol`. Tray UI hiện cửa sổ giải thích tên ứng dụng, lý do và người đặt luật.
+
+### Thời lượng ứng dụng
+
+- Tray UI báo tên tiến trình của cửa sổ trước trong mỗi heartbeat, không gửi tiêu đề cửa sổ. Ứng dụng chạy ngầm hoặc thu nhỏ không có cửa sổ trước nên không được tính.
+- Đổi ứng dụng ở cửa sổ trước thì service ghi `app_stop` cho ứng dụng cũ, `duration_sec` đo bằng đồng hồ đơn điệu, và `app_start` cho ứng dụng mới.
+- Khoảng đang tính kết thúc khi khóa máy, đăng xuất, đổi trẻ, Tray UI báo rảnh từ 5 phút hoặc không có heartbeat trong 15 giây. Khoảng dài quá 86400 giây được tách làm nhiều sự kiện.
 
 ## Kênh IPC giữa service và Tray UI
 
@@ -877,12 +917,12 @@ HTTP tại `127.0.0.1`, chỉ phục vụ Tray UI trên cùng máy. Service sinh
 
 ### `POST /ipc/heartbeat`
 
-Tray UI gửi mỗi 5 giây. Body: `{ "pid": 4242, "idle_seconds": 12.5 }`. `idle_seconds` là số giây từ lần nhập liệu gần nhất (Windows: `GetLastInputInfo`; Mac: tệp `fake_idle`), có thể bỏ trống.
+Tray UI gửi mỗi 5 giây. Body: `{ "pid": 4242, "idle_seconds": 12.5, "foreground": "chrome.exe" }`. `idle_seconds` là số giây từ lần nhập liệu gần nhất (Windows: `GetLastInputInfo`; Mac: tệp `fake_idle`), có thể bỏ trống. `foreground` là tên tệp thực thi chữ thường của cửa sổ trước (Windows: `GetForegroundWindow` rồi tên tiến trình; Mac: tệp `fake_foreground`), `null` hoặc bỏ trống khi không có cửa sổ trước.
 
 | HTTP | Body |
 | :---- | :---- |
 | 200 | `{ "status": "ok" }` |
-| 400 | `{ "error": "bad_request" }` (body không phải JSON, `pid` không phải số nguyên dương, hoặc `idle_seconds` không phải số không âm) |
+| 400 | `{ "error": "bad_request" }` (body không phải JSON, `pid` không phải số nguyên dương, `idle_seconds` không phải số không âm, hoặc `foreground` không phải chuỗi 1 đến 255 ký tự không chứa `/` hay `\`) |
 
 Service tự bật Tray UI trong phiên người dùng đang hoạt động. Nếu không có tín hiệu sống trong 15 giây sau khi bật, hoặc tiến trình thoát trước tín hiệu sống đầu tiên, thì tính là một lần thất bại.
 
@@ -917,6 +957,21 @@ Tray UI hỏi mỗi giây.
 | `lock_reason` | `quota` hoặc `schedule` |
 | `lock_seq` | Số thứ tự lệnh khóa, tăng dần. Khi `state = locked` và `lock_seq` khác lần trước, Tray UI hiện lý do và người đặt luật khoảng 2 giây rồi khóa máy (Windows: `LockWorkStation`; Mac: ghi `fake_lock.jsonl` và thêm sự kiện `lock` vào `fake_session.jsonl`) |
 | `set_by` | Email phụ huynh đặt luật; rỗng khi áp chính sách mặc định |
+
+### `GET /ipc/appcontrol`
+
+Tray UI hỏi mỗi giây.
+
+```json
+{ "status": "ok", "block_seq": 2, "app": "game.exe", "set_by": "parent@example.com", "source": "cached" }
+```
+
+| Trường | Ý nghĩa |
+| :---- | :---- |
+| `block_seq` | Số thứ tự lần chặn, tăng dần. Tray UI hiện cửa sổ giải thích mỗi số thứ tự một lần; lần hỏi đầu chỉ ghi nhận mốc |
+| `app` | Tên ứng dụng bị chặn gần nhất; `null` khi chưa chặn lần nào |
+| `set_by` | Email phụ huynh đặt luật; rỗng khi áp chính sách mặc định |
+| `source` | `cached` (chính sách đã ký) hoặc `default` (chính sách mặc định) |
 
 ### Công cụ phát triển
 

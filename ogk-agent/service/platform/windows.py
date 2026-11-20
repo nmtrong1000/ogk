@@ -25,9 +25,10 @@ from win32com.shell import shell
 from service.core.bus import SessionEvent
 from service.core.logging_setup import setup_logging
 from service.platform import Entry
+from service.platform.process import list_processes, protected_dirs, read_chunks, terminate
 from service.platform.session import current_session, launch_tray, to_session_event
 
-__all__ = ["current_session", "launch_tray"]
+__all__ = ["current_session", "launch_tray", "list_processes", "protected_dirs", "read_chunks", "terminate"]
 
 log = logging.getLogger("ogk.platform")
 

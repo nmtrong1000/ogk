@@ -15,6 +15,7 @@ export default function VersionHistory({ versions }: { versions: PolicyVersion[]
             <Th>Ngày thường</Th>
             <Th>Cuối tuần</Th>
             <Th>Giờ cho phép/tuần</Th>
+            <Th>Luật ứng dụng</Th>
           </TableRow>
         </TableHead>
         <TableBody>
@@ -26,6 +27,7 @@ export default function VersionHistory({ versions }: { versions: PolicyVersion[]
               <Td className="whitespace-nowrap">{formatMinutes(v.weekday_quota_minutes)}</Td>
               <Td className="whitespace-nowrap">{formatMinutes(v.weekend_quota_minutes)}</Td>
               <Td>{openHours(v.weekly_schedule)}</Td>
+              <Td>{v.app_rules.length}</Td>
             </TableRow>
           ))}
         </TableBody>

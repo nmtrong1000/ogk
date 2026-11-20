@@ -125,3 +125,21 @@ def test_missing_public_key_rejects_everything(data_dir, caplog):
         with pytest.raises(PolicyRejected):
             store.save(body(document(7, 2)))
     assert "every policy is rejected" in caplog.text
+
+
+def test_missing_app_rules_read_as_empty(store, data_dir):
+    doc = document(7, 3, quota=90)
+    del doc["rules"]["app_rules"]
+    store.save(body(doc))
+    restarted = PolicyStore(LocalDb(data_dir), write_public_key(data_dir))
+    assert set(restarted.load()) == {7}
+    policy = restarted.rules_for(7)
+    assert policy.rules["app_rules"] == []
+    assert policy.rules["weekday_quota_minutes"] == 90
+
+
+def test_app_rules_of_wrong_type_still_rejected(store):
+    doc = document(7, 3)
+    doc["rules"]["app_rules"] = "x"
+    with pytest.raises(PolicyRejected):
+        store.save(body(doc))

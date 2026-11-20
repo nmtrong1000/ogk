@@ -24,11 +24,17 @@ OPEN_DAY = "1" * 48
 ALLOWED_DAY = "0" * 14 + "1" * 28 + "0" * 6
 
 
-def rules(quota: int = 120, weekend: int | None = None, schedule: list[str] | None = None) -> dict:
+def rules(
+    quota: int = 120,
+    weekend: int | None = None,
+    schedule: list[str] | None = None,
+    app_rules: list[dict] | None = None,
+) -> dict:
     return {
         "weekday_quota_minutes": quota,
         "weekend_quota_minutes": quota if weekend is None else weekend,
         "weekly_schedule": [ALLOWED_DAY] * 7 if schedule is None else schedule,
+        "app_rules": [] if app_rules is None else app_rules,
     }
 
 
@@ -40,6 +46,7 @@ def document(
     accounts: list[str] | None = None,
     weekend: int | None = None,
     schedule: list[str] | None = None,
+    app_rules: list[dict] | None = None,
     set_by: str = "parent@example.com",
 ) -> dict:
     return {
@@ -48,7 +55,7 @@ def document(
         "format": 1,
         "issued_at": "2026-11-18T08:00:00Z",
         "policy_version": version,
-        "rules": rules(quota, weekend, schedule),
+        "rules": rules(quota, weekend, schedule, app_rules),
         "set_by": set_by,
     }
 

@@ -72,12 +72,17 @@ def test_heartbeat_reaches_service(tmp_path):
     try:
         IpcClient(tmp_path).heartbeat()
         IpcClient(tmp_path).heartbeat(312.04)
+        IpcClient(tmp_path).heartbeat(None, "game.exe")
     finally:
         asyncio.run_coroutine_threadsafe(server.stop(), loop).result(5)
         loop.call_soon_threadsafe(loop.stop)
         thread.join(5)
         loop.close()
-    assert pids == [TrayPing(os.getpid(), None), TrayPing(os.getpid(), 312.0)]
+    assert pids == [
+        TrayPing(os.getpid(), None),
+        TrayPing(os.getpid(), 312.0),
+        TrayPing(os.getpid(), None, "game.exe"),
+    ]
 
 
 def test_heartbeat_without_service_raises(tmp_path):
