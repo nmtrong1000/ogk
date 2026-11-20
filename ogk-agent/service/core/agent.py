@@ -20,6 +20,7 @@ import httpx
 from aiohttp import web
 
 from service.core.alerts import AlertBoard
+from service.core.app_state import AppState
 from service.core.bus import SERVER_TIME, SESSION, TRAY_HEARTBEAT, Bus
 from service.core.clock import SyncClock
 from service.core.config import DEFAULT_POLICY_FILE, Config, bundled_data_dir, load_config
@@ -56,6 +57,7 @@ class ModuleContext:
     clock: TrustedClock | None = None
     alerts: AlertBoard | None = None
     screen: ScreenState | None = None
+    apps: AppState | None = None
 
 
 class Module(Protocol):
@@ -78,6 +80,7 @@ class Agent:
         policy_store: PolicyStore | None = None,
         offline: OfflineGuard | None = None,
         screen: ScreenState | None = None,
+        apps: AppState | None = None,
         modules: Sequence[Module] = (),
         extra_routes: Sequence[web.AbstractRouteDef] = (),
     ) -> None:
@@ -97,6 +100,7 @@ class Agent:
             lambda ping: self._bus.publish(TRAY_HEARTBEAT, ping),
             extra_routes,
             None if screen is None else screen.snapshot,
+            None if apps is None else apps.snapshot,
         )
         self._started = time.monotonic()
         self._server_reachable: bool | None = None
@@ -214,6 +218,7 @@ async def run_agent(data_dir: Path, stop_event: asyncio.Event, modules: Sequence
     clock = TrustedClock(db)
     bus.subscribe(SERVER_TIME, lambda at: clock.offline() if at is None else clock.online(at))
     screen = ScreenState()
+    apps = AppState()
     context = ModuleContext(
         bus,
         enforcement,
@@ -228,6 +233,7 @@ async def run_agent(data_dir: Path, stop_event: asyncio.Event, modules: Sequence
         clock=clock,
         alerts=AlertBoard(),
         screen=screen,
+        apps=apps,
     )
     instances = [factory(context) for factory in modules]
     platform.set_session_listener(lambda event: bus.publish(SESSION, event))
@@ -241,6 +247,7 @@ async def run_agent(data_dir: Path, stop_event: asyncio.Event, modules: Sequence
         policy_store=policy_store,
         offline=offline,
         screen=screen,
+        apps=apps,
         modules=instances,
         extra_routes=dev_routes(context),
     )

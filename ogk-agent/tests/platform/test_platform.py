@@ -1,4 +1,5 @@
 import asyncio
+import json
 import sys
 
 import pytest
@@ -127,3 +128,34 @@ def test_fake_default_tray_command(monkeypatch):
     monkeypatch.delenv("OGK_FAKE_TRAY_CMD", raising=False)
     command = fake.tray_command()
     assert command[-1].endswith("ogk_tray.py")
+
+
+def test_fake_processes_list_and_terminate(data_dir):
+    items = [
+        {"pid": 10, "create_time": 1.5, "name": "Game.exe", "exe": "/disk/game.exe", "session_id": 1},
+        {"pid": 11, "create_time": 2.0, "name": "notes.exe"},
+    ]
+    (data_dir / fake.PROCESSES_FILE).write_text(json.dumps(items), encoding="utf-8")
+    processes = fake.list_processes()
+    assert [(p.pid, p.name, p.session_id) for p in processes] == [(10, "game.exe", 1), (11, "notes.exe", 1)]
+    assert not fake.terminate(10, 9.9)
+    assert fake.terminate(10, 1.5)
+    assert [p.pid for p in fake.list_processes()] == [11]
+    kills = (data_dir / fake.KILLS_FILE).read_text(encoding="utf-8").splitlines()
+    assert json.loads(kills[0])["pid"] == 10
+
+
+def test_fake_processes_missing_file_is_empty(data_dir):
+    assert fake.list_processes() == []
+    assert not fake.terminate(1, 1.0)
+
+
+def test_fake_protected_dirs(monkeypatch):
+    monkeypatch.setenv("OGK_FAKE_SYSTEM_ROOT", "/sys/win")
+    assert fake.protected_dirs() == ["/sys/win"]
+
+
+def test_fake_read_chunks(tmp_path):
+    exe = tmp_path / "game.exe"
+    exe.write_bytes(b"abcdefg")
+    assert list(fake.read_chunks(str(exe), 3)) == [b"abc", b"def", b"g"]

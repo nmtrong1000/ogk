@@ -6,6 +6,7 @@ import { AddDevicePage } from '@/features/enrollment/index.ts'
 import { ChildDetailPage, ChildrenPage, DevicesPage } from '@/features/family/index.ts'
 import { PolicyPage } from '@/features/policy/index.ts'
 import { ScreenTimePage } from '@/features/screentime/index.ts'
+import { AppControlPage } from '@/features/appcontrol/index.ts'
 import ErrorPage from '@/app/ErrorPage.tsx'
 import HomePage from '@/app/HomePage.tsx'
 import Layout from '@/app/Layout.tsx'
@@ -33,6 +34,7 @@ export const router = createBrowserRouter([
           { path: '/children/:id', element: <ChildDetailPage /> },
           { path: '/children/:id/policy', element: <PolicyPage /> },
           { path: '/children/:id/screentime', element: <ScreenTimePage /> },
+          { path: '/children/:id/apps', element: <AppControlPage /> },
           { path: '/devices', element: <DevicesPage /> },
           { path: '/devices/add', element: <AddDevicePage /> },
           { path: '/alerts', element: <AlertsPage /> },

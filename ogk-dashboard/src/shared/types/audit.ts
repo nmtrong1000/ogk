@@ -1,6 +1,8 @@
+import type { AppRule } from '@/shared/types/policy.ts'
+
 export type AuditAction = 'create' | 'update' | 'delete'
 
-export type AuditValue = Record<string, string | number | boolean | null>
+export type AuditValue = Record<string, string | number | boolean | null | AppRule[]>
 
 export type AuditEntry = {
   id: number

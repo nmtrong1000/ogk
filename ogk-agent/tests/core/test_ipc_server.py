@@ -127,6 +127,11 @@ async def test_heartbeat_without_token_rejected(ipc_with_heartbeat):
         {"pid": 1, "idle_seconds": -1},
         {"pid": 1, "idle_seconds": "5"},
         {"pid": 1, "idle_seconds": True},
+        {"pid": 1, "foreground": ""},
+        {"pid": 1, "foreground": 5},
+        {"pid": 1, "foreground": "C:\\Games\\game.exe"},
+        {"pid": 1, "foreground": "a/b.exe"},
+        {"pid": 1, "foreground": "x" * 256},
     ],
 )
 async def test_heartbeat_bad_body_rejected(ipc_with_heartbeat, tmp_path, body):
@@ -151,4 +156,30 @@ async def test_screentime_route_returns_snapshot(tmp_path):
     finally:
         await server.stop()
     assert ok.json() == {"status": "ok", "state": "locked", "lock_seq": 2}
+    assert denied.status_code == 401
+
+
+@pytest.mark.anyio
+async def test_heartbeat_carries_lowercase_foreground(ipc_with_heartbeat, tmp_path):
+    server, pids = ipc_with_heartbeat
+    token = _read(tmp_path)["token"]
+    body = {"pid": 4242, "idle_seconds": 1, "foreground": "Chrome.EXE"}
+    response = await _post(server.port, body, {"Authorization": f"Bearer {token}"})
+    assert response.status_code == 200
+    assert pids == [TrayPing(4242, 1.0, "chrome.exe")]
+
+
+@pytest.mark.anyio
+async def test_appcontrol_route_returns_snapshot(tmp_path):
+    server = IpcServer(tmp_path, 0, dict, app_provider=lambda: {"block_seq": 1, "app": "game.exe"})
+    await server.start()
+    token = _read(tmp_path)["token"]
+    try:
+        async with httpx.AsyncClient() as client:
+            url = f"http://127.0.0.1:{server.port}/ipc/appcontrol"
+            ok = await client.get(url, headers={"Authorization": f"Bearer {token}"})
+            denied = await client.get(url)
+    finally:
+        await server.stop()
+    assert ok.json() == {"status": "ok", "block_seq": 1, "app": "game.exe"}
     assert denied.status_code == 401

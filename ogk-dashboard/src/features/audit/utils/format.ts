@@ -1,15 +1,32 @@
 import type { AuditAction, AuditEntry, AuditValue } from '@/shared/types/audit.ts'
+import type { AppRule, AppRuleAction } from '@/shared/types/policy.ts'
 
 const TARGET_LABELS: Record<string, string> = {
   child: 'con',
   device: 'thiết bị',
   windows_account: 'tài khoản Windows',
+  policy: 'chính sách',
 }
 
 const FIELD_LABELS: Record<string, Record<string, string>> = {
   child: { name: 'Tên', birth_year: 'Năm sinh' },
   device: { name: 'Tên máy' },
   windows_account: { child_id: 'Con được gán (mã số)' },
+  policy: {
+    policy_version: 'Phiên bản',
+    weekday_quota_minutes: 'Giới hạn ngày thường (phút)',
+    weekend_quota_minutes: 'Giới hạn cuối tuần (phút)',
+    weekly_schedule: 'Lịch cho phép',
+    app_rules: 'Luật ứng dụng',
+  },
+}
+
+const RULE_ACTIONS: Record<AppRuleAction, string> = { block: 'Chặn', allow: 'Cho phép' }
+const SHA_PREFIX = 8
+
+function formatRule(rule: AppRule): string {
+  const hash = rule.sha256 ? ` (SHA-256 ${rule.sha256.slice(0, SHA_PREFIX)}…)` : ''
+  return `${RULE_ACTIONS[rule.action] ?? rule.action} ${rule.name}${hash}`
 }
 
 const ACTION_VERBS: Record<AuditAction, string> = { create: 'Thêm', update: 'Sửa', delete: 'Xóa' }
@@ -37,6 +54,7 @@ export function fieldLabel(targetType: string, field: string): string {
 export function formatValue(value: AuditValue[string] | undefined): string {
   if (value === null || value === undefined || value === '') return '(trống)'
   if (typeof value === 'boolean') return value ? 'Có' : 'Không'
+  if (Array.isArray(value)) return value.length === 0 ? '(không có luật)' : value.map(formatRule).join('; ')
   return String(value)
 }
 

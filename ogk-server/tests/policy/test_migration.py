@@ -46,7 +46,7 @@ def test_upgrade_splits_quota_and_backfills_history(db):
     alembic("upgrade", "0008")
     conn = sqlite3.connect(db)
     seed_0008(conn)
-    alembic("upgrade", "head")
+    alembic("upgrade", "0009")
     columns = {r[1] for r in conn.execute("PRAGMA table_info(policies)")}
     assert columns == {
         "child_id",
@@ -89,3 +89,28 @@ def test_downgrade_restores_daily_quota(db):
     alembic("downgrade", "0006")
     tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
     assert "policies" not in tables
+
+
+def test_upgrade_adds_empty_app_rules(db):
+    alembic("upgrade", "0008")
+    conn = sqlite3.connect(db)
+    seed_0008(conn)
+    alembic("upgrade", "head")
+    assert conn.execute("SELECT version, app_rules FROM policies").fetchone() == (3, "[]")
+    assert conn.execute("SELECT version, app_rules FROM policy_versions").fetchone() == (3, "[]")
+    assert "ck_policies_app_rules" in table_sql(conn, "policies")
+    assert "ck_policy_versions_app_rules" in table_sql(conn, "policy_versions")
+    for bad in ("'not json'", "'{}'"):
+        with pytest.raises(sqlite3.IntegrityError):
+            conn.execute(f"UPDATE policies SET app_rules = {bad}")
+
+
+def test_downgrade_drops_app_rules(db):
+    alembic("upgrade", "0008")
+    conn = sqlite3.connect(db)
+    seed_0008(conn)
+    alembic("upgrade", "head")
+    alembic("downgrade", "0009")
+    for table in ("policies", "policy_versions"):
+        assert "app_rules" not in {r[1] for r in conn.execute(f"PRAGMA table_info({table})")}
+    assert conn.execute("SELECT version, weekday_quota_minutes FROM policies").fetchone() == (3, 45)

@@ -3,8 +3,12 @@ The version is bumped inside the UPDATE statement so two concurrent edits never 
 issued_at is the row's updated_at, so the same version always signs to the same bytes as long as the
 child's SIDs on that device are unchanged; assigning an account bumps the version for exactly that reason.
 record_version() and bump_for_accounts() do not commit; the caller commits with its audit entry.
+App rules are normalized (lowercase, sorted) before they are stored, so an edit that only reorders or recases
+the list is not a change and the stored text compares equal to the new one.
 """
 
+import json
+import re
 from datetime import UTC, datetime
 
 from sqlalchemy import select, update
@@ -22,6 +26,7 @@ from app.modules.policy.models import (
     DAYS_PER_WEEK,
     DEFAULT_QUOTA_MINUTES,
     DEFAULT_SCHEDULE,
+    EMPTY_APP_RULES,
     MAX_QUOTA_MINUTES,
     MIN_QUOTA_MINUTES,
     SLOTS_PER_DAY,
@@ -32,7 +37,11 @@ from app.modules.policy.models import (
 FORMAT = 1
 AUDIT_TARGET = "policy"
 MAX_VERSIONS = 50
-RULE_FIELDS = ("weekday_quota_minutes", "weekend_quota_minutes", "weekly_schedule")
+RULE_FIELDS = ("weekday_quota_minutes", "weekend_quota_minutes", "weekly_schedule", "app_rules")
+MAX_APP_RULES = 200
+MAX_APP_NAME = 255
+APP_ACTIONS = ("allow", "block")
+SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 
 
 def now() -> datetime:
@@ -55,6 +64,37 @@ def validate_schedule(days: list[str]) -> str:
     return "".join(days)
 
 
+def _app_rule(rule: dict) -> dict:
+    name, sha256, action = rule.get("name"), rule.get("sha256"), rule.get("action")
+    if not isinstance(name, str) or not isinstance(action, str):
+        raise AppError(422, "invalid_app_rules")
+    name = name.strip().lower()
+    if not 1 <= len(name) <= MAX_APP_NAME or "/" in name or "\\" in name or not name.isprintable():
+        raise AppError(422, "invalid_app_rules")
+    if sha256 is not None:
+        if not isinstance(sha256, str) or not SHA256_RE.match(sha256.strip().lower()):
+            raise AppError(422, "invalid_app_rules")
+        sha256 = sha256.strip().lower()
+    if action not in APP_ACTIONS:
+        raise AppError(422, "invalid_app_rules")
+    return {"action": action, "name": name, "sha256": sha256}
+
+
+def validate_app_rules(items: list[dict]) -> str:
+    if len(items) > MAX_APP_RULES:
+        raise AppError(422, "invalid_app_rules")
+    normalized = [_app_rule(item) for item in items]
+    pairs = {(r["name"], r["sha256"]) for r in normalized}
+    if len(pairs) != len(normalized):
+        raise AppError(422, "invalid_app_rules")
+    normalized.sort(key=lambda r: (r["name"], r["sha256"] or "", r["action"]))
+    return dump_app_rules(normalized)
+
+
+def dump_app_rules(items: list[dict]) -> str:
+    return json.dumps(items, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+
+
 def schedule_days(schedule: str) -> list[str]:
     return [schedule[i : i + SLOTS_PER_DAY] for i in range(0, len(schedule), SLOTS_PER_DAY)]
 
@@ -64,6 +104,7 @@ def rules(row: Policy | PolicyVersion) -> dict:
         "weekday_quota_minutes": row.weekday_quota_minutes,
         "weekend_quota_minutes": row.weekend_quota_minutes,
         "weekly_schedule": schedule_days(row.weekly_schedule),
+        "app_rules": json.loads(row.app_rules),
     }
 
 
@@ -102,6 +143,7 @@ def record_version(db: AsyncSession, policy: Policy) -> None:
             weekday_quota_minutes=policy.weekday_quota_minutes,
             weekend_quota_minutes=policy.weekend_quota_minutes,
             weekly_schedule=policy.weekly_schedule,
+            app_rules=policy.app_rules,
             set_by=policy.updated_by,
             created_at=policy.updated_at,
         )
@@ -120,6 +162,7 @@ async def ensure_policies(db: AsyncSession, child_ids: list[int]) -> list[Policy
             "weekday_quota_minutes": DEFAULT_QUOTA_MINUTES,
             "weekend_quota_minutes": DEFAULT_QUOTA_MINUTES,
             "weekly_schedule": DEFAULT_SCHEDULE,
+            "app_rules": EMPTY_APP_RULES,
             "updated_by": owners.get(cid),
             "updated_at": at,
         }
@@ -162,6 +205,10 @@ async def _bump(db: AsyncSession, child_id: int, values: dict, actor: audit.Acto
     return policy
 
 
+def _audit_values(values: dict) -> dict:
+    return {f: json.loads(v) if f == "app_rules" else v for f, v in values.items()}
+
+
 async def update_policy(db: AsyncSession, child_id: int, owner_id: int, changes: dict, *, actor: audit.Actor) -> dict:
     child = await family.get_child_for_owner(db, child_id, owner_id)
     values: dict = {}
@@ -170,13 +217,16 @@ async def update_policy(db: AsyncSession, child_id: int, owner_id: int, changes:
             values[field] = validate_quota(changes[field])
     if changes.get("weekly_schedule") is not None:
         values["weekly_schedule"] = validate_schedule(changes["weekly_schedule"])
+    if changes.get("app_rules") is not None:
+        values["app_rules"] = validate_app_rules(changes["app_rules"])
     (policy,) = await ensure_policies(db, [child.id])
     values = {field: value for field, value in values.items() if getattr(policy, field) != value}
     if not values:
         return policy_out(policy, await _email(db, policy.updated_by))
-    old = {**{field: getattr(policy, field) for field in values}, "policy_version": policy.version}
+    old = {**_audit_values({field: getattr(policy, field) for field in values}), "policy_version": policy.version}
     policy = await _bump(db, child.id, values, actor)
-    audit.record(db, actor, "update", AUDIT_TARGET, child.id, old, {**values, "policy_version": policy.version})
+    new = {**_audit_values(values), "policy_version": policy.version}
+    audit.record(db, actor, "update", AUDIT_TARGET, child.id, old, new)
     await db.commit()
     return policy_out(policy, await _email(db, policy.updated_by))
 

@@ -43,12 +43,24 @@
             "000000000000001111111111111111111111111111000000",
             "000000000000001111111111111111111111111111000000",
             "000000000000001111111111111111111111111111000000"
+          ],
+          "app_rules": [
+            {
+              "action": "block",
+              "name": "game.exe",
+              "sha256": null
+            },
+            {
+              "action": "block",
+              "name": "notepad.exe",
+              "sha256": "abababababababababababababababababababababababababababababababab"
+            }
           ]
         },
         "set_by": "parent@example.com"
       },
-      "canonical": "{\"accounts\":[\"S-1-5-21-1004336348-1177238915-682003330-1001\"],\"child_id\":7,\"format\":1,\"issued_at\":\"2026-11-18T08:00:00Z\",\"policy_version\":3,\"rules\":{\"weekday_quota_minutes\":120,\"weekend_quota_minutes\":180,\"weekly_schedule\":[\"000000000000001111111111111111111111111111000000\",\"000000000000001111111111111111111111111111000000\",\"000000000000001111111111111111111111111111000000\",\"000000000000001111111111111111111111111111000000\",\"000000000000001111111111111111111111111111000000\",\"000000000000001111111111111111111111111111000000\",\"000000000000001111111111111111111111111111000000\"]},\"set_by\":\"parent@example.com\"}",
-      "signature": "c7-G__T8t7avg1y63SMCM8n-3JVTl6VdFUqvXR9VsNsFMJzXnw8o-z0-vR9q9ozUkMSzermDXncfhsu6nNnQAQ"
+      "canonical": "{\"accounts\":[\"S-1-5-21-1004336348-1177238915-682003330-1001\"],\"child_id\":7,\"format\":1,\"issued_at\":\"2026-11-18T08:00:00Z\",\"policy_version\":3,\"rules\":{\"app_rules\":[{\"action\":\"block\",\"name\":\"game.exe\",\"sha256\":null},{\"action\":\"block\",\"name\":\"notepad.exe\",\"sha256\":\"abababababababababababababababababababababababababababababababab\"}],\"weekday_quota_minutes\":120,\"weekend_quota_minutes\":180,\"weekly_schedule\":[\"000000000000001111111111111111111111111111000000\",\"000000000000001111111111111111111111111111000000\",\"000000000000001111111111111111111111111111000000\",\"000000000000001111111111111111111111111111000000\",\"000000000000001111111111111111111111111111000000\",\"000000000000001111111111111111111111111111000000\",\"000000000000001111111111111111111111111111000000\"]},\"set_by\":\"parent@example.com\"}",
+      "signature": "-5r2Fsh0Om0X4CA5UIis5S5-PwEewAdPuil1kSRyRWAiYWBcD_t38_O8MThuPWaY6Pu7hj_NYa0mDC6e-qK1Bw"
     },
     {
       "name": "quota_0_closed_schedule",
@@ -72,12 +84,41 @@
             "000000000000000000000000000000000000000000000000",
             "000000000000000000000000000000000000000000000000",
             "000000000000000000000000000000000000000000000000"
-          ]
+          ],
+          "app_rules": []
         },
         "set_by": "phụ.huynh@example.com"
       },
-      "canonical": "{\"accounts\":[\"S-1-5-21-1004336348-1177238915-682003330-1001\",\"S-1-5-21-1004336348-1177238915-682003330-1002\"],\"child_id\":8,\"format\":1,\"issued_at\":\"2026-11-18T09:30:15Z\",\"policy_version\":1,\"rules\":{\"weekday_quota_minutes\":0,\"weekend_quota_minutes\":0,\"weekly_schedule\":[\"000000000000000000000000000000000000000000000000\",\"000000000000000000000000000000000000000000000000\",\"000000000000000000000000000000000000000000000000\",\"000000000000000000000000000000000000000000000000\",\"000000000000000000000000000000000000000000000000\",\"000000000000000000000000000000000000000000000000\",\"000000000000000000000000000000000000000000000000\"]},\"set_by\":\"phụ.huynh@example.com\"}",
-      "signature": "sIoD_kH9h6HUO71diVWd2G7JJLcTY5ayS7k8wUO-g7ZtUo3S4ySyCggwD1M5ZUi73IW8HEc-V2sFidbf9L1DAw"
+      "canonical": "{\"accounts\":[\"S-1-5-21-1004336348-1177238915-682003330-1001\",\"S-1-5-21-1004336348-1177238915-682003330-1002\"],\"child_id\":8,\"format\":1,\"issued_at\":\"2026-11-18T09:30:15Z\",\"policy_version\":1,\"rules\":{\"app_rules\":[],\"weekday_quota_minutes\":0,\"weekend_quota_minutes\":0,\"weekly_schedule\":[\"000000000000000000000000000000000000000000000000\",\"000000000000000000000000000000000000000000000000\",\"000000000000000000000000000000000000000000000000\",\"000000000000000000000000000000000000000000000000\",\"000000000000000000000000000000000000000000000000\",\"000000000000000000000000000000000000000000000000\",\"000000000000000000000000000000000000000000000000\"]},\"set_by\":\"phụ.huynh@example.com\"}",
+      "signature": "Zh-zt-JTrsXQQEkCRJohuFUq4zOpwwe5oZL701cg3XNTLu0Hg6LkaSziQzHkCS25YfqfPvISoy69-q6n4dBoBw"
+    },
+    {
+      "name": "pre_p13_without_app_rules",
+      "policy": {
+        "accounts": [
+          "S-1-5-21-1004336348-1177238915-682003330-1001"
+        ],
+        "child_id": 7,
+        "format": 1,
+        "issued_at": "2026-11-18T08:00:00Z",
+        "policy_version": 3,
+        "rules": {
+          "weekday_quota_minutes": 120,
+          "weekend_quota_minutes": 180,
+          "weekly_schedule": [
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000"
+          ]
+        },
+        "set_by": "parent@example.com"
+      },
+      "canonical": "{\"accounts\":[\"S-1-5-21-1004336348-1177238915-682003330-1001\"],\"child_id\":7,\"format\":1,\"issued_at\":\"2026-11-18T08:00:00Z\",\"policy_version\":3,\"rules\":{\"weekday_quota_minutes\":120,\"weekend_quota_minutes\":180,\"weekly_schedule\":[\"000000000000001111111111111111111111111111000000\",\"000000000000001111111111111111111111111111000000\",\"000000000000001111111111111111111111111111000000\",\"000000000000001111111111111111111111111111000000\",\"000000000000001111111111111111111111111111000000\",\"000000000000001111111111111111111111111111000000\",\"000000000000001111111111111111111111111111000000\"]},\"set_by\":\"parent@example.com\"}",
+      "signature": "c7-G__T8t7avg1y63SMCM8n-3JVTl6VdFUqvXR9VsNsFMJzXnw8o-z0-vR9q9ozUkMSzermDXncfhsu6nNnQAQ"
     }
   ],
   "invalid": [
@@ -102,7 +143,8 @@
             "000000000000001111111111111111111111111111000000",
             "000000000000001111111111111111111111111111000000",
             "000000000000001111111111111111111111111111000000"
-          ]
+          ],
+          "app_rules": []
         },
         "set_by": "parent@example.com"
       },
@@ -129,7 +171,8 @@
             "000000000000001111111111111111111111111111000000",
             "000000000000001111111111111111111111111111000000",
             "000000000000001111111111111111111111111111000000"
-          ]
+          ],
+          "app_rules": []
         },
         "set_by": "parent@example.com"
       },
@@ -156,7 +199,8 @@
             "000000000000001111111111111111111111111111000000",
             "000000000000001111111111111111111111111111000000",
             "000000000000001111111111111111111111111111000000"
-          ]
+          ],
+          "app_rules": []
         },
         "set_by": "parent@example.com"
       },
@@ -183,7 +227,8 @@
             "000000000000001111111111111111111111111111000000",
             "000000000000001111111111111111111111111111000000",
             "000000000000001111111111111111111111111111000000"
-          ]
+          ],
+          "app_rules": []
         },
         "set_by": "parent@example.com"
       },
@@ -210,7 +255,8 @@
             "000000000000001111111111111111111111111111000000",
             "000000000000001111111111111111111111111111000000",
             "000000000000001111111111111111111111111111000000"
-          ]
+          ],
+          "app_rules": []
         },
         "set_by": "parent@example.com"
       },
@@ -301,6 +347,18 @@
           "subject": "schedule",
           "duration_sec": 3600,
           "policy_id": 3
+        }
+      },
+      {
+        "name": "blocked_app",
+        "event": {
+          "ts": "2026-11-19T08:05:00Z",
+          "device_id": 3,
+          "child_id": 7,
+          "type": "blocked_app",
+          "subject": "game.exe",
+          "duration_sec": 0,
+          "policy_id": 4
         }
       }
     ],
@@ -432,11 +490,12 @@
             "000000000000001111111111111111111111111111000000",
             "000000000000001111111111111111111111111111000000",
             "000000000000001111111111111111111111111111000000"
-          ]
+          ],
+          "app_rules": []
         },
         "set_by": "parent@example.com"
       },
-      "signature": "MN-t3jTxY8ysfI5_92CGZfD_-uL9AeN-riWNRhUkIWofTwYbrgICJj8cvCkTmxkmRMQa6LB5MAfbfm86OO0AAQ"
+      "signature": "rb3Q6SXZlVN4qRily4h-2R4vkLO-u5t100OYgsSTsVMuqaTOqzAgQG1LVBpkYH7rTz_jJnOzC5m9G2UtLwDBBg"
     },
     {
       "name": "schedule_bad_char",
@@ -459,11 +518,12 @@
             "000000000000001111111111111111111111111111000000",
             "000000000000001111111111111111111111111111000000",
             "000000000000001111111111111111111111111111000000"
-          ]
+          ],
+          "app_rules": []
         },
         "set_by": "parent@example.com"
       },
-      "signature": "T9PWP1dkvH-SxGZmYG3Xtt1Uyt1FnlRm6L8YyXCZ2HundUZMYx-VHTHmkq-Tildha83yKzQuIx08-Smoix7QDA"
+      "signature": "O8OOYrtTxiuwyHK6QaBHlXVAuf66a-slc6t7DosYMwHi-FrTl4w_t0P5B0y-saRW1H225ILuIqLbLg76pgs2CA"
     },
     {
       "name": "quota_over_limit",
@@ -486,11 +546,12 @@
             "000000000000001111111111111111111111111111000000",
             "000000000000001111111111111111111111111111000000",
             "000000000000001111111111111111111111111111000000"
-          ]
+          ],
+          "app_rules": []
         },
         "set_by": "parent@example.com"
       },
-      "signature": "k3X66b1gmNXchOZ55xtuTL6D5xA8d6W2uAY8aa3OCdOxDB3IKvbcShkpVDb0k4ry61tECmZo7B9lg_D4dVgNBw"
+      "signature": "2WoGbRu2PB9pqIJRjGG-LMyD7IQPJGPZbuz1k2ZWEvWBoI9X7aKz_R9b-Yb39BgAS4ENc4eoMHpOl6cP7ofWCw"
     },
     {
       "name": "accounts_not_list",
@@ -511,11 +572,178 @@
             "000000000000001111111111111111111111111111000000",
             "000000000000001111111111111111111111111111000000",
             "000000000000001111111111111111111111111111000000"
+          ],
+          "app_rules": []
+        },
+        "set_by": "parent@example.com"
+      },
+      "signature": "MZajaN8GNOiC5xr4WK9q05lQYNtRCSS0plygR8fyCcGN63YxftGXLhkLsYEm5nSA4fYEoVfjemUvsIb9lIHeAQ"
+    },
+    {
+      "name": "app_rules_not_list",
+      "policy": {
+        "accounts": [
+          "S-1-5-21-1004336348-1177238915-682003330-1001"
+        ],
+        "child_id": 7,
+        "format": 1,
+        "issued_at": "2026-11-18T08:00:00Z",
+        "policy_version": 3,
+        "rules": {
+          "weekday_quota_minutes": 120,
+          "weekend_quota_minutes": 180,
+          "weekly_schedule": [
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000"
+          ],
+          "app_rules": {
+            "name": "game.exe"
+          }
+        },
+        "set_by": "parent@example.com"
+      },
+      "signature": "bibcktNlfgkJ9Nt17Dm4RiN6Dwv7nuDcw_na8Ld4EQ9M5VZXn78AvhcfHEoPQnC22ZMYNsy173EudHbgkPJrCA"
+    },
+    {
+      "name": "app_rule_bad_sha",
+      "policy": {
+        "accounts": [
+          "S-1-5-21-1004336348-1177238915-682003330-1001"
+        ],
+        "child_id": 7,
+        "format": 1,
+        "issued_at": "2026-11-18T08:00:00Z",
+        "policy_version": 3,
+        "rules": {
+          "weekday_quota_minutes": 120,
+          "weekend_quota_minutes": 180,
+          "weekly_schedule": [
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000"
+          ],
+          "app_rules": [
+            {
+              "action": "block",
+              "name": "game.exe",
+              "sha256": "abc"
+            }
           ]
         },
         "set_by": "parent@example.com"
       },
-      "signature": "tIumV-xSk4bXkdc9XqW_8xzWiMS1wSPqqZidBwX9mRRAZEVw57yt1Zxp2N9BSgxDgUDz_rzrvDR4rTp3bZdCBQ"
+      "signature": "IUWq6_PUN5KFWyahjHFz49hztmL8x64zeDmCy8l484CrS7NJf8RMS5Lp89ANu35OtjgkxSSrNFuQyK82plq1CA"
+    },
+    {
+      "name": "app_rule_bad_action",
+      "policy": {
+        "accounts": [
+          "S-1-5-21-1004336348-1177238915-682003330-1001"
+        ],
+        "child_id": 7,
+        "format": 1,
+        "issued_at": "2026-11-18T08:00:00Z",
+        "policy_version": 3,
+        "rules": {
+          "weekday_quota_minutes": 120,
+          "weekend_quota_minutes": 180,
+          "weekly_schedule": [
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000"
+          ],
+          "app_rules": [
+            {
+              "action": "deny",
+              "name": "game.exe",
+              "sha256": null
+            }
+          ]
+        },
+        "set_by": "parent@example.com"
+      },
+      "signature": "56a8O_h6gy5PB_puEwSKxaW8HqSVn640qRLKAIHJHcJnsD6-VtK51JVQg2ECjZI2s_E7lOYuhdGQmxNx6EH2Bw"
+    },
+    {
+      "name": "app_rule_name_with_path",
+      "policy": {
+        "accounts": [
+          "S-1-5-21-1004336348-1177238915-682003330-1001"
+        ],
+        "child_id": 7,
+        "format": 1,
+        "issued_at": "2026-11-18T08:00:00Z",
+        "policy_version": 3,
+        "rules": {
+          "weekday_quota_minutes": 120,
+          "weekend_quota_minutes": 180,
+          "weekly_schedule": [
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000"
+          ],
+          "app_rules": [
+            {
+              "action": "block",
+              "name": "c:\\games\\game.exe",
+              "sha256": null
+            }
+          ]
+        },
+        "set_by": "parent@example.com"
+      },
+      "signature": "QjgY6x5r_5bvRNzxmt5vwDCK4GD7P2feCVfp7yZRDoKfE3mrNZrCgmZ4ntU9P3PpyEYYH5PaEfsX9ZnrKJtlBg"
+    },
+    {
+      "name": "app_rule_uppercase_name",
+      "policy": {
+        "accounts": [
+          "S-1-5-21-1004336348-1177238915-682003330-1001"
+        ],
+        "child_id": 7,
+        "format": 1,
+        "issued_at": "2026-11-18T08:00:00Z",
+        "policy_version": 3,
+        "rules": {
+          "weekday_quota_minutes": 120,
+          "weekend_quota_minutes": 180,
+          "weekly_schedule": [
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000"
+          ],
+          "app_rules": [
+            {
+              "action": "block",
+              "name": "Game.exe",
+              "sha256": null
+            }
+          ]
+        },
+        "set_by": "parent@example.com"
+      },
+      "signature": "Dqy29L6khXYinodNlDN4k6DURaTBFmxVHBACLGFZBc-FNqIATgPnjqW5d1xMJAnEWFPU5tuSFK_8R9VIaogrBA"
     }
   ]
 }

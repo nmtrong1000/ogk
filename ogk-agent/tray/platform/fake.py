@@ -5,6 +5,8 @@ idle_seconds reads <data>/fake_idle (a number of seconds, 0 when missing) so idl
 `echo 400 > .ogk-data/fake_idle`. lock_workstation records each order in fake_lock.jsonl and appends a "lock"
 line to fake_session.jsonl in the format of the service's fake platform, so the service sees the session
 locked just as SESSIONCHANGE would report it on Windows.
+foreground_app reads <data>/fake_foreground (an exe name; missing or empty means no foreground window), e.g.
+`echo chrome.exe > .ogk-data/fake_foreground`.
 """
 
 import contextlib
@@ -18,6 +20,7 @@ from pathlib import Path
 import pystray
 
 IDLE_FILE = "fake_idle"
+FOREGROUND_FILE = "fake_foreground"
 LOCK_FILE = "fake_lock.jsonl"
 SESSION_FILE = "fake_session.jsonl"
 FAKE_SESSION_ID = 1
@@ -32,6 +35,14 @@ def idle_seconds() -> float:
         return max(0.0, float((data_dir() / IDLE_FILE).read_text(encoding="utf-8").strip()))
     except (OSError, ValueError):
         return 0.0
+
+
+def foreground_app() -> str | None:
+    try:
+        name = (data_dir() / FOREGROUND_FILE).read_text(encoding="utf-8").strip().lower()
+    except OSError:
+        return None
+    return name or None
 
 
 def _append(name: str, record: dict) -> None:

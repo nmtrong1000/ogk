@@ -50,6 +50,7 @@ class ChildSeed:
     weekday_hours: tuple[str, str] | None = None
     weekend_hours: tuple[str, str] | None = None
     username: str | None = None
+    app_rules: tuple[dict, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -64,7 +65,16 @@ PARENTS = [
     ParentSeed(
         PARENT1_EMAIL,
         [
-            ChildSeed("An", 2015, 120, 180, ("16:00", "21:00"), ("08:00", "21:00"), "an"),
+            ChildSeed(
+                "An",
+                2015,
+                120,
+                180,
+                ("16:00", "21:00"),
+                ("08:00", "21:00"),
+                "an",
+                ({"name": "minecraft.exe", "action": "block"}, {"name": "chrome.exe", "action": "allow"}),
+            ),
             ChildSeed("Bình", 2018, 60, 120, ("17:00", "20:00"), ("08:00", "20:00"), "binh"),
         ],
         device_name="PC phòng khách (dữ liệu mẫu)",
@@ -124,6 +134,8 @@ def sample_events(device_id: int, children: dict[str, int], versions: dict[int, 
                 add(start + timedelta(seconds=3660), child_id, "locked", "quota", 3660)
         if day == 2:
             add(base.replace(hour=14), sorted(children.values())[0], "locked", "schedule", 600)
+        if day % 3 == 0:
+            add(base.replace(hour=15), sorted(children.values())[0], "blocked_app", "minecraft.exe", 0)
     return events
 
 
@@ -187,6 +199,7 @@ async def seed(db: AsyncSession, password: str, now: datetime, pairing_code: boo
                 "weekday_quota_minutes": child.weekday_minutes,
                 "weekend_quota_minutes": child.weekend_minutes,
                 "weekly_schedule": schedule_for(child),
+                "app_rules": [dict(rule) for rule in child.app_rules] or None,
             }
             await policy.update_policy(db, created.id, parent.id, changes, actor=actor)
         report.children[spec.email] = list(children)

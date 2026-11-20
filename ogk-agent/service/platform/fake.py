@@ -6,6 +6,8 @@ the command appends to fake_session.jsonl and the service polls that file, readi
 it started. OGK_FAKE_TRAY_CMD replaces the Tray UI command line, e.g. /usr/bin/false to simulate a Tray UI
 that cannot start. OGK_FAKE_SESSION_USER picks which fake account is logged on (default: the first one), so its
 SID is what screen time matches against the signed policies.
+Processes: fake_processes.json in the data dir is a list of {pid, create_time, name, exe, session_id}; a kill
+removes the entry and appends it to fake_kills.jsonl. OGK_FAKE_SYSTEM_ROOT stands in for %SystemRoot%.
 """
 
 import asyncio
@@ -19,11 +21,12 @@ import signal
 import subprocess
 import sys
 import uuid
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from pathlib import Path
 
 from service.core.bus import SESSION_KINDS, SessionEvent, SessionInfo
 from service.core.logging_setup import setup_logging
+from service.core.process_info import ProcInfo
 from service.platform import Entry
 
 log = logging.getLogger("ogk.platform")
@@ -161,6 +164,59 @@ class TrayProcess:
         except subprocess.TimeoutExpired:
             self._process.kill()
             self._process.wait()
+
+
+PROCESSES_FILE = "fake_processes.json"
+KILLS_FILE = "fake_kills.jsonl"
+DEFAULT_SYSTEM_ROOT = "/fake/Windows"
+
+
+def _read_processes() -> list[dict]:
+    try:
+        raw = json.loads((data_dir() / PROCESSES_FILE).read_text(encoding="utf-8"))
+    except (FileNotFoundError, ValueError):
+        return []
+    return raw if isinstance(raw, list) else []
+
+
+def list_processes() -> list[ProcInfo]:
+    processes = []
+    for item in _read_processes():
+        try:
+            processes.append(
+                ProcInfo(
+                    int(item["pid"]),
+                    float(item["create_time"]),
+                    str(item["name"]).lower(),
+                    str(item.get("exe", "")),
+                    item.get("session_id", FAKE_SESSION_ID),
+                )
+            )
+        except (KeyError, TypeError, ValueError):
+            log.warning("ignoring bad entry in %s", PROCESSES_FILE)
+    return processes
+
+
+def terminate(pid: int, create_time: float) -> bool:
+    items = _read_processes()
+    match = [i for i in items if i.get("pid") == pid and i.get("create_time") == create_time]
+    if not match:
+        return False
+    rest = [i for i in items if i not in match]
+    (data_dir() / PROCESSES_FILE).write_text(json.dumps(rest), encoding="utf-8")
+    with (data_dir() / KILLS_FILE).open("a", encoding="utf-8") as file:
+        file.write(json.dumps(match[0]) + "\n")
+    return True
+
+
+def protected_dirs() -> list[str]:
+    return [os.environ.get("OGK_FAKE_SYSTEM_ROOT", DEFAULT_SYSTEM_ROOT)]
+
+
+def read_chunks(path: str, size: int) -> Iterator[bytes]:
+    with Path(path).open("rb") as file:
+        while chunk := file.read(size):
+            yield chunk
 
 
 def tray_command() -> list[str]:

@@ -10,7 +10,7 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 from app.core import signing
 from app.modules.policy.models import Policy
-from app.modules.policy.service import document
+from app.modules.policy.service import document, dump_app_rules
 
 VECTORS = json.loads((Path(__file__).resolve().parents[3] / "docs" / "test_vectors.json").read_text(encoding="utf-8"))
 PRIVATE_KEY = Ed25519PrivateKey.from_private_bytes(bytes.fromhex(VECTORS["key"]["test_only_private_seed_hex"]))
@@ -52,6 +52,7 @@ def test_server_document_matches_vector_shape():
         weekday_quota_minutes=120,
         weekend_quota_minutes=180,
         weekly_schedule="".join(expected["rules"]["weekly_schedule"]),
+        app_rules=dump_app_rules(expected["rules"]["app_rules"]),
         updated_at=datetime(2026, 11, 18, 8, tzinfo=UTC),
     )
     assert document(policy, expected["accounts"], expected["set_by"]) == expected

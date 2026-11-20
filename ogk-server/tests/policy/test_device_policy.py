@@ -34,6 +34,7 @@ async def test_returns_signed_policies_of_mapped_children(parent, agent):
             "weekday_quota_minutes": 120,
             "weekend_quota_minutes": 120,
             "weekly_schedule": DEFAULT_SCHEDULE,
+            "app_rules": [],
         }
         assert item["key_id"] == signing.key_id(public_key)
         assert signing.verify(public_key, item["policy"], item["signature"])

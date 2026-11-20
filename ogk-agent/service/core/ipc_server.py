@@ -1,6 +1,7 @@
 """ipc.json is the one file in the locked data directory that the Tray UI, running as the child, must read,
 so it is the only file given a user-readable ACL.
-idle_seconds in a heartbeat is optional so an older Tray UI still counts as alive.
+idle_seconds and foreground in a heartbeat are optional so an older Tray UI still counts as alive.
+foreground is only an exe basename; a path would leak the child's folder names into events.
 """
 
 import hmac
@@ -25,6 +26,8 @@ IPC_FILE = "ipc.json"
 StatusProvider = Callable[[], dict[str, Any]]
 HeartbeatHandler = Callable[[TrayPing], None]
 ScreenProvider = Callable[[], dict[str, Any]]
+AppProvider = Callable[[], dict[str, Any]]
+MAX_APP_NAME = 255
 
 
 class IpcServer:
@@ -36,7 +39,9 @@ class IpcServer:
         heartbeat_handler: HeartbeatHandler | None = None,
         extra_routes: Sequence[web.AbstractRouteDef] = (),
         screen_provider: ScreenProvider | None = None,
+        app_provider: AppProvider | None = None,
     ) -> None:
+        self._apps = app_provider
         self._file = data_dir / IPC_FILE
         self._screen = screen_provider
         self._port = port
@@ -56,6 +61,7 @@ class IpcServer:
         app.router.add_get("/ipc/status", self._handle_status)
         app.router.add_post("/ipc/heartbeat", self._handle_heartbeat)
         app.router.add_get("/ipc/screentime", self._handle_screentime)
+        app.router.add_get("/ipc/appcontrol", self._handle_appcontrol)
         app.router.add_routes(self._extra_routes)
         self._runner = web.AppRunner(app, access_log=None)
         await self._runner.setup()
@@ -101,11 +107,30 @@ class IpcServer:
         idle = body.get("idle_seconds")
         if idle is not None and (isinstance(idle, bool) or not isinstance(idle, int | float) or not 0 <= idle < 1e9):
             return web.json_response({"error": "bad_request"}, status=400)
+        foreground = body.get("foreground")
+        if foreground is not None and not _app_name_ok(foreground):
+            return web.json_response({"error": "bad_request"}, status=400)
         if self._heartbeat is not None:
-            self._heartbeat(TrayPing(pid, None if idle is None else float(idle)))
+            idle_value = None if idle is None else float(idle)
+            self._heartbeat(TrayPing(pid, idle_value, None if foreground is None else foreground.lower()))
         return web.json_response({"status": "ok"})
+
+    async def _handle_appcontrol(self, request: web.Request) -> web.Response:
+        if self._apps is None:
+            return web.json_response({"error": "not_available"}, status=404)
+        return web.json_response({"status": "ok", **self._apps()})
 
     async def _handle_screentime(self, request: web.Request) -> web.Response:
         if self._screen is None:
             return web.json_response({"error": "not_available"}, status=404)
         return web.json_response({"status": "ok", **self._screen()})
+
+
+def _app_name_ok(value: Any) -> bool:
+    return (
+        isinstance(value, str)
+        and 1 <= len(value) <= MAX_APP_NAME
+        and "/" not in value
+        and "\\" not in value
+        and value.isprintable()
+    )

@@ -7,14 +7,17 @@ The default policy (data/default_policy.json) is unsigned because it ships insid
 server. It applies to every child while expired is set, and to any child with no signed policy at all, so a
 child is never left without rules.
 A correctly signed policy whose rules, accounts or set_by are malformed is rejected like a bad signature, so
-enforcement never has to guess. child_for_sid uses the signed accounts even while the policies are expired,
-because the default policy still needs to know which child is logged on.
+enforcement never has to guess. The one exception is a missing app_rules, read as []: policies signed before
+app_rules existed carry none, and rejecting them would also drop their quota and schedule.
+child_for_sid uses the signed accounts even while the policies are expired, because the default policy still
+needs to know which child is logged on.
 Methods are synchronous; async callers run them in a worker thread.
 """
 
 import base64
 import json
 import logging
+import re
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -31,6 +34,10 @@ log = logging.getLogger("ogk.policy")
 FORMAT = 1
 DEFAULT_VERSION = 0
 MAX_QUOTA_MINUTES = 1440
+MAX_APP_RULES = 200
+MAX_APP_NAME = 255
+APP_ACTIONS = ("allow", "block")
+SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 DAYS_PER_WEEK = 7
 SLOTS_PER_DAY = 48
 MODE_CACHED = "cached"
@@ -104,13 +111,37 @@ def _quota_ok(value: Any) -> bool:
     return _is_int(value) and 0 <= value <= MAX_QUOTA_MINUTES
 
 
+def _app_rule_ok(rule: Any) -> bool:
+    if not isinstance(rule, dict):
+        return False
+    name, sha256, action = rule.get("name"), rule.get("sha256"), rule.get("action")
+    return (
+        isinstance(name, str)
+        and 1 <= len(name) <= MAX_APP_NAME
+        and name == name.lower()
+        and "/" not in name
+        and "\\" not in name
+        and (sha256 is None or (isinstance(sha256, str) and SHA256_RE.match(sha256) is not None))
+        and action in APP_ACTIONS
+    )
+
+
+def _app_rules_ok(value: Any) -> bool:
+    return isinstance(value, list) and len(value) <= MAX_APP_RULES and all(_app_rule_ok(r) for r in value)
+
+
 def rules_ok(rules: Any) -> bool:
     return (
         isinstance(rules, dict)
         and _quota_ok(rules.get("weekday_quota_minutes"))
         and _quota_ok(rules.get("weekend_quota_minutes"))
         and _schedule_ok(rules.get("weekly_schedule"))
+        and _app_rules_ok(rules.get("app_rules", []))
     )
+
+
+def _with_defaults(rules: dict) -> dict:
+    return {"app_rules": [], **rules}
 
 
 def verify_bytes(public_key: Ed25519PublicKey, canonical: bytes, signature: str) -> SignedPolicy:
@@ -190,13 +221,17 @@ class PolicyStore:
         return changed
 
     def _default_for(self, child_id: int) -> EffectivePolicy:
-        return EffectivePolicy(child_id, DEFAULT_VERSION, dict(self._default.rules), MODE_DEFAULT)
+        return EffectivePolicy(child_id, DEFAULT_VERSION, _with_defaults(self._default.rules), MODE_DEFAULT)
 
     def rules_for(self, child_id: int) -> EffectivePolicy | None:
         signed = self._current.get(child_id)
         if self.mode == MODE_CACHED and signed is not None:
             return EffectivePolicy(
-                child_id, signed.version, dict(signed.document["rules"]), MODE_CACHED, signed.document["set_by"]
+                child_id,
+                signed.version,
+                _with_defaults(signed.document["rules"]),
+                MODE_CACHED,
+                signed.document["set_by"],
             )
         if self._default is None:
             return None

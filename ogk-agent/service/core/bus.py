@@ -39,6 +39,7 @@ class SessionInfo:
 class TrayPing:
     pid: int
     idle_seconds: float | None = None
+    foreground: str | None = None
 
 
 Handler = Callable[[Any], None]

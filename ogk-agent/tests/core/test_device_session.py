@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from datetime import timedelta
 
@@ -167,3 +168,26 @@ async def test_client_is_built_with_stored_pin(server, db):
     await session.me()
     assert pins == [PIN]
     await session.aclose()
+
+
+async def test_concurrent_calls_share_one_refresh(session, server, db):
+    enrolled(server, db)
+    await session.me()
+    server.requests.clear()
+    server.now += timedelta(minutes=20)
+    results = await asyncio.gather(session.me(), session.me(), session.me())
+    assert results == [{"id": 1, "name": "PC"}] * 3
+    assert server.requests.count(("POST", "/api/device/token/refresh")) == 1
+    assert session.state == "active"
+    assert db.load().revoked_at is None
+
+
+async def test_concurrent_retries_share_one_refresh(session, server, db):
+    enrolled(server, db)
+    await session.me()
+    server.requests.clear()
+    server.access = {k: server.now for k in server.access}
+    results = await asyncio.gather(session.me(), session.me(), session.me())
+    assert results == [{"id": 1, "name": "PC"}] * 3
+    assert server.requests.count(("POST", "/api/device/token/refresh")) == 1
+    assert session.state == "active"

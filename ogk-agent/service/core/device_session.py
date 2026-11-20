@@ -3,6 +3,8 @@ shortly before it expires and once more if the server still says token_expired o
 device_revoked and invalid_refresh are final: the revocation is written to the local DB, logged once at
 ERROR, and no further request is made until the device is enrolled again. invalid_refresh also covers a
 refresh token reused after rotation, after which the server has revoked every token of the device.
+That is why refreshes are serialized: tasks that all see an expired token at once (heartbeat, policy and
+events at boot) must share one rotation; a task whose token was already rotated while it waited skips it.
 Credentials are re-read from the DB while not active, so a service that is already running picks up a new
 enrollment without a restart. The HTTP client is rebuilt whenever the pinned certificate changes.
 """
@@ -62,6 +64,7 @@ class DeviceSession:
         self._creds: Credentials | None = None
         self._client: ServerClient | None = None
         self._pin: str | None = None
+        self._refresh_lock = asyncio.Lock()
 
     @property
     def state(self) -> str:
@@ -105,7 +108,14 @@ class DeviceSession:
         )
 
     async def refresh(self) -> None:
-        creds, client = await self._ready()
+        seen, _ = await self._ready()
+        async with self._refresh_lock:
+            creds, client = await self._ready()
+            if creds.refresh_token != seen.refresh_token:
+                return
+            await self._rotate(creds, client)
+
+    async def _rotate(self, creds: Credentials, client: ServerClient) -> None:
         try:
             tokens = await client.refresh(creds.device_id, creds.refresh_token, creds.device_secret)
         except ApiError as exc:

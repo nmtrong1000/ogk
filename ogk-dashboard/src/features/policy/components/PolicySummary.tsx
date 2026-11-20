@@ -10,7 +10,7 @@ export default function PolicySummary({ policy }: { policy: Policy }) {
       description={`Cập nhật ${formatDateTime(policy.updated_at)} bởi ${setterLabel(policy.set_by)}`}
       actions={<Badge tone="brand">Phiên bản {policy.policy_version}</Badge>}
     >
-      <dl className="grid gap-4 sm:grid-cols-3">
+      <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div>
           <dt className="text-sm text-ink-muted">Ngày thường (T2–T6)</dt>
           <dd className="mt-1 text-lg font-semibold text-ink">
@@ -26,6 +26,13 @@ export default function PolicySummary({ policy }: { policy: Policy }) {
         <div>
           <dt className="text-sm text-ink-muted">Khung giờ cho phép</dt>
           <dd className="mt-1 text-lg font-semibold text-ink">{openHours(policy.weekly_schedule)} giờ mỗi tuần</dd>
+        </div>
+        <div>
+          <dt className="text-sm text-ink-muted">Ứng dụng</dt>
+          <dd className="mt-1 text-lg font-semibold text-ink">
+            {policy.app_rules.filter((r) => r.action === 'block').length} bị chặn,{' '}
+            {policy.app_rules.filter((r) => r.action === 'allow').length} cho phép
+          </dd>
         </div>
       </dl>
       <ul className="mt-6 divide-y divide-brand-100/80">

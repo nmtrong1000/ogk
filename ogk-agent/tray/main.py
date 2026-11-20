@@ -2,6 +2,7 @@ import queue
 import tkinter as tk
 from collections.abc import Callable
 
+from tray.features import appcontrol
 from tray.features.presence import STARTUP_MESSAGE, STARTUP_TITLE, StatusWindow, create_icon, start_heartbeat
 from tray.features.presence.icon import TOOLTIP
 from tray.features.screentime import MENU_TEXT, Plan, ScreenTimeView, start_polling
@@ -40,6 +41,8 @@ def main() -> None:
 
     root.after(POLL_MS, drain)
     root.after(NOTIFY_DELAY_MS, lambda: platform.notify(icon, STARTUP_TITLE, STARTUP_MESSAGE))
-    start_heartbeat(client, idle=platform.idle_seconds)
+    blocks = appcontrol.BlockView(root)
+    start_heartbeat(client, idle=platform.idle_seconds, foreground=platform.foreground_app)
     start_polling(client, jobs.put, apply_screentime)
+    appcontrol.start_polling(client, jobs.put, blocks.show)
     platform.run_tray(icon, root)

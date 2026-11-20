@@ -1,7 +1,16 @@
+export type AppRuleAction = 'allow' | 'block'
+
+export type AppRule = {
+  name: string
+  sha256: string | null
+  action: AppRuleAction
+}
+
 export type PolicyRules = {
   weekday_quota_minutes: number
   weekend_quota_minutes: number
   weekly_schedule: string[]
+  app_rules: AppRule[]
 }
 
 export type Policy = PolicyRules & {
