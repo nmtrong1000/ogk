@@ -7,12 +7,12 @@ import sys
 from functools import partial
 
 from service.core.agent import run_agent
-from service.modules import appcontrol, policy, presence, screentime, sync
+from service.modules import appcontrol, policy, presence, screentime, sync, webfilter
 from service.platform import get_platform
 
 ENROLL_COMMAND = "enroll"
 FAKE_SESSION_COMMAND = "fake-session"
-MODULES = [presence.create, policy.create, sync.create, screentime.create, appcontrol.create]
+MODULES = [presence.create, policy.create, sync.create, screentime.create, appcontrol.create, webfilter.create]
 
 
 def main(argv: list[str] | None = None) -> None:

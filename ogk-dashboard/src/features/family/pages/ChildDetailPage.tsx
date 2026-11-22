@@ -83,6 +83,7 @@ function ChildDetail({ id }: { id: number }) {
         <nav className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-sm font-medium">
           <Link to={`/children/${id}/screentime`}>Thời gian dùng máy</Link>
           <Link to={`/children/${id}/apps`}>Ứng dụng</Link>
+          <Link to={`/children/${id}/webfilter`}>Lọc website</Link>
           <Link to={`/children/${id}/policy`}>Chính sách</Link>
         </nav>
       </div>

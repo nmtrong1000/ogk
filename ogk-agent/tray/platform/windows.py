@@ -25,6 +25,23 @@ def run_tray(icon: pystray.Icon, root: tk.Tk) -> None:
     root.mainloop()
 
 
+_tray_mutex = None
+
+
+def acquire_single_instance() -> bool:
+    """Allow only one tray process in this interactive Windows session."""
+    global _tray_mutex
+    ctypes.set_last_error(0)
+    handle = _kernel32.CreateMutexW(None, False, "Local\\OGKTraySingleton")
+    if not handle:
+        raise ctypes.WinError(ctypes.get_last_error())
+    if ctypes.get_last_error() == 183:  # ERROR_ALREADY_EXISTS
+        _kernel32.CloseHandle(handle)
+        return False
+    _tray_mutex = handle
+    return True
+
+
 def notify(icon: pystray.Icon, title: str, message: str) -> None:
     icon.notify(message, title)
 
@@ -52,6 +69,9 @@ FRAME_HOST = "applicationframehost.exe"
 
 _user32 = ctypes.WinDLL("user32", use_last_error=True)
 _kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+_kernel32.CreateMutexW.argtypes = [ctypes.c_void_p, wintypes.BOOL, wintypes.LPCWSTR]
+_kernel32.CreateMutexW.restype = wintypes.HANDLE
+_kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
 _user32.GetForegroundWindow.restype = wintypes.HWND
 _user32.GetWindowThreadProcessId.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.DWORD)]
 _user32.GetWindowThreadProcessId.restype = wintypes.DWORD

@@ -15,6 +15,8 @@ from app.modules.policy.router import device_router as policy_device_router
 from app.modules.policy.router import router as policy_router
 from app.modules.sync.router import device_router as sync_device_router
 from app.modules.sync.router import router as sync_router
+from app.modules.webfilter.router import admin_router as webfilter_admin_router
+from app.modules.webfilter.router import parent_router as webfilter_parent_router
 
 CSRF_EXEMPT_PREFIXES: tuple[str, ...] = DEVICE_PREFIXES
 
@@ -36,6 +38,8 @@ def create_app() -> FastAPI:
     app.include_router(policy_device_router)
     app.include_router(sync_router)
     app.include_router(sync_device_router)
+    app.include_router(webfilter_parent_router)
+    app.include_router(webfilter_admin_router)
     dist = get_settings().dashboard_dist
     if dist and (dist / "index.html").is_file():
         dashboard.register(app, dist)

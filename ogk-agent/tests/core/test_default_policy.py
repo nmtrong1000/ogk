@@ -21,7 +21,16 @@ DEFAULT = load_default_policy(bundled_data_dir() / DEFAULT_POLICY_FILE)
 
 
 def test_shipped_default_policy_has_quota_and_weekly_schedule():
-    assert DEFAULT.rules == rules(120)
+    expected = rules(120)
+    expected.update(
+        {
+            "web_allowlist": [],
+            "web_blocklist": [],
+            "blocked_categories": ["adult", "social"],
+            "category_domains": {},
+        }
+    )
+    assert DEFAULT.rules == expected
 
 
 @pytest.mark.parametrize(
@@ -58,7 +67,9 @@ def test_signed_policy_applies_while_fresh(data_dir):
     store = make_store(data_dir)
     assert store.mode == MODE_CACHED
     effective = store.rules_for(7)
-    assert (effective.version, effective.rules, effective.source) == (3, rules(45), MODE_CACHED)
+    expected = rules(45)
+    expected.update({"web_allowlist": [], "web_blocklist": [], "blocked_categories": [], "category_domains": {}})
+    assert (effective.version, effective.rules, effective.source) == (3, expected, MODE_CACHED)
 
 
 def test_child_without_signed_policy_gets_default(data_dir):
@@ -71,7 +82,8 @@ def test_expired_store_applies_default_to_every_child(data_dir):
     assert store.set_expired(True)
     assert not store.set_expired(True)
     assert store.mode == MODE_DEFAULT
-    assert {cid: (p.version, p.rules) for cid, p in store.effective().items()} == {7: (0, DEFAULT.rules)}
+    expected = {"web_allowlist": [], "web_blocklist": [], "category_domains": {}, **DEFAULT.rules}
+    assert {cid: (p.version, p.rules) for cid, p in store.effective().items()} == {7: (0, expected)}
     assert store.versions() == {7: 3}
 
 

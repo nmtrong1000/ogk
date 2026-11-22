@@ -63,6 +63,10 @@ def run_tray(icon: pystray.Icon, root: tk.Tk) -> None:
     root.mainloop()
 
 
+def acquire_single_instance() -> bool:
+    return True
+
+
 def _quote(text: str) -> str:
     return json.dumps(text, ensure_ascii=False)
 

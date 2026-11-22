@@ -10,12 +10,13 @@ DEFAULT_SCHEDULE = ("0" * 14 + "1" * 28 + "0" * 6) * 7
 
 
 def alembic(*args: str) -> None:
-    subprocess.run(
+    result = subprocess.run(
         [sys.executable, "-m", "alembic", "-c", str(SERVER_DIR / "alembic.ini"), *args],
         cwd=SERVER_DIR,
-        check=True,
         capture_output=True,
     )
+    if result.returncode:
+        raise RuntimeError(result.stderr.decode())
 
 
 def seed_0008(conn: sqlite3.Connection) -> None:
@@ -76,7 +77,7 @@ def test_downgrade_restores_daily_quota(db):
     seed_0008(conn)
     alembic("upgrade", "head")
     alembic("downgrade", "0008")
-    assert conn.execute("SELECT child_id, version, daily_quota_minutes FROM policies").fetchone() == (7, 3, 45)
+    assert conn.execute("SELECT child_id, version, daily_quota_minutes FROM policies").fetchone() == (7, 4, 45)
     assert {r[1] for r in conn.execute("PRAGMA table_info(policies)")} == {
         "child_id",
         "version",
@@ -96,10 +97,32 @@ def test_upgrade_adds_empty_app_rules(db):
     conn = sqlite3.connect(db)
     seed_0008(conn)
     alembic("upgrade", "head")
-    assert conn.execute("SELECT version, app_rules FROM policies").fetchone() == (3, "[]")
-    assert conn.execute("SELECT version, app_rules FROM policy_versions").fetchone() == (3, "[]")
+    assert conn.execute("SELECT version, app_rules FROM policies").fetchone() == (4, "[]")
+    assert conn.execute("SELECT version, app_rules FROM policy_versions ORDER BY version DESC LIMIT 1").fetchone() == (
+        4,
+        "[]",
+    )
     assert "ck_policies_app_rules" in table_sql(conn, "policies")
     assert "ck_policy_versions_app_rules" in table_sql(conn, "policy_versions")
+
+
+def test_webfilter_migration_bumps_existing_policy_versions(db):
+    alembic("upgrade", "0008")
+    conn = sqlite3.connect(db)
+    seed_0008(conn)
+    alembic("upgrade", "0010")
+    alembic("upgrade", "0011")
+    assert conn.execute("SELECT version, blocked_categories FROM policies").fetchone() == (
+        4,
+        '["adult","social"]',
+    )
+    assert conn.execute(
+        "SELECT version, web_allowlist, web_blocklist, blocked_categories FROM policy_versions ORDER BY version"
+    ).fetchall() == [
+        (3, "[]", "[]", '["adult","social"]'),
+        (4, "[]", "[]", '["adult","social"]'),
+    ]
+    assert conn.execute("SELECT count(*) FROM web_categories").fetchone()[0] >= 200
     for bad in ("'not json'", "'{}'"):
         with pytest.raises(sqlite3.IntegrityError):
             conn.execute(f"UPDATE policies SET app_rules = {bad}")
@@ -113,4 +136,4 @@ def test_downgrade_drops_app_rules(db):
     alembic("downgrade", "0009")
     for table in ("policies", "policy_versions"):
         assert "app_rules" not in {r[1] for r in conn.execute(f"PRAGMA table_info({table})")}
-    assert conn.execute("SELECT version, weekday_quota_minutes FROM policies").fetchone() == (3, 45)
+    assert conn.execute("SELECT version, weekday_quota_minutes FROM policies").fetchone() == (4, 45)

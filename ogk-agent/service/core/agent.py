@@ -34,6 +34,7 @@ from service.core.policy_store import PolicyStore, load_default_policy
 from service.core.screen_state import ScreenState
 from service.core.server_client import ApiError, CertificatePinError, ServerClient
 from service.core.trusted_clock import TrustedClock
+from service.core.web_state import WebState
 from service.platform import get_platform
 
 log = logging.getLogger("ogk.agent")
@@ -58,6 +59,7 @@ class ModuleContext:
     alerts: AlertBoard | None = None
     screen: ScreenState | None = None
     apps: AppState | None = None
+    web_state: WebState | None = None
 
 
 class Module(Protocol):
@@ -81,6 +83,7 @@ class Agent:
         offline: OfflineGuard | None = None,
         screen: ScreenState | None = None,
         apps: AppState | None = None,
+        web_state: WebState | None = None,
         modules: Sequence[Module] = (),
         extra_routes: Sequence[web.AbstractRouteDef] = (),
     ) -> None:
@@ -92,6 +95,7 @@ class Agent:
         self._enforcement = enforcement or Enforcement()
         self._policy_store = policy_store
         self._offline = offline
+        self._web_state = web_state or WebState()
         self._modules = list(modules)
         self._ipc = IpcServer(
             data_dir,
@@ -101,6 +105,7 @@ class Agent:
             extra_routes,
             None if screen is None else screen.snapshot,
             None if apps is None else apps.snapshot,
+            self._web_state.snapshot,
         )
         self._started = time.monotonic()
         self._server_reachable: bool | None = None
@@ -219,6 +224,7 @@ async def run_agent(data_dir: Path, stop_event: asyncio.Event, modules: Sequence
     bus.subscribe(SERVER_TIME, lambda at: clock.offline() if at is None else clock.online(at))
     screen = ScreenState()
     apps = AppState()
+    web_state = WebState()
     context = ModuleContext(
         bus,
         enforcement,
@@ -234,6 +240,7 @@ async def run_agent(data_dir: Path, stop_event: asyncio.Event, modules: Sequence
         alerts=AlertBoard(),
         screen=screen,
         apps=apps,
+        web_state=web_state,
     )
     instances = [factory(context) for factory in modules]
     platform.set_session_listener(lambda event: bus.publish(SESSION, event))
@@ -248,6 +255,7 @@ async def run_agent(data_dir: Path, stop_event: asyncio.Event, modules: Sequence
         offline=offline,
         screen=screen,
         apps=apps,
+        web_state=web_state,
         modules=instances,
         extra_routes=dev_routes(context),
     )

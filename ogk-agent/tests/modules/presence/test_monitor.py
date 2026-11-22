@@ -88,6 +88,20 @@ async def test_launches_tray_in_active_session(env):
 
 
 @pytest.mark.anyio
+async def test_late_heartbeat_from_existing_tray_stops_duplicate_launch(env):
+    bus, _, platform, _, monitor = env
+    await monitor.tick()
+    duplicate = platform.launched[0][1]
+
+    _heartbeat(bus, 999)
+
+    assert duplicate.terminated
+    assert monitor._process is None
+    await monitor.tick()
+    assert len(platform.launched) == 1
+
+
+@pytest.mark.anyio
 async def test_killed_tray_is_launched_again(env, caplog):
     caplog.set_level(logging.INFO)
     bus, _, platform, clock, monitor = env

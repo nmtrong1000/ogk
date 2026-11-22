@@ -7,6 +7,7 @@ import { ChildDetailPage, ChildrenPage, DevicesPage } from '@/features/family/in
 import { PolicyPage } from '@/features/policy/index.ts'
 import { ScreenTimePage } from '@/features/screentime/index.ts'
 import { AppControlPage } from '@/features/appcontrol/index.ts'
+import { AdminCatalogPage, WebFilterPage } from '@/features/webfilter/index.ts'
 import ErrorPage from '@/app/ErrorPage.tsx'
 import HomePage from '@/app/HomePage.tsx'
 import Layout from '@/app/Layout.tsx'
@@ -35,6 +36,7 @@ export const router = createBrowserRouter([
           { path: '/children/:id/policy', element: <PolicyPage /> },
           { path: '/children/:id/screentime', element: <ScreenTimePage /> },
           { path: '/children/:id/apps', element: <AppControlPage /> },
+          { path: '/children/:id/webfilter', element: <WebFilterPage /> },
           { path: '/devices', element: <DevicesPage /> },
           { path: '/devices/add', element: <AddDevicePage /> },
           { path: '/alerts', element: <AlertsPage /> },
@@ -42,7 +44,10 @@ export const router = createBrowserRouter([
       },
       {
         element: <RequireAuth roles={['admin']} />,
-        children: [{ path: '/admin/accounts', element: <AdminAccountsPage /> }],
+        children: [
+          { path: '/admin/accounts', element: <AdminAccountsPage /> },
+          { path: '/admin/webfilter', element: <AdminCatalogPage /> },
+        ],
       },
       {
         element: <RequireAuth roles={['parent', 'admin']} />,

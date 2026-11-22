@@ -46,6 +46,16 @@ def test_invalid_rules_are_signed_correctly(case):
 
 def test_server_document_matches_vector_shape():
     expected = VECTORS["valid"][0]["policy"]
+    expected = {
+        **expected,
+        "rules": {
+            **expected["rules"],
+            "web_allowlist": [],
+            "web_blocklist": [],
+            "blocked_categories": ["adult", "social"],
+            "category_domains": {},
+        },
+    }
     policy = Policy(
         child_id=7,
         version=3,
@@ -53,6 +63,9 @@ def test_server_document_matches_vector_shape():
         weekend_quota_minutes=180,
         weekly_schedule="".join(expected["rules"]["weekly_schedule"]),
         app_rules=dump_app_rules(expected["rules"]["app_rules"]),
+        web_allowlist="[]",
+        web_blocklist="[]",
+        blocked_categories='["adult","social"]',
         updated_at=datetime(2026, 11, 18, 8, tzinfo=UTC),
     )
-    assert document(policy, expected["accounts"], expected["set_by"]) == expected
+    assert document(policy, expected["accounts"], expected["set_by"], {}) == expected

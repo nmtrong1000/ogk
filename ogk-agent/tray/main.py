@@ -6,6 +6,8 @@ from tray.features import appcontrol
 from tray.features.presence import STARTUP_MESSAGE, STARTUP_TITLE, StatusWindow, create_icon, start_heartbeat
 from tray.features.presence.icon import TOOLTIP
 from tray.features.screentime import MENU_TEXT, Plan, ScreenTimeView, start_polling
+from tray.features.webfilter import BlockView as WebBlockView
+from tray.features.webfilter import start_polling as start_webfilter_polling
 from tray.ipc_client import IpcClient
 from tray.platform import get_platform
 
@@ -15,6 +17,8 @@ NOTIFY_DELAY_MS = 1500
 
 def main() -> None:
     platform = get_platform()
+    if not platform.acquire_single_instance():
+        return
     jobs: queue.Queue[Callable[[], None]] = queue.Queue()
     root = tk.Tk()
     root.withdraw()
@@ -45,4 +49,6 @@ def main() -> None:
     start_heartbeat(client, idle=platform.idle_seconds, foreground=platform.foreground_app)
     start_polling(client, jobs.put, apply_screentime)
     appcontrol.start_polling(client, jobs.put, blocks.show)
+    web_blocks = WebBlockView(root)
+    start_webfilter_polling(client, jobs.put, web_blocks.show)
     platform.run_tray(icon, root)

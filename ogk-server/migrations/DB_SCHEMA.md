@@ -113,6 +113,9 @@ erDiagram
         integer weekend_quota_minutes
         text weekly_schedule
         text app_rules
+        text web_allowlist
+        text web_blocklist
+        text blocked_categories
         integer updated_by FK
         datetime updated_at
     }
@@ -124,6 +127,9 @@ erDiagram
         integer weekend_quota_minutes
         text weekly_schedule
         text app_rules
+        text web_allowlist
+        text web_blocklist
+        text blocked_categories
         integer set_by FK
         datetime created_at
     }
@@ -152,6 +158,11 @@ erDiagram
         datetime first_seen_at
         datetime last_seen_at
         datetime resolved_at
+    }
+    web_categories {
+        text domain PK
+        text category
+        datetime updated_at
     }
 ```
 
@@ -292,6 +303,9 @@ erDiagram
 | weekend_quota_minutes | Số phút dùng máy mỗi ngày thứ Bảy và Chủ nhật. | Số nguyên từ 0 đến 1440 | No | 120 khi tạo |
 | weekly_schedule | Lịch tuần 7 x 48 ghép thành một chuỗi: 7 đoạn 48 ký tự, đoạn đầu là thứ Hai; ký tự thứ k của một đoạn là ô 30 phút bắt đầu lúc k x 30 phút theo giờ máy trẻ, `1` là được dùng, `0` là khóa. API và tài liệu đã ký tách thành mảng 7 chuỗi. | Văn bản đúng 336 ký tự `0`/`1` | No | 07:00 đến 21:00 mỗi ngày khi tạo |
 | app_rules | Danh sách luật ứng dụng dạng JSON chuẩn hóa: mảng đối tượng `{"action", "name", "sha256"}` sắp theo `name`, rồi `sha256`, rồi `action`. API và tài liệu đã ký trả về mảng này. | Văn bản JSON, là mảng, tối đa 200 phần tử | No | `[]` khi tạo |
+| web_allowlist | Tên miền được miễn chặn; áp dụng cho cả tên miền con và luôn ưu tiên hơn danh sách chặn. | Văn bản JSON, mảng tối đa 1000 tên miền chuẩn hóa | No | `[]` khi tạo |
+| web_blocklist | Tên miền bị chặn; áp dụng cho cả tên miền con. | Văn bản JSON, mảng tối đa 1000 tên miền chuẩn hóa | No | `[]` khi tạo |
+| blocked_categories | Nhóm phân loại bị chặn: education, entertainment, social, games, adult, unclassified. | Văn bản JSON, mảng không trùng | No | `adult`, `social` |
 | updated_by | Phụ huynh tạo hoặc sửa chính sách gần nhất, tham chiếu `accounts.id`; email của tài khoản này là `set_by` trong tài liệu đã ký. Xóa tài khoản thì đặt NULL. | Số nguyên | Yes | Chủ của trẻ khi tạo |
 | updated_at | Thời điểm tạo hoặc đổi chính sách gần nhất; dùng làm `issued_at` trong tài liệu đã ký. | Thời điểm UTC | No | None |
 
@@ -308,6 +322,9 @@ erDiagram
 | weekend_quota_minutes | Như `policies.weekend_quota_minutes` tại version này. | Số nguyên từ 0 đến 1440 | No | None |
 | weekly_schedule | Như `policies.weekly_schedule` tại version này. | Văn bản đúng 336 ký tự `0`/`1` | No | None |
 | app_rules | Như `policies.app_rules` tại version này. | Văn bản JSON, là mảng | No | `[]` khi tạo |
+| web_allowlist | Như `policies.web_allowlist` tại version này. | Văn bản JSON, mảng tên miền | No | `[]` khi tạo |
+| web_blocklist | Như `policies.web_blocklist` tại version này. | Văn bản JSON, mảng tên miền | No | `[]` khi tạo |
+| blocked_categories | Như `policies.blocked_categories` tại version này. | Văn bản JSON, mảng nhóm | No | `adult`, `social` khi tạo |
 | set_by | Phụ huynh tạo ra version này, tham chiếu `accounts.id`. Xóa tài khoản thì đặt NULL. | Số nguyên | Yes | None |
 | created_at | Thời điểm tạo version, bằng `policies.updated_at` lúc đó. | Thời điểm UTC | No | None |
 
@@ -351,6 +368,16 @@ erDiagram
 | first_seen_at | Thời điểm agent ghi nhận lần đầu, không muộn hơn lúc server nhận. | Thời điểm UTC | No | None |
 | last_seen_at | Heartbeat gần nhất còn báo cảnh báo này. | Thời điểm UTC | No | None |
 | resolved_at | Heartbeat đầu tiên không còn báo cảnh báo; `NULL` khi cảnh báo đang mở. | Thời điểm UTC | Yes | None |
+
+### web_categories
+
+**Purpose:** Bảng phân loại tên miền dùng chung, được nạp sẵn hơn 200 mục và chỉ admin được sửa qua API. Agent nhận bản phân loại trong tài liệu chính sách đã ký.
+
+| Column | Description | Data type | Nullable? | Default |
+|---|---|---|---|---|
+| domain | Tên miền ASCII chữ thường duy nhất, không có dấu chấm cuối. | Văn bản, tối đa 253 ký tự | No | None |
+| category | Một trong sáu nhóm phân loại. | Văn bản, tối đa 32 ký tự | No | None |
+| updated_at | Thời điểm phân loại được thêm hoặc đổi. | Thời điểm UTC | No | None |
 
 ## Integrity Constraints
 
@@ -1026,3 +1053,26 @@ $$
 - `policies`
 - `policy_versions`
 - Relevant attributes: `policies.app_rules`, `policy_versions.app_rules`
+
+### IC-039: Luật website hợp lệ
+
+**Statement:** Hai danh sách tên miền là mảng JSON tối đa 1000 tên miền chuẩn hóa, `blocked_categories` là mảng không trùng của sáu nhóm cho phép. Với cùng tên miền, miễn chặn luôn được xét trước luật chặn.
+
+**Context:** DB kiểm tra ba cột là mảng JSON. Server kiểm tra cú pháp tên miền ASCII, chuẩn hóa chữ thường và dấu chấm cuối, giới hạn số phần tử và tên nhóm trước khi lưu. Migration 0011 tăng version và tạo history snapshot cho chính sách hiện có để agent tải bảng phân loại ban đầu. Agent xác minh lại cấu trúc trong tài liệu đã ký; quyết định chặn áp dụng miễn chặn trước danh sách chặn rồi mới tới nhóm.
+
+**Impacted Data Objects:**
+
+- `policies`
+- `policy_versions`
+- Relevant attributes: `web_allowlist`, `web_blocklist`, `blocked_categories`
+
+### IC-040: Nhóm phân loại website hợp lệ
+
+**Statement:** Mỗi dòng `web_categories` có tên miền duy nhất và nhóm thuộc `education`, `entertainment`, `social`, `games`, `adult` hoặc `unclassified`; catalog chứa tối thiểu 200 tên miền.
+
+**Context:** DB kiểm tra khóa chính theo tên miền và `ck_web_categories_category`. Migration 0011 nạp 201 mục phân loại; API admin chặn xóa nếu catalog đã ở mức 200.
+
+**Impacted Data Objects:**
+
+- `web_categories`
+- Relevant attributes: `domain`, `category`

@@ -130,6 +130,19 @@ def test_fake_default_tray_command(monkeypatch):
     assert command[-1].endswith("ogk_tray.py")
 
 
+def test_fake_network_configuration_round_trip(tmp_path):
+    fake.configure_dns(tmp_path)
+    fake.configure_firewall(tmp_path)
+    fake.disable_doh(tmp_path)
+    assert json.loads((tmp_path / "dns_config.json").read_text(encoding="utf-8")) == {"configured": True}
+    assert json.loads((tmp_path / "firewall_config.json").read_text(encoding="utf-8")) == {"configured": True}
+    fake.restore_dns(tmp_path)
+    fake.restore_firewall(tmp_path)
+    fake.restore_doh(tmp_path)
+    assert not (tmp_path / "dns_config.json").exists()
+    assert not (tmp_path / "firewall_config.json").exists()
+
+
 def test_fake_processes_list_and_terminate(data_dir):
     items = [
         {"pid": 10, "create_time": 1.5, "name": "Game.exe", "exe": "/disk/game.exe", "session_id": 1},

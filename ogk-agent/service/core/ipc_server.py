@@ -27,6 +27,7 @@ StatusProvider = Callable[[], dict[str, Any]]
 HeartbeatHandler = Callable[[TrayPing], None]
 ScreenProvider = Callable[[], dict[str, Any]]
 AppProvider = Callable[[], dict[str, Any]]
+WebFilterProvider = Callable[[], dict[str, Any]]
 MAX_APP_NAME = 255
 
 
@@ -40,8 +41,10 @@ class IpcServer:
         extra_routes: Sequence[web.AbstractRouteDef] = (),
         screen_provider: ScreenProvider | None = None,
         app_provider: AppProvider | None = None,
+        webfilter_provider: WebFilterProvider | None = None,
     ) -> None:
         self._apps = app_provider
+        self._webfilter = webfilter_provider
         self._file = data_dir / IPC_FILE
         self._screen = screen_provider
         self._port = port
@@ -62,6 +65,7 @@ class IpcServer:
         app.router.add_post("/ipc/heartbeat", self._handle_heartbeat)
         app.router.add_get("/ipc/screentime", self._handle_screentime)
         app.router.add_get("/ipc/appcontrol", self._handle_appcontrol)
+        app.router.add_get("/ipc/webfilter", self._handle_webfilter)
         app.router.add_routes(self._extra_routes)
         self._runner = web.AppRunner(app, access_log=None)
         await self._runner.setup()
@@ -124,6 +128,11 @@ class IpcServer:
         if self._screen is None:
             return web.json_response({"error": "not_available"}, status=404)
         return web.json_response({"status": "ok", **self._screen()})
+
+    async def _handle_webfilter(self, request: web.Request) -> web.Response:
+        if self._webfilter is None:
+            return web.json_response({"error": "not_available"}, status=404)
+        return web.json_response({"status": "ok", **self._webfilter()})
 
 
 def _app_name_ok(value: Any) -> bool:

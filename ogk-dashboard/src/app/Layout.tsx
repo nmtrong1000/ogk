@@ -44,9 +44,14 @@ export default function Layout() {
                   </>
                 )}
                 {me.role === 'admin' && (
-                  <NavLink to="/admin/accounts" className={navClass}>
-                    Tài khoản
-                  </NavLink>
+                  <>
+                    <NavLink to="/admin/accounts" className={navClass}>
+                      Tài khoản
+                    </NavLink>
+                    <NavLink to="/admin/webfilter" className={navClass}>
+                      Phân loại web
+                    </NavLink>
+                  </>
                 )}
                 <NavLink to="/audit" className={navClass}>
                   Nhật ký

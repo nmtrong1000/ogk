@@ -119,6 +119,53 @@
       },
       "canonical": "{\"accounts\":[\"S-1-5-21-1004336348-1177238915-682003330-1001\"],\"child_id\":7,\"format\":1,\"issued_at\":\"2026-11-18T08:00:00Z\",\"policy_version\":3,\"rules\":{\"weekday_quota_minutes\":120,\"weekend_quota_minutes\":180,\"weekly_schedule\":[\"000000000000001111111111111111111111111111000000\",\"000000000000001111111111111111111111111111000000\",\"000000000000001111111111111111111111111111000000\",\"000000000000001111111111111111111111111111000000\",\"000000000000001111111111111111111111111111000000\",\"000000000000001111111111111111111111111111000000\",\"000000000000001111111111111111111111111111000000\"]},\"set_by\":\"parent@example.com\"}",
       "signature": "c7-G__T8t7avg1y63SMCM8n-3JVTl6VdFUqvXR9VsNsFMJzXnw8o-z0-vR9q9ozUkMSzermDXncfhsu6nNnQAQ"
+    },
+    {
+      "name": "web_filter_rules",
+      "policy": {
+        "accounts": [
+          "S-1-5-21-1004336348-1177238915-682003330-1012"
+        ],
+        "child_id": 12,
+        "format": 1,
+        "issued_at": "2026-11-22T00:00:00Z",
+        "policy_version": 1,
+        "rules": {
+          "weekday_quota_minutes": 120,
+          "weekend_quota_minutes": 120,
+          "weekly_schedule": [
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000",
+            "000000000000001111111111111111111111111111000000"
+          ],
+          "app_rules": [],
+          "web_allowlist": [
+            "school.edu.vn"
+          ],
+          "web_blocklist": [
+            "example.com"
+          ],
+          "blocked_categories": [
+            "adult",
+            "social"
+          ],
+          "category_domains": {
+            "adult": [
+              "adult.example"
+            ],
+            "social": [
+              "social.example"
+            ]
+          }
+        },
+        "set_by": "parent@example.com"
+      },
+      "canonical": "{\"accounts\":[\"S-1-5-21-1004336348-1177238915-682003330-1012\"],\"child_id\":12,\"format\":1,\"issued_at\":\"2026-11-22T00:00:00Z\",\"policy_version\":1,\"rules\":{\"app_rules\":[],\"blocked_categories\":[\"adult\",\"social\"],\"category_domains\":{\"adult\":[\"adult.example\"],\"social\":[\"social.example\"]},\"web_allowlist\":[\"school.edu.vn\"],\"web_blocklist\":[\"example.com\"],\"weekday_quota_minutes\":120,\"weekend_quota_minutes\":120,\"weekly_schedule\":[\"000000000000001111111111111111111111111111000000\",\"000000000000001111111111111111111111111111000000\",\"000000000000001111111111111111111111111111000000\",\"000000000000001111111111111111111111111111000000\",\"000000000000001111111111111111111111111111000000\",\"000000000000001111111111111111111111111111000000\",\"000000000000001111111111111111111111111111000000\"]},\"set_by\":\"parent@example.com\"}",
+      "signature": "NLntgHXfqjT2rkV4ZRUp2XLoVh1C1P9Y5uthx3h8HiyodxCPx-m90NVuVyrbqHyFW0JZcUOcUL6eQMqnZ6MsCA"
     }
   ],
   "invalid": [

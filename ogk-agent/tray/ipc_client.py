@@ -67,3 +67,6 @@ class IpcClient:
 
     def appcontrol(self) -> dict[str, Any]:
         return self._request("GET", "/ipc/appcontrol")
+
+    def webfilter(self) -> dict[str, Any]:
+        return self._request("GET", "/ipc/webfilter")

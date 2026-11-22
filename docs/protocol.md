@@ -517,7 +517,11 @@ Tài liệu được dựng riêng cho từng thiết bị vì `accounts` chỉ 
     "app_rules": [
       { "action": "block", "name": "game.exe", "sha256": null },
       { "action": "block", "name": "notepad.exe", "sha256": "abab...ab (64 ký tự hex)" }
-    ]
+    ],
+    "web_allowlist": ["school.edu.vn"],
+    "web_blocklist": ["example.com"],
+    "blocked_categories": ["adult", "social"],
+    "category_domains": {"adult": ["adult.example"]}
   },
   "set_by": "parent@example.com"
 }
@@ -534,6 +538,10 @@ Tài liệu được dựng riêng cho từng thiết bị vì `accounts` chỉ 
 | `rules.weekend_quota_minutes` | Số phút dùng máy mỗi ngày thứ Bảy và Chủ nhật, 0 đến 1440, mặc định 120 |
 | `rules.weekly_schedule` | Lịch tuần: mảng 7 chuỗi, chuỗi 0 là thứ Hai, chuỗi 6 là Chủ nhật. Mỗi chuỗi 48 ký tự; ký tự thứ k là ô 30 phút [k x 30 phút, (k + 1) x 30 phút) theo giờ địa phương của máy trẻ; `1` là được dùng, `0` là khóa. Mặc định 07:00 đến 21:00 mỗi ngày |
 | `rules.app_rules` | Luật ứng dụng: mảng tối đa 200 object, sắp theo `name`, rồi `sha256` (null trước), rồi `action`. `name` là tên tệp thực thi chữ thường, 1 đến 255 ký tự, không chứa `/` hay `\`; `sha256` là SHA-256 của tệp thực thi dạng 64 ký tự hex chữ thường, hoặc `null` nếu chỉ so theo tên; `action` là `block` hoặc `allow`. Mỗi cặp (`name`, `sha256`) có tối đa một luật. Mặc định `[]`. Cách áp xem [Kiểm soát ứng dụng](#kiểm-soát-ứng-dụng) |
+| `rules.web_allowlist` | Danh sách tên miền miễn chặn của gia đình; khớp chính xác hoặc mọi tên miền con. Danh sách này luôn thắng luật chặn. Mặc định `[]`. |
+| `rules.web_blocklist` | Danh sách tên miền bị chặn của gia đình; khớp chính xác hoặc mọi tên miền con. Mặc định `[]`. |
+| `rules.blocked_categories` | Các nhóm bị chặn: `education`, `entertainment`, `social`, `games`, `adult`, `unclassified`. Mặc định cho trẻ 6 đến 11 tuổi là `adult` và `social`. |
+| `rules.category_domains` | Bảng phân loại dùng chung được ký cùng chính sách; khóa là tên nhóm, giá trị là mảng tên miền chuẩn hóa. Thay đổi bảng phân loại làm tăng version chính sách. |
 | `set_by` | Email phụ huynh sửa chính sách gần nhất, hiện trên Tray UI khi khóa hoặc chặn ứng dụng; chuỗi rỗng nếu tài khoản đã bị xóa |
 
 Ngày thường hay cuối tuần và ô của lịch tính theo giờ tin cậy của agent (xem [Quản lý thời gian](#quản-lý-thời-gian)), không theo giờ hệ thống.
@@ -590,6 +598,9 @@ Gán hoặc bỏ gán tài khoản Windows tăng version chính sách của tr�
   "weekend_quota_minutes": 180,
   "weekly_schedule": ["000000000000001111111111111111111111111111000000", "... đủ 7 chuỗi ..."],
   "app_rules": [{ "action": "block", "name": "game.exe", "sha256": null }],
+  "web_allowlist": [],
+  "web_blocklist": [],
+  "blocked_categories": ["adult", "social"],
   "set_by": "parent@example.com",
   "updated_at": "2026-11-18T08:00:00Z"
 }
@@ -617,23 +628,36 @@ Vai trò `parent`. Mọi trường đều tùy chọn; trường bỏ trống gi
   "weekday_quota_minutes": 90,
   "weekend_quota_minutes": 150,
   "weekly_schedule": ["000000000000001111111111111111111111111111000000", "... đủ 7 chuỗi ..."],
-  "app_rules": [{ "name": "Game.exe", "sha256": null, "action": "block" }]
+  "app_rules": [{ "name": "Game.exe", "sha256": null, "action": "block" }],
+  "web_allowlist": ["school.edu.vn"],
+  "web_blocklist": ["example.com"],
+  "blocked_categories": ["adult", "social"]
 }
 ```
 
 `app_rules` thay cả danh sách; gửi `[]` để xóa hết. Server bỏ khoảng trắng hai đầu, đổi `name` và `sha256` sang chữ thường rồi sắp xếp, nên danh sách chỉ khác thứ tự hoặc hoa thường không làm tăng version. `sha256` bỏ trống được coi là `null`.
 
+`web_allowlist` và `web_blocklist` thay toàn bộ danh sách tương ứng. Tên miền được đổi về chữ thường, bỏ dấu chấm cuối và sắp xếp; tối đa 1000 tên miền hợp lệ. Luật khớp cả tên miền con. Luật miễn chặn luôn thắng luật chặn. `blocked_categories` thay toàn bộ nhóm bị chặn; tên miền trong nhóm bị chặn đều chịu luật này.
+
 | HTTP | Body |
 | :---- | :---- |
 | 200 | Policy sau khi sửa |
 | 404 | `not_found` |
-| 422 | `invalid_quota`, `invalid_schedule`, `invalid_app_rules` (luật sai định dạng, trùng cặp `name` và `sha256`, hoặc quá 200 luật) |
+| 422 | `invalid_quota`, `invalid_schedule`, `invalid_app_rules`, `invalid_domain_rules`, `invalid_blocked_categories` |
 | 401 | `not_authenticated` |
 | 403 | `forbidden`, `csrf_failed` |
 
 ### `GET /api/children/{id}/policy/versions`
 
 Vai trò `parent`. Trả tối đa 50 version gần nhất, mới nhất trước.
+
+### `GET /api/children/{id}/webfilter/categories`
+
+Vai trò `parent`. Xác nhận trẻ thuộc phụ huynh gọi API rồi trả danh sách sáu nhóm phân loại.
+
+### API admin sửa bảng phân loại
+
+`GET /api/admin/webfilter/catalog` trả danh sách tên miền và nhóm. `PUT /api/admin/webfilter/catalog/{domain}` nhận `{"category":"education"}` để thêm hoặc đổi nhóm, hoặc `{"category":null}` để xóa. Vai trò `admin` bắt buộc; sửa đổi được ghi nhật ký kiểm toán và tăng version các chính sách đã tạo. Bảng không được giảm xuống dưới 200 tên miền.
 
 ```json
 [

@@ -71,6 +71,32 @@ def secure_path(path: Path, user_readable: bool = False) -> None:
         os.chmod(path, 0o700 if path.is_dir() else 0o600)
 
 
+def configure_dns(directory: Path) -> None:
+    directory.mkdir(parents=True, exist_ok=True)
+    (directory / "dns_config.json").write_text(json.dumps({"configured": True}), encoding="utf-8")
+
+
+def restore_dns(directory: Path) -> None:
+    (directory / "dns_config.json").unlink(missing_ok=True)
+
+
+def configure_firewall(directory: Path) -> None:
+    directory.mkdir(parents=True, exist_ok=True)
+    (directory / "firewall_config.json").write_text(json.dumps({"configured": True}), encoding="utf-8")
+
+
+def restore_firewall(directory: Path) -> None:
+    (directory / "firewall_config.json").unlink(missing_ok=True)
+
+
+def disable_doh(directory: Path) -> None:
+    return None
+
+
+def restore_doh(directory: Path) -> None:
+    return None
+
+
 AGENT_ROOT = Path(__file__).resolve().parents[2]
 SESSION_FILE = "fake_session.jsonl"
 FAKE_SESSION_ID = 1

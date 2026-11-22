@@ -1,6 +1,7 @@
 import pytest
 
 from app.core import signing
+from app.modules.webfilter.catalog_data import catalog_rows
 from tests.conftest import csrf_headers
 from tests.enrollment.conftest import bearer, enroll_device
 from tests.family.conftest import create_child
@@ -35,6 +36,13 @@ async def test_returns_signed_policies_of_mapped_children(parent, agent):
             "weekend_quota_minutes": 120,
             "weekly_schedule": DEFAULT_SCHEDULE,
             "app_rules": [],
+            "web_allowlist": [],
+            "web_blocklist": [],
+            "blocked_categories": ["adult", "social"],
+            "category_domains": {
+                category: [domain for domain, group in catalog_rows() if group == category]
+                for category in {group for _domain, group in catalog_rows()}
+            },
         }
         assert item["key_id"] == signing.key_id(public_key)
         assert signing.verify(public_key, item["policy"], item["signature"])

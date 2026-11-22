@@ -27,21 +27,34 @@ from app.modules.policy.models import (
     DEFAULT_QUOTA_MINUTES,
     DEFAULT_SCHEDULE,
     EMPTY_APP_RULES,
+    EMPTY_BLOCKED_CATEGORIES,
+    EMPTY_DOMAIN_RULES,
     MAX_QUOTA_MINUTES,
     MIN_QUOTA_MINUTES,
     SLOTS_PER_DAY,
     Policy,
     PolicyVersion,
 )
+from app.modules.webfilter.models import WebCategory
 
 FORMAT = 1
 AUDIT_TARGET = "policy"
 MAX_VERSIONS = 50
-RULE_FIELDS = ("weekday_quota_minutes", "weekend_quota_minutes", "weekly_schedule", "app_rules")
+RULE_FIELDS = (
+    "weekday_quota_minutes",
+    "weekend_quota_minutes",
+    "weekly_schedule",
+    "app_rules",
+    "web_allowlist",
+    "web_blocklist",
+    "blocked_categories",
+)
 MAX_APP_RULES = 200
 MAX_APP_NAME = 255
 APP_ACTIONS = ("allow", "block")
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+DOMAIN_RE = re.compile(r"^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$")
+WEB_CATEGORIES = ("education", "entertainment", "social", "games", "adult", "unclassified")
 
 
 def now() -> datetime:
@@ -95,6 +108,24 @@ def dump_app_rules(items: list[dict]) -> str:
     return json.dumps(items, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
 
 
+def validate_domain_rules(items: list[str]) -> str:
+    if len(items) > 1000 or any(not isinstance(item, str) for item in items):
+        raise AppError(422, "invalid_domain_rules")
+    normalized = []
+    for item in items:
+        domain = item.strip().rstrip(".").lower()
+        if not DOMAIN_RE.fullmatch(domain):
+            raise AppError(422, "invalid_domain_rules")
+        normalized.append(domain)
+    return json.dumps(sorted(set(normalized)), separators=(",", ":"))
+
+
+def validate_blocked_categories(items: list[str]) -> str:
+    if len(items) > len(WEB_CATEGORIES) or any(item not in WEB_CATEGORIES for item in items):
+        raise AppError(422, "invalid_blocked_categories")
+    return json.dumps(sorted(set(items)), separators=(",", ":"))
+
+
 def schedule_days(schedule: str) -> list[str]:
     return [schedule[i : i + SLOTS_PER_DAY] for i in range(0, len(schedule), SLOTS_PER_DAY)]
 
@@ -105,6 +136,9 @@ def rules(row: Policy | PolicyVersion) -> dict:
         "weekend_quota_minutes": row.weekend_quota_minutes,
         "weekly_schedule": schedule_days(row.weekly_schedule),
         "app_rules": json.loads(row.app_rules),
+        "web_allowlist": json.loads(row.web_allowlist),
+        "web_blocklist": json.loads(row.web_blocklist),
+        "blocked_categories": json.loads(row.blocked_categories),
     }
 
 
@@ -118,20 +152,22 @@ def policy_out(policy: Policy, set_by: str | None) -> dict:
     }
 
 
-def document(policy: Policy, accounts: list[str], set_by: str | None) -> dict:
+def document(
+    policy: Policy, accounts: list[str], set_by: str | None, category_domains: dict[str, list[str]] | None = None
+) -> dict:
     return {
         "accounts": sorted(accounts),
         "child_id": policy.child_id,
         "format": FORMAT,
         "issued_at": iso(policy.updated_at),
         "policy_version": policy.version,
-        "rules": rules(policy),
+        "rules": {**rules(policy), "category_domains": category_domains or {}},
         "set_by": set_by or "",
     }
 
 
-def signed(policy: Policy, accounts: list[str], set_by: str | None) -> dict:
-    doc = document(policy, accounts, set_by)
+def signed(policy: Policy, accounts: list[str], set_by: str | None, category_domains: dict[str, list[str]]) -> dict:
+    doc = document(policy, accounts, set_by, category_domains)
     return {"policy": doc, "signature": signing.sign(doc), "key_id": signing.signing_key_id()}
 
 
@@ -144,6 +180,9 @@ def record_version(db: AsyncSession, policy: Policy) -> None:
             weekend_quota_minutes=policy.weekend_quota_minutes,
             weekly_schedule=policy.weekly_schedule,
             app_rules=policy.app_rules,
+            web_allowlist=policy.web_allowlist,
+            web_blocklist=policy.web_blocklist,
+            blocked_categories=policy.blocked_categories,
             set_by=policy.updated_by,
             created_at=policy.updated_at,
         )
@@ -163,6 +202,9 @@ async def ensure_policies(db: AsyncSession, child_ids: list[int]) -> list[Policy
             "weekend_quota_minutes": DEFAULT_QUOTA_MINUTES,
             "weekly_schedule": DEFAULT_SCHEDULE,
             "app_rules": EMPTY_APP_RULES,
+            "web_allowlist": EMPTY_DOMAIN_RULES,
+            "web_blocklist": EMPTY_DOMAIN_RULES,
+            "blocked_categories": EMPTY_BLOCKED_CATEGORIES,
             "updated_by": owners.get(cid),
             "updated_at": at,
         }
@@ -206,7 +248,8 @@ async def _bump(db: AsyncSession, child_id: int, values: dict, actor: audit.Acto
 
 
 def _audit_values(values: dict) -> dict:
-    return {f: json.loads(v) if f == "app_rules" else v for f, v in values.items()}
+    json_fields = {"app_rules", "web_allowlist", "web_blocklist", "blocked_categories"}
+    return {f: json.loads(v) if f in json_fields else v for f, v in values.items()}
 
 
 async def update_policy(db: AsyncSession, child_id: int, owner_id: int, changes: dict, *, actor: audit.Actor) -> dict:
@@ -219,6 +262,12 @@ async def update_policy(db: AsyncSession, child_id: int, owner_id: int, changes:
         values["weekly_schedule"] = validate_schedule(changes["weekly_schedule"])
     if changes.get("app_rules") is not None:
         values["app_rules"] = validate_app_rules(changes["app_rules"])
+    if changes.get("web_allowlist") is not None:
+        values["web_allowlist"] = validate_domain_rules(changes["web_allowlist"])
+    if changes.get("web_blocklist") is not None:
+        values["web_blocklist"] = validate_domain_rules(changes["web_blocklist"])
+    if changes.get("blocked_categories") is not None:
+        values["blocked_categories"] = validate_blocked_categories(changes["blocked_categories"])
     (policy,) = await ensure_policies(db, [child.id])
     values = {field: value for field, value in values.items() if getattr(policy, field) != value}
     if not values:
@@ -258,4 +307,8 @@ async def device_policies(db: AsyncSession, device: Device) -> dict:
     sids = await family.sids_by_child_on_device(db, device.id)
     policies = await ensure_policies(db, sorted(sids))
     emails = await auth.emails_by_ids(db, {p.updated_by for p in policies if p.updated_by is not None})
-    return {"policies": [signed(p, sids[p.child_id], emails.get(p.updated_by)) for p in policies]}
+    rows = (await db.execute(select(WebCategory).order_by(WebCategory.domain))).scalars()
+    category_domains: dict[str, list[str]] = {}
+    for row in rows:
+        category_domains.setdefault(row.category, []).append(row.domain)
+    return {"policies": [signed(p, sids[p.child_id], emails.get(p.updated_by), category_domains) for p in policies]}

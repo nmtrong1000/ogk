@@ -11,6 +11,9 @@ export type PolicyRules = {
   weekend_quota_minutes: number
   weekly_schedule: string[]
   app_rules: AppRule[]
+  web_allowlist: string[]
+  web_blocklist: string[]
+  blocked_categories: string[]
 }
 
 export type Policy = PolicyRules & {

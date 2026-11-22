@@ -34,6 +34,24 @@ async def test_each_change_adds_a_snapshot_newest_first(parent):
     ]
 
 
+async def test_history_snapshots_web_filter_rules(parent):
+    child = (await create_child(parent, "An")).json()
+    await patch_policy(
+        parent,
+        child["id"],
+        web_allowlist=["school.edu.vn"],
+        web_blocklist=["example.com"],
+        blocked_categories=["adult"],
+    )
+    items = await versions(parent, child["id"])
+    assert items[0]["web_allowlist"] == ["school.edu.vn"]
+    assert items[0]["web_blocklist"] == ["example.com"]
+    assert items[0]["blocked_categories"] == ["adult"]
+    assert items[1]["web_allowlist"] == []
+    assert items[1]["web_blocklist"] == []
+    assert items[1]["blocked_categories"] == ["adult", "social"]
+
+
 async def test_history_is_capped(parent):
     child = (await create_child(parent, "An")).json()
     for minutes in range(1, 56):

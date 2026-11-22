@@ -69,6 +69,17 @@ class PresenceMonitor:
     def _on_heartbeat(self, ping: TrayPing) -> None:
         if self._session is None:
             return
+        if self._launched_at is not None and self._process is not None and ping.pid != self._process.pid:
+            duplicate = self._process
+            log.info(
+                "existing tray ui heartbeat from pid %d; stopping duplicate launch pid %d",
+                ping.pid,
+                duplicate.pid,
+            )
+            self._process = None
+            self._process_session = None
+            self._launched_at = None
+            duplicate.terminate()
         self._last_heartbeat = self._clock()
         if self._launched_at is not None:
             log.info("tray ui is up (pid %d)", ping.pid)

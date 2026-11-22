@@ -19,6 +19,9 @@ class PolicyUpdate(BaseModel):
     weekend_quota_minutes: int | None = None
     weekly_schedule: list[str] | None = None
     app_rules: list[AppRule] | None = None
+    web_allowlist: list[str] | None = None
+    web_blocklist: list[str] | None = None
+    blocked_categories: list[str] | None = None
 
 
 class PolicyOut(BaseModel):
@@ -28,6 +31,9 @@ class PolicyOut(BaseModel):
     weekend_quota_minutes: int
     weekly_schedule: list[str]
     app_rules: list[AppRule]
+    web_allowlist: list[str]
+    web_blocklist: list[str]
+    blocked_categories: list[str]
     set_by: str | None
     updated_at: datetime
 
@@ -38,6 +44,9 @@ class PolicyVersionOut(BaseModel):
     weekend_quota_minutes: int
     weekly_schedule: list[str]
     app_rules: list[AppRule]
+    web_allowlist: list[str]
+    web_blocklist: list[str]
+    blocked_categories: list[str]
     set_by: str | None
     created_at: datetime
 

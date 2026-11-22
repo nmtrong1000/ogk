@@ -38,6 +38,8 @@ MAX_APP_RULES = 200
 MAX_APP_NAME = 255
 APP_ACTIONS = ("allow", "block")
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+DOMAIN_RE = re.compile(r"^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$")
+WEB_CATEGORIES = ("education", "entertainment", "social", "games", "adult", "unclassified")
 DAYS_PER_WEEK = 7
 SLOTS_PER_DAY = 48
 MODE_CACHED = "cached"
@@ -130,6 +132,23 @@ def _app_rules_ok(value: Any) -> bool:
     return isinstance(value, list) and len(value) <= MAX_APP_RULES and all(_app_rule_ok(r) for r in value)
 
 
+def _domain_list_ok(value: Any) -> bool:
+    return (
+        isinstance(value, list)
+        and len(value) <= 1000
+        and all(
+            isinstance(domain, str) and DOMAIN_RE.fullmatch(domain) is not None and domain == domain.lower()
+            for domain in value
+        )
+    )
+
+
+def _category_domains_ok(value: Any) -> bool:
+    return isinstance(value, dict) and all(
+        category in WEB_CATEGORIES and _domain_list_ok(domains) for category, domains in value.items()
+    )
+
+
 def rules_ok(rules: Any) -> bool:
     return (
         isinstance(rules, dict)
@@ -137,11 +156,23 @@ def rules_ok(rules: Any) -> bool:
         and _quota_ok(rules.get("weekend_quota_minutes"))
         and _schedule_ok(rules.get("weekly_schedule"))
         and _app_rules_ok(rules.get("app_rules", []))
+        and _domain_list_ok(rules.get("web_allowlist", []))
+        and _domain_list_ok(rules.get("web_blocklist", []))
+        and isinstance(rules.get("blocked_categories", []), list)
+        and all(item in WEB_CATEGORIES for item in rules.get("blocked_categories", []))
+        and _category_domains_ok(rules.get("category_domains", {}))
     )
 
 
 def _with_defaults(rules: dict) -> dict:
-    return {"app_rules": [], **rules}
+    return {
+        "app_rules": [],
+        "web_allowlist": [],
+        "web_blocklist": [],
+        "blocked_categories": [],
+        "category_domains": {},
+        **rules,
+    }
 
 
 def verify_bytes(public_key: Ed25519PublicKey, canonical: bytes, signature: str) -> SignedPolicy:
@@ -198,7 +229,7 @@ def load_default_policy(path: Path) -> DefaultPolicy:
             f"default policy needs weekday/weekend quotas of 0-{MAX_QUOTA_MINUTES} minutes and a weekly_schedule "
             f"of 7 strings of 48 '0'/'1' slots: {path}"
         )
-    return DefaultPolicy(rules)
+    return DefaultPolicy(_with_defaults(rules))
 
 
 class PolicyStore:
