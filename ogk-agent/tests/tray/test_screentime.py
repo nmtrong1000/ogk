@@ -62,6 +62,18 @@ def test_lock_shows_reason_and_setter_once_per_order():
     assert tracker.update({**locked, "lock_seq": 2}).lock.seq == 2
 
 
+def test_parent_commands_notify_once():
+    tracker = Tracker()
+    assert tracker.update(snap(command_seq=0)).notify is None
+    locked = tracker.update(snap(command_seq=1, command_type="lock", state="locked", lock_seq=1))
+    assert locked.notify == ("Phụ huynh khóa máy", "Phụ huynh vừa gửi lệnh khóa máy.")
+    assert tracker.update(snap(command_seq=1, command_type="lock", state="locked", lock_seq=1)).notify is None
+    unlocked = tracker.update(snap(command_seq=2, command_type="unlock"))
+    assert unlocked.notify == ("Phụ huynh mở khóa máy", "Phụ huynh đã mở khóa máy cho bạn.")
+    added = tracker.update(snap(command_seq=3, command_type="add_time"))
+    assert added.notify == ("Được cộng thêm thời gian", "Phụ huynh đã cộng 15 phút sử dụng máy.")
+
+
 def test_restarted_tray_obeys_existing_lock():
     order = Tracker().update(snap(state="locked", lock_reason="quota", lock_seq=4, set_by="")).lock
     assert order is not None

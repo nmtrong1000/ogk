@@ -76,6 +76,20 @@ SCHEMA = [
         last_trusted TEXT NOT NULL
     )
     """,
+    """
+    CREATE TABLE command_state (
+        child_id INTEGER PRIMARY KEY,
+        override_day TEXT,
+        bonus_day TEXT,
+        bonus_seconds INTEGER NOT NULL DEFAULT 0 CHECK (bonus_seconds >= 0)
+    )
+    """,
+    """
+    CREATE TABLE command_receipts (
+        command_id INTEGER PRIMARY KEY,
+        processed_at TEXT NOT NULL
+    )
+    """,
 ]
 
 
@@ -301,3 +315,36 @@ class LocalDb:
     def save_last_trusted(self, at: datetime) -> None:
         with closing(self._connect()) as conn, conn:
             conn.execute("INSERT OR REPLACE INTO clock_state (id, last_trusted) VALUES (1, ?)", (_iso(at),))
+
+    def load_command_state(self, child_id: int) -> tuple[str | None, str | None, int]:
+        with closing(self._connect()) as conn:
+            row = conn.execute(
+                "SELECT override_day, bonus_day, bonus_seconds FROM command_state WHERE child_id = ?", (child_id,)
+            ).fetchone()
+        return (None, None, 0) if row is None else (row[0], row[1], row[2])
+
+    def save_command_state(
+        self, child_id: int, override_day: str | None, bonus_day: str | None, bonus_seconds: int
+    ) -> None:
+        with closing(self._connect()) as conn, conn:
+            conn.execute(
+                "INSERT INTO command_state (child_id, override_day, bonus_day, bonus_seconds) VALUES (?, ?, ?, ?) "
+                "ON CONFLICT (child_id) DO UPDATE SET override_day = excluded.override_day, "
+                "bonus_day = excluded.bonus_day, "
+                "bonus_seconds = excluded.bonus_seconds",
+                (child_id, override_day, bonus_day, max(0, int(bonus_seconds))),
+            )
+
+    def has_command_receipt(self, command_id: int) -> bool:
+        with closing(self._connect()) as conn:
+            return (
+                conn.execute("SELECT 1 FROM command_receipts WHERE command_id = ?", (command_id,)).fetchone()
+                is not None
+            )
+
+    def save_command_receipt(self, command_id: int, at: datetime) -> None:
+        with closing(self._connect()) as conn, conn:
+            conn.execute(
+                "INSERT OR IGNORE INTO command_receipts (command_id, processed_at) VALUES (?, ?)",
+                (command_id, _iso(at)),
+            )

@@ -38,6 +38,8 @@ def remaining_text(snapshot: dict[str, Any]) -> str:
     state = snapshot.get("state")
     if snapshot.get("child_id") is None or state == "none":
         return "Không có giới hạn thời gian cho tài khoản này."
+    if snapshot.get("override"):
+        return "Được phụ huynh mở khóa đến hết ngày hôm nay."
     if state == "locked":
         return "Đã hết giờ dùng máy."
     if state == "grace":
@@ -64,6 +66,7 @@ class Tracker:
     def __init__(self) -> None:
         self._warning_seq: int | None = None
         self._lock_seq: int | None = None
+        self._command_seq: int | None = None
 
     def update(self, snapshot: dict[str, Any]) -> Plan:
         notify = None
@@ -72,6 +75,16 @@ class Tracker:
             notify = (WARNING_TITLE, warning_message(snapshot["warning"]))
         self._warning_seq = warning_seq
         lock = None
+        command_seq = snapshot.get("command_seq") or 0
+        if self._command_seq is not None and command_seq > self._command_seq:
+            kind = snapshot.get("command_type")
+            messages = {
+                "lock": ("Phụ huynh khóa máy", "Phụ huynh vừa gửi lệnh khóa máy."),
+                "unlock": ("Phụ huynh mở khóa máy", "Phụ huynh đã mở khóa máy cho bạn."),
+                "add_time": ("Được cộng thêm thời gian", "Phụ huynh đã cộng 15 phút sử dụng máy."),
+            }
+            notify = messages.get(kind)
+        self._command_seq = command_seq
         lock_seq = snapshot.get("lock_seq") or 0
         if snapshot.get("state") == "locked" and lock_seq != self._lock_seq:
             lock = LockOrder(lock_seq, lock_text(snapshot))

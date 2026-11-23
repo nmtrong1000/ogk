@@ -798,7 +798,41 @@ Response 200:
 }
 ```
 
-`policy_versions` gồm mọi trẻ được gán cho thiết bị, giống danh sách của `GET /api/device/policy`. `commands` luôn rỗng cho tới khi có kênh lệnh. `server_time` là mốc agent dùng để đo thời gian mất kết nối.
+`policy_versions` gồm mọi trẻ được gán cho thiết bị, giống danh sách của `GET /api/device/policy`. `commands` là các lệnh đang chờ xác nhận, theo thứ tự tạo. Agent bỏ qua lệnh đã xử lý, thực hiện lệnh mới rồi gửi xác nhận. `server_time` là mốc agent dùng để đo thời gian mất kết nối.
+
+### Lệnh khẩn
+
+Phụ huynh gửi lệnh tới một thiết bị đang ghép với trẻ. Mọi endpoint cần phiên `parent`; thiết bị và trẻ phải thuộc phụ huynh và tài khoản Windows của trẻ phải đang gán trên thiết bị đó.
+
+`POST /api/devices/{device_id}/children/{child_id}/commands`
+
+```json
+{ "type": "add_time" }
+```
+
+`type` nhận `lock`, `unlock` hoặc `add_time`; lệnh `add_time` cộng đúng 15 phút. Trả 201 với đối tượng lệnh có `id`, `child_id`, `type`, `minutes`, `status`, `created_at`, `acknowledged_at`. Trạng thái ban đầu là `pending`; agent xác nhận thì chuyển thành `acknowledged`. Lệnh được ghi vào nhật ký kiểm toán.
+
+`GET /api/devices/{device_id}/children/{child_id}/commands` trả tối đa 20 lệnh mới nhất để dashboard cập nhật trạng thái.
+
+Agent kết nối `wss://<host>/api/device/ws` với `Authorization: Bearer <access_token>`. Token thiếu, sai, hết hạn hoặc bị thu hồi thì server đóng kết nối mã 4401. Server gửi `{ "command": <Command> }`; agent trả `{ "type": "ack", "id": <command_id> }`. Server chỉ đánh dấu xác nhận nếu lệnh thuộc đúng thiết bị đang kết nối. Khi socket ngắt, lệnh chưa xác nhận vẫn được trả trong lần heartbeat kế tiếp, vì vậy cùng một `id` có thể xuất hiện trên cả hai đường truyền và agent phải xử lý đúng một lần.
+
+Agent nhận lệnh qua heartbeat xác nhận bằng `POST /api/device/commands/{command_id}/ack` với access token; trả `{ "acknowledged": true }` khi trạng thái đổi từ `pending`, hoặc `false` nếu lệnh đã được xác nhận hay không thuộc thiết bị.
+
+```json
+{
+  "command": {
+    "id": 12,
+    "child_id": 7,
+    "type": "add_time",
+    "minutes": 15,
+    "status": "pending",
+    "created_at": "2026-11-22T10:15:00Z",
+    "acknowledged_at": null
+  }
+}
+```
+
+Agent thực hiện `lock` qua yêu cầu khóa hiện có của Tray UI; `unlock` gỡ khóa do agent áp và bật cờ override cho phiên trẻ hiện tại để không khóa lại ngay; `add_time` cộng 900 giây bonus vào quota của ngày, trừ dần khi trẻ đang sử dụng máy. Giờ đóng lịch vẫn được áp dụng. Agent đưa `locked` hoặc `override_granted` vào hàng đợi sự kiện hiện có.
 
 | HTTP | Body |
 | :---- | :---- |
@@ -968,6 +1002,9 @@ Tray UI hỏi mỗi giây.
   "grace_seconds": 42,
   "lock_reason": "quota",
   "lock_seq": 0,
+  "override": false,
+  "command_seq": 0,
+  "command_type": null,
   "set_by": "parent@example.com"
 }
 ```
@@ -981,6 +1018,8 @@ Tray UI hỏi mỗi giây.
 | `lock_reason` | `quota` hoặc `schedule` |
 | `lock_seq` | Số thứ tự lệnh khóa, tăng dần. Khi `state = locked` và `lock_seq` khác lần trước, Tray UI hiện lý do và người đặt luật khoảng 2 giây rồi khóa máy (Windows: `LockWorkStation`; Mac: ghi `fake_lock.jsonl` và thêm sự kiện `lock` vào `fake_session.jsonl`) |
 | `set_by` | Email phụ huynh đặt luật; rỗng khi áp chính sách mặc định |
+| `override` | `true` khi phụ huynh mở khóa và agent tạm bỏ cưỡng chế cho trẻ đến hết ngày hoặc khi phụ huynh khóa lại |
+| `command_seq`, `command_type` | Số thứ tự và loại lệnh phụ huynh gần nhất; Tray UI thông báo mỗi số thứ tự một lần |
 
 ### `GET /ipc/appcontrol`
 

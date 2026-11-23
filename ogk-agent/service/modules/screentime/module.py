@@ -22,6 +22,7 @@ from service.core.bus import SESSION, TRAY_HEARTBEAT, Bus, SessionEvent, Session
 from service.core.device_session import DeviceSession
 from service.core.event_queue import EventQueue
 from service.core.events import MAX_DURATION_SEC, EventInvalid, format_ts
+from service.core.local_db import LocalDb
 from service.core.policy_store import EffectivePolicy, PolicyStore
 from service.core.screen_state import STATE_GRACE, STATE_LOCKED, STATE_NONE, STATE_OK, ScreenState
 from service.core.trusted_clock import TrustedClock
@@ -55,6 +56,7 @@ class ScreenTimeModule:
         platform: ModuleType,
         queue: EventQueue | None = None,
         session: DeviceSession | None = None,
+        db: LocalDb | None = None,
         monotonic: Callable[[], float] = time.monotonic,
         interval: float = TICK_SECONDS,
     ) -> None:
@@ -66,6 +68,7 @@ class ScreenTimeModule:
         self._platform = platform
         self._queue = queue
         self._device = session
+        self._db = db
         self._monotonic = monotonic
         self._interval = interval
         self._user: SessionInfo | None = None
@@ -81,6 +84,9 @@ class ScreenTimeModule:
         self._save_now = False
         self._prev_remaining: int | None = None
         self._warned: set[int] = set()
+        self._override_child: int | None = None
+        self._parent_lock = False
+        self._bonus_seconds: dict[int, int] = {}
         bus.subscribe(SESSION, self._on_session)
         bus.subscribe(TRAY_HEARTBEAT, self._on_ping)
 
@@ -89,12 +95,14 @@ class ScreenTimeModule:
             self._user = self._platform.current_session()
             self._screen_locked = False
             self._fresh = True
+            self._parent_lock = False
         elif event.kind == "lock":
             self._screen_locked = True
             self._save_now = True
         elif event.kind == "logoff":
             self._user = None
             self._screen_locked = False
+            self._override_child = None
             self._save_now = True
 
     def _on_ping(self, ping: TrayPing) -> None:
@@ -110,6 +118,12 @@ class ScreenTimeModule:
         await asyncio.to_thread(self._clock.load)
         await asyncio.to_thread(self._counters.open_day, day_key(self._clock.local_now()))
         self._user = self._platform.current_session()
+        child = self._current_child()
+        if child is not None and self._db is not None:
+            override_day, bonus_day, bonus = await asyncio.to_thread(self._db.load_command_state, child)
+            today = day_key(self._clock.local_now())
+            self._override_child = child if override_day == today else None
+            self._bonus_seconds[child] = bonus if bonus_day == today else 0
         self._last_tick = self._last_save = self._monotonic()
 
     async def run(self) -> None:
@@ -140,8 +154,23 @@ class ScreenTimeModule:
             return
         await asyncio.to_thread(self._counters.save, self._clock.now())
         await asyncio.to_thread(self._clock.save)
+        await self._save_command_state()
         self._last_save = now
         self._save_now = False
+
+    async def _save_command_state(self) -> None:
+        if self._db is None or self._child is None:
+            return
+        override_day = day_key(self._clock.local_now()) if self._override_child == self._child else None
+        bonus = self._bonus_seconds.get(self._child, 0)
+        bonus_day = day_key(self._clock.local_now()) if bonus else None
+        await asyncio.to_thread(
+            self._db.save_command_state,
+            self._child,
+            override_day,
+            bonus_day,
+            bonus,
+        )
 
     def _current_child(self) -> int | None:
         if self._user is None:
@@ -156,22 +185,53 @@ class ScreenTimeModule:
         local = self._clock.local_now()
         if day_key(local) != self._counters.day:
             await self._roll_day(day_key(local))
+            self._override_child = None
+            self._bonus_seconds.clear()
 
         child = self._current_child()
         if child != self._child:
             self._child = child
+            if self._override_child != child:
+                self._override_child = None
             self._fresh = True
             self._grace_until = None
             self._prev_remaining = None
             if self._screen.state == STATE_LOCKED or self._screen.state == STATE_GRACE:
                 self._screen.state = STATE_NONE
+            if child is not None and self._db is not None:
+                override_day, bonus_day, bonus = await asyncio.to_thread(self._db.load_command_state, child)
+                self._override_child = child if override_day == day_key(local) else None
+                self._bonus_seconds[child] = bonus if bonus_day == day_key(local) else 0
         policy = None if child is None else self._store.rules_for(child)
         if child is None or policy is None:
             self._reset_screen()
         else:
             active = not self._screen_locked and not self._is_idle(now) and self._screen.state != STATE_LOCKED
             self._counters.record(Activity(child, active), step)
+            if active and self._bonus_seconds.get(child, 0):
+                self._bonus_seconds[child] = max(0, self._bonus_seconds[child] - int(step))
+            if self._parent_lock:
+                self._screen.child_id = child
+                self._screen.state = STATE_LOCKED
+                self._screen.lock_reason = "parent"
+                self._screen.counting = False
+                self._screen.override = False
+                if not self._screen_locked and now - (self._last_lock or 0.0) >= RELOCK_SECONDS:
+                    self._screen.lock_seq += 1
+                    self._last_lock = now
+                await self._persist(now)
+                return
+            if self._override_child == child:
+                self._screen.child_id = child
+                self._screen.state = STATE_OK
+                self._screen.counting = active
+                self._screen.remaining_seconds = max(0, int(self._screen.remaining_seconds or 0))
+                self._screen.override = True
+                self._screen.used_seconds = int(self._counters.used(child))
+                await self._persist(now)
+                return
             await self._evaluate(child, policy, local, now, active)
+            self._screen.override = False
         self._screen.used_today = {cid: int(seconds) for cid, seconds in self._counters.by_child().items()}
         await self._persist(now)
 
@@ -184,12 +244,13 @@ class ScreenTimeModule:
         self._screen.grace_seconds = None
         self._screen.lock_reason = None
         self._screen.warning = None
+        self._screen.override = False
 
     async def _evaluate(self, child: int, policy: EffectivePolicy, local: datetime, now: float, active: bool) -> None:
         rules = policy.rules
         used = self._counters.used(child)
         quota = quota_minutes(rules, local.date()) * 60
-        quota_left = max(0, int(quota - used))
+        quota_left = max(0, int(quota - used)) + self._bonus_seconds.get(child, 0)
         schedule_left = seconds_until_closed(rules["weekly_schedule"], local)
         remaining = min(quota_left, schedule_left)
         reason = REASON_SCHEDULE if schedule_left <= quota_left else REASON_QUOTA
@@ -283,9 +344,57 @@ class ScreenTimeModule:
         except EventInvalid as exc:
             log.error("dropped %s event: invalid %s", kind, exc.field)
 
+    async def execute_command(self, command: dict) -> None:
+        child = command["child_id"]
+        if command["type"] in ("lock", "unlock") and self._current_child() != child:
+            raise RuntimeError(f"child {child} is not active in the current session")
+        policy = self._store.rules_for(child)
+        if policy is None:
+            raise RuntimeError(f"policy for child {child} is not available")
+        kind = command["type"]
+        used = self._counters.used(child)
+        if kind == "lock":
+            self._parent_lock = True
+            self._override_child = None
+            self._bonus_seconds[child] = 0
+            self._screen.child_id = child
+            self._screen.state = STATE_LOCKED
+            self._screen.lock_reason = "parent"
+            self._screen.lock_seq += 1
+            self._screen.command_type = kind
+            self._screen.command_seq += 1
+            self._last_lock = self._monotonic()
+            await self._emit(child, policy, "locked", "parent", used)
+        elif kind == "unlock":
+            self._parent_lock = False
+            self._override_child = child
+            self._screen.child_id = child
+            self._screen.state = STATE_OK
+            self._screen.lock_reason = None
+            self._screen.grace_seconds = None
+            self._screen.override = True
+            self._screen.lock_seq += 1
+            self._screen.command_type = kind
+            self._screen.command_seq += 1
+            await self._emit(child, policy, "override_granted", "unlock", used)
+        elif kind == "add_time":
+            self._bonus_seconds[child] = self._bonus_seconds.get(child, 0) + 900
+            self._screen.child_id = child
+            self._screen.state = STATE_OK
+            self._screen.lock_reason = None
+            self._screen.grace_seconds = None
+            self._screen.command_type = kind
+            self._screen.command_seq += 1
+            await self._emit(child, policy, "override_granted", "15_minutes", used)
+        else:
+            raise ValueError(f"unknown parent command type: {kind}")
+        await asyncio.to_thread(self._counters.save, self._clock.now())
+        self._child = child
+        await self._save_command_state()
+
 
 def create(context: ModuleContext) -> ScreenTimeModule:
-    return ScreenTimeModule(
+    module = ScreenTimeModule(
         context.policy_store,
         context.clock,
         CounterSet(context.db, [ChildCounter()]),
@@ -295,4 +404,8 @@ def create(context: ModuleContext) -> ScreenTimeModule:
         context.platform,
         context.event_queue,
         context.session,
+        context.db,
     )
+    if context.commands is not None:
+        context.commands.set_handler(module.execute_command)
+    return module

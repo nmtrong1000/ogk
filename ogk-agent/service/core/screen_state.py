@@ -26,6 +26,9 @@ class ScreenState:
     lock_reason: str | None = None
     lock_seq: int = 0
     set_by: str = ""
+    override: bool = False
+    command_seq: int = 0
+    command_type: str | None = None
     used_today: dict[int, int] = field(default_factory=dict)
 
     def snapshot(self) -> dict[str, Any]:

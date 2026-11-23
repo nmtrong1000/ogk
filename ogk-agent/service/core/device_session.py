@@ -162,6 +162,16 @@ class DeviceSession:
     async def heartbeat(self, body: dict[str, Any]) -> Any:
         return await self.call(lambda client, token: client.heartbeat(token, body))
 
+    async def acknowledge_command(self, command_id: int) -> Any:
+        return await self.call(lambda client, token: client.acknowledge_command(token, command_id))
+
+    async def websocket_credentials(self) -> tuple[str, str, str]:
+        creds, _ = await self._ready()
+        if creds.access_expires_at - self._clock() <= REFRESH_MARGIN:
+            await self.refresh()
+            creds, _ = await self._ready()
+        return self._config.server_url, creds.access_token, creds.cert_sha256
+
     async def post_events(self, events: list[dict[str, Any]], idempotency_key: str) -> Any:
         return await self.call(lambda client, token: client.post_events(token, events, idempotency_key))
 

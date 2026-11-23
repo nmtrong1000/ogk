@@ -12,6 +12,18 @@ def test_upgrade_creates_sync_tables_and_downgrade_drops_them(settings_env, tmp_
     assert columns == {"id", "ts", "device_id", "child_id", "type", "subject", "duration_sec", "policy_id"}
     indexes = {r[1]: r[2] for r in conn.execute("PRAGMA index_list(device_alerts)")}
     assert indexes["uq_device_alerts_open"] == 1
+    command_columns = {r[1] for r in conn.execute("PRAGMA table_info(parent_commands)")}
+    assert command_columns == {
+        "id",
+        "device_id",
+        "child_id",
+        "actor_id",
+        "type",
+        "minutes",
+        "status",
+        "created_at",
+        "acknowledged_at",
+    }
     alembic("downgrade", "0007")
     tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-    assert not tables & {"events", "event_batches", "device_alerts"}
+    assert not tables & {"events", "event_batches", "device_alerts", "parent_commands"}

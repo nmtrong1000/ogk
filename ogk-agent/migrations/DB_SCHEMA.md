@@ -53,6 +53,16 @@ erDiagram
         integer id PK
         text last_trusted
     }
+    command_state {
+        integer child_id PK
+        text override_day
+        text bonus_day
+        integer bonus_seconds
+    }
+    command_receipts {
+        integer command_id PK
+        text processed_at
+    }
 ```
 
 ## Table Definitions
@@ -128,6 +138,26 @@ erDiagram
 |---|---|---|---|---|
 | id | Luôn bằng 1 để bảng chỉ có một dòng. | Số nguyên | No | None |
 | last_trusted | Giờ tin cậy lúc lưu gần nhất; lúc khởi động, đồng hồ tin cậy bắt đầu từ giá trị lớn hơn giữa cột này và giờ hệ thống. | Văn bản ISO 8601 UTC | No | None |
+
+### command_state
+
+**Purpose:** Trạng thái cộng thời gian và override mở khóa của lệnh phụ huynh, để khởi động lại service không làm mất hiệu lực hoặc cộng lặp.
+
+| Column | Description | Data type | Nullable? | Default |
+|---|---|---|---|---|
+| child_id | ID trẻ trên server, khóa chính; không có khóa ngoại vì chính sách cục bộ có thể bị xóa khi gỡ gán. | Số nguyên | No | None |
+| override_day | Ngày địa phương mà lệnh mở khóa còn hiệu lực. | Văn bản `YYYY-MM-DD` | Yes | None |
+| bonus_day | Ngày địa phương mà số dư cộng thêm còn hiệu lực. | Văn bản `YYYY-MM-DD` | Yes | None |
+| bonus_seconds | Số giây cộng thêm chưa dùng trong ngày. | Số nguyên không âm | No | 0 |
+
+### command_receipts
+
+**Purpose:** Ghi nhận ID lệnh đã thực hiện để heartbeat và WebSocket, kể cả sau khi service khởi động lại, không thực hiện lệnh hai lần.
+
+| Column | Description | Data type | Nullable? | Default |
+|---|---|---|---|---|
+| command_id | ID lệnh server; khóa chính. | Số nguyên | No | None |
+| processed_at | Thời điểm agent thực hiện lệnh. | Văn bản ISO 8601 UTC | No | None |
 
 ## Integrity Constraints
 
@@ -301,3 +331,19 @@ $$
 
 - `clock_state`
 - Relevant attributes: `clock_state.id`, `clock_state.last_trusted`
+
+### IC-011: Trạng thái thời gian lệnh không âm và duy nhất theo trẻ
+
+**Statement:** Mỗi trẻ có tối đa một trạng thái lệnh và thời gian cộng thêm không âm.
+
+**Context:** DB kiểm tra bằng khóa chính `command_state.child_id` và `CHECK (bonus_seconds >= 0)`. Lệnh cộng thời gian tăng số dư; tick chỉ giảm theo thời gian hoạt động.
+
+**Impacted Data Objects:** `command_state`
+
+### IC-012: Mỗi lệnh có tối đa một biên nhận
+
+**Statement:** Mỗi `command_id` được agent ghi nhận tối đa một lần.
+
+**Context:** DB kiểm tra bằng khóa chính `command_receipts.command_id`; CommandState tra cứu trước khi gọi handler và ghi biên nhận sau khi handler hoàn tất.
+
+**Impacted Data Objects:** `command_receipts`

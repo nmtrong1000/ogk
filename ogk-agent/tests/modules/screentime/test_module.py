@@ -287,3 +287,25 @@ async def test_used_today_feeds_heartbeat(rig):
     await rig.start()
     await rig.run(42)
     assert rig.screen.used_today == {7: 42}
+
+
+async def test_parent_unlock_override_prevents_immediate_relock(rig):
+    rig.policy(quota=0, schedule=[OPEN_DAY] * 7)
+    await rig.start()
+    assert rig.screen.state == STATE_LOCKED
+    await rig.module.execute_command({"id": 1, "child_id": 7, "type": "unlock", "minutes": 0})
+    await rig.module.tick()
+    assert rig.screen.state == STATE_OK
+    assert rig.screen.override is True
+    assert rig.screen.lock_seq > 1
+
+
+async def test_add_time_grants_15_active_minutes_even_at_zero_quota(rig):
+    rig.policy(quota=0, schedule=[OPEN_DAY] * 7)
+    await rig.start()
+    await rig.module.execute_command({"id": 2, "child_id": 7, "type": "add_time", "minutes": 15})
+    await rig.module.tick()
+    assert rig.screen.state == STATE_OK
+    assert rig.screen.remaining_seconds == 900
+    await rig.run(30)
+    assert rig.screen.remaining_seconds == 870

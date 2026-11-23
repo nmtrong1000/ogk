@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { childDevicesKey, listChildDevices } from '@/shared/api/devices.ts'
 import { Alert, Card, Spinner } from '@/shared/components/index.ts'
 import { deviceErrorMessage } from '@/features/family/utils/messages.ts'
+import CommandControls from '@/features/commands/components/CommandControls.tsx'
 
 export default function ChildDevices({ childId }: { childId: number }) {
   const devices = useQuery({ queryKey: childDevicesKey(childId), queryFn: () => listChildDevices(childId) })
@@ -29,6 +30,7 @@ export default function ChildDevices({ childId }: { childId: number }) {
                   .map((a) => a.username)
                   .join(', ')}
               </span>
+              <CommandControls deviceId={device.id} childId={childId} />
             </li>
           ))}
         </ul>

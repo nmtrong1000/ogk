@@ -28,6 +28,9 @@ erDiagram
     children ||--o{ events : "thuộc"
     devices ||--o{ event_batches : "gửi"
     devices ||--o{ device_alerts : "báo"
+    devices ||--o{ parent_commands : "nhận"
+    children ||--o{ parent_commands : "điều khiển"
+    accounts ||--o{ parent_commands : "gửi"
     accounts {
         integer id PK
         text email UK
@@ -158,6 +161,17 @@ erDiagram
         datetime first_seen_at
         datetime last_seen_at
         datetime resolved_at
+    }
+    parent_commands {
+        integer id PK
+        integer device_id FK
+        integer child_id FK
+        integer actor_id FK
+        text type
+        integer minutes
+        text status
+        datetime created_at
+        datetime acknowledged_at
     }
     web_categories {
         text domain PK
@@ -354,6 +368,24 @@ erDiagram
 | idempotency_key | Giá trị header `Idempotency-Key`. | Văn bản 1 đến 64 ký tự `A-Za-z0-9_-` | No | None |
 | received_at | Thời điểm server nhận lô. | Thời điểm UTC | No | None |
 | event_count | Số sự kiện đã lưu từ lô. | Số nguyên từ 1 đến 500 | No | None |
+
+### parent_commands
+
+**Purpose:** Lệnh khẩn do phụ huynh gửi tới agent của thiết bị và trạng thái xác nhận.
+
+| Column | Description | Data type | Nullable? | Default |
+|---|---|---|---|---|
+| id | Định danh lệnh. | Số nguyên, tự tăng | No | Tự sinh |
+| device_id | Thiết bị nhận lệnh; xóa thiết bị thì xóa lệnh. | Khóa ngoại đến `devices.id` | No | None |
+| child_id | Trẻ bị tác động; xóa trẻ thì xóa lệnh. | Khóa ngoại đến `children.id` | No | None |
+| actor_id | Phụ huynh gửi lệnh. | Khóa ngoại đến `accounts.id` | No | None |
+| type | `lock`, `unlock` hoặc `add_time`. | Văn bản, tối đa 16 ký tự | No | None |
+| minutes | 15 với `add_time`, còn lại 0. | Số nguyên | No | 0 |
+| status | `pending` hoặc `acknowledged`. | Văn bản, tối đa 16 ký tự | No | `pending` |
+| created_at | Thời điểm tạo lệnh UTC. | Thời điểm UTC | No | None |
+| acknowledged_at | Thời điểm agent xác nhận. | Thời điểm UTC | Yes | None |
+
+Ràng buộc DB: `ck_parent_commands_type`, `ck_parent_commands_status`, `ck_parent_commands_minutes`. Chỉ service tạo `minutes=15` cho `add_time`, và 0 cho lệnh khác.
 
 ### device_alerts
 
@@ -1076,3 +1108,27 @@ $$
 
 - `web_categories`
 - Relevant attributes: `domain`, `category`
+
+### IC-041: Loại lệnh khẩn hợp lệ
+
+**Statement:** `parent_commands.type` chỉ nhận `lock`, `unlock` hoặc `add_time`.
+
+**Context:** DB kiểm tra bằng `ck_parent_commands_type`; API từ chối loại khác bằng `422 invalid_command`.
+
+**Impacted Data Objects:** `parent_commands.type`
+
+### IC-042: Trạng thái lệnh khẩn hợp lệ
+
+**Statement:** `parent_commands.status` chỉ nhận `pending` hoặc `acknowledged`.
+
+**Context:** DB kiểm tra bằng `ck_parent_commands_status`; service chỉ chuyển một lần từ `pending` sang `acknowledged` và ghi `acknowledged_at` cùng giao dịch.
+
+**Impacted Data Objects:** `parent_commands.status`, `parent_commands.acknowledged_at`
+
+### IC-043: Thời lượng lệnh hợp lệ
+
+**Statement:** `parent_commands.minutes` chỉ nhận 0 hoặc 15; `add_time` nhận 15 và hai lệnh còn lại nhận 0.
+
+**Context:** DB kiểm tra miền bằng `ck_parent_commands_minutes`; service bảo đảm quan hệ giữa loại và số phút.
+
+**Impacted Data Objects:** `parent_commands.type`, `parent_commands.minutes`

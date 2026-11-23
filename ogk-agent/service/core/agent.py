@@ -23,6 +23,7 @@ from service.core.alerts import AlertBoard
 from service.core.app_state import AppState
 from service.core.bus import SERVER_TIME, SESSION, TRAY_HEARTBEAT, Bus
 from service.core.clock import SyncClock
+from service.core.commands import CommandState
 from service.core.config import DEFAULT_POLICY_FILE, Config, bundled_data_dir, load_config
 from service.core.device_session import DeviceRevoked, DeviceSession, NotEnrolled
 from service.core.enforcement import Enforcement
@@ -60,6 +61,7 @@ class ModuleContext:
     screen: ScreenState | None = None
     apps: AppState | None = None
     web_state: WebState | None = None
+    commands: CommandState | None = None
 
 
 class Module(Protocol):
@@ -225,6 +227,7 @@ async def run_agent(data_dir: Path, stop_event: asyncio.Event, modules: Sequence
     screen = ScreenState()
     apps = AppState()
     web_state = WebState()
+    commands = CommandState(db)
     context = ModuleContext(
         bus,
         enforcement,
@@ -241,6 +244,7 @@ async def run_agent(data_dir: Path, stop_event: asyncio.Event, modules: Sequence
         screen=screen,
         apps=apps,
         web_state=web_state,
+        commands=commands,
     )
     instances = [factory(context) for factory in modules]
     platform.set_session_listener(lambda event: bus.publish(SESSION, event))

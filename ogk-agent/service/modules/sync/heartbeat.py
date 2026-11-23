@@ -10,11 +10,13 @@ import time
 from datetime import UTC, datetime
 from typing import Any
 
+import aiohttp
 import httpx
 
 from service.core.agent import ModuleContext
 from service.core.alerts import AlertBoard
 from service.core.bus import POLICY_STALE, SERVER_TIME, Bus
+from service.core.commands import CommandState
 from service.core.device_session import DeviceRevoked, DeviceSession, NotEnrolled
 from service.core.enforcement import Enforcement
 from service.core.event_queue import EventQueue
@@ -47,9 +49,11 @@ class SyncModule:
         interval: float,
         screen: ScreenState | None = None,
         alerts: AlertBoard | None = None,
+        commands: CommandState | None = None,
     ) -> None:
         self._screen = screen
         self._alerts = alerts
+        self._commands = commands
         self._session = session
         self._queue = queue
         self._offline = offline
@@ -120,12 +124,59 @@ class SyncModule:
         if self._stale(versions):
             log.info("server has newer policies %s, local %s; downloading", versions, self._store.versions())
             self._bus.publish(POLICY_STALE)
+        if self._commands is not None:
+            for command in response.get("commands", []):
+                if await self._commands.process(command):
+                    try:
+                        await self._session.acknowledge_command(command["id"])
+                    except (NotEnrolled, DeviceRevoked, httpx.HTTPError, ApiError) as exc:
+                        log.warning("command acknowledgement failed: %s", exc or type(exc).__name__)
         return True
 
     async def run(self) -> None:
+        tasks = [asyncio.create_task(self._heartbeat_loop()), asyncio.create_task(self._websocket_loop())]
+        await asyncio.gather(*tasks)
+
+    async def _heartbeat_loop(self) -> None:
         while True:
             await self.tick()
             await asyncio.sleep(self._interval)
+
+    async def _websocket_loop(self) -> None:
+        if self._session is None or self._commands is None:
+            return
+        while True:
+            try:
+                base_url, token, pin = await self._session.websocket_credentials()
+                ws_url = base_url.replace("https://", "wss://", 1).rstrip("/") + "/api/device/ws"
+                fingerprint = aiohttp.Fingerprint(bytes.fromhex(pin))
+                async with (
+                    aiohttp.ClientSession() as client,
+                    client.ws_connect(
+                        ws_url,
+                        headers={"Authorization": f"Bearer {token}"},
+                        ssl=fingerprint,
+                        heartbeat=20,
+                        receive_timeout=45,
+                    ) as socket,
+                ):
+                    log.info("command websocket connected")
+                    async for message in socket:
+                        if message.type != aiohttp.WSMsgType.TEXT:
+                            continue
+                        try:
+                            envelope = message.json()
+                            command = envelope["command"]
+                        except (ValueError, KeyError, TypeError):
+                            log.warning("ignored malformed websocket command")
+                            continue
+                        if await self._commands.process(command):
+                            await socket.send_json({"type": "ack", "id": command["id"]})
+            except asyncio.CancelledError:
+                raise
+            except (TimeoutError, aiohttp.ClientError, NotEnrolled, DeviceRevoked, ApiError, ValueError) as exc:
+                log.warning("command websocket disconnected: %s", exc or type(exc).__name__)
+                await asyncio.sleep(1)
 
 
 def create(context: ModuleContext) -> SyncModule:
@@ -139,4 +190,5 @@ def create(context: ModuleContext) -> SyncModule:
         context.config.heartbeat_interval,
         context.screen,
         context.alerts,
+        context.commands,
     )

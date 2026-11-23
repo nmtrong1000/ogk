@@ -174,6 +174,11 @@ class ServerClient:
             "POST", "/api/device/heartbeat", json=body, headers={"Authorization": f"Bearer {access_token}"}
         )
 
+    async def acknowledge_command(self, access_token: str, command_id: int) -> Any:
+        return await self._json(
+            "POST", f"/api/device/commands/{command_id}/ack", headers={"Authorization": f"Bearer {access_token}"}
+        )
+
     async def post_events(self, access_token: str, events: list[dict[str, Any]], idempotency_key: str) -> Any:
         headers = {"Authorization": f"Bearer {access_token}", "Idempotency-Key": idempotency_key}
         return await self._json("POST", "/api/device/events", json={"events": events}, headers=headers)
