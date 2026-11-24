@@ -1,9 +1,11 @@
 """events holds exactly the 7 fields of the event schema plus a surrogate id; device alerts live in
 device_alerts so the events table keeps only the 9 required types.
 uq_device_alerts_open is a partial index: at most one unresolved alert per (device, type).
+daily_usage.day is the agent's local day, not a UTC day: the agent counts screen time per local day and the
+heartbeat repeats recent days, so each row is overwritten with the latest value.
 """
 
-from datetime import datetime
+from datetime import date, datetime
 
 from sqlalchemy import CheckConstraint, ForeignKey, Index, String, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column
@@ -39,6 +41,7 @@ class Event(Base):
         CheckConstraint(_in("type", EVENT_TYPES), name="ck_events_type"),
         CheckConstraint(f"duration_sec BETWEEN 0 AND {MAX_DURATION_SEC}", name="ck_events_duration_sec"),
         CheckConstraint("policy_id >= 0", name="ck_events_policy_id"),
+        Index("ix_events_child_id_ts", "child_id", "ts"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -120,3 +123,19 @@ class ChildRequest(Base):
     created_at: Mapped[datetime] = mapped_column(UTCDateTime())
     decided_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
     decided_by: Mapped[int | None] = mapped_column(ForeignKey("accounts.id", ondelete="SET NULL"), index=True)
+
+
+class DailyUsage(Base):
+    __tablename__ = "daily_usage"
+    __table_args__ = (
+        UniqueConstraint("device_id", "child_id", "day", name="uq_daily_usage_device_child_day"),
+        CheckConstraint(f"seconds BETWEEN 0 AND {MAX_DURATION_SEC}", name="ck_daily_usage_seconds"),
+        Index("ix_daily_usage_child_id_day", "child_id", "day"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    device_id: Mapped[int] = mapped_column(ForeignKey("devices.id", ondelete="CASCADE"), index=True)
+    child_id: Mapped[int] = mapped_column(ForeignKey("children.id", ondelete="CASCADE"))
+    day: Mapped[date]
+    seconds: Mapped[int]
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime())

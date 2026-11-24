@@ -227,6 +227,7 @@ def test_upstream_failure_keeps_agent_module_alive_in_fail_open(monkeypatch, tmp
 
     monkeypatch.setattr(module, "DNSServer", FakeServer)
     context = SimpleNamespace(data_dir=tmp_path)
+
     async def scenario():
         task = asyncio.create_task(module.WebFilterModule(context).run())
         for _ in range(100):

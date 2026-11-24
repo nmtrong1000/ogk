@@ -8,9 +8,9 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Protocol
 
-from service.core.local_db import LocalDb
+from service.core.local_db import CHILD_COUNTER, LocalDb
 
-CHILD_COUNTER = "child"
+__all__ = ["CHILD_COUNTER", "Activity", "ChildCounter", "CounterSet", "UsageCounter"]
 
 
 @dataclass(frozen=True)

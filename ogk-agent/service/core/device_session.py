@@ -178,6 +178,9 @@ class DeviceSession:
     async def create_request(self, body: dict[str, Any]) -> Any:
         return await self.call(lambda client, token: client.create_request(token, body))
 
+    async def create_child_view_code(self, child_id: int, code: str) -> Any:
+        return await self.call(lambda client, token: client.create_child_view_code(token, child_id, code))
+
     async def _close_client(self) -> None:
         if self._client is not None:
             await self._client.aclose()

@@ -222,3 +222,47 @@ async def test_child_request_routes_use_authenticated_ipc(tmp_path):
     assert created.json() == {"id": 12, "status": "pending"}
     assert invalid.status_code == 400
     assert submitted == [{"type": "blocked_domain", "domain": "school.example"}]
+
+
+@pytest.mark.anyio
+async def test_child_view_route_returns_link_and_maps_errors(tmp_path):
+    outcomes = [{"url": "https://server/child-view/start#code=abc"}, LookupError(), RuntimeError("down")]
+
+    async def issue():
+        outcome = outcomes.pop(0)
+        if isinstance(outcome, Exception):
+            raise outcome
+        return outcome
+
+    server = IpcServer(tmp_path, 0, dict, child_view_handler=issue)
+    await server.start()
+    token = _read(tmp_path)["token"]
+    url = f"http://127.0.0.1:{server.port}/ipc/child-view"
+    try:
+        async with httpx.AsyncClient() as client:
+            denied = await client.post(url)
+            headers = {"Authorization": f"Bearer {token}"}
+            ok = await client.post(url, headers=headers)
+            no_child = await client.post(url, headers=headers)
+            failed = await client.post(url, headers=headers)
+    finally:
+        await server.stop()
+    assert denied.status_code == 401
+    assert ok.json() == {"status": "ok", "url": "https://server/child-view/start#code=abc"}
+    assert (no_child.status_code, no_child.json()) == (409, {"error": "no_child"})
+    assert (failed.status_code, failed.json()) == (503, {"error": "child_view_failed"})
+
+
+@pytest.mark.anyio
+async def test_child_view_route_without_handler_is_not_available(tmp_path):
+    server = IpcServer(tmp_path, 0, dict)
+    await server.start()
+    token = _read(tmp_path)["token"]
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"http://127.0.0.1:{server.port}/ipc/child-view", headers={"Authorization": f"Bearer {token}"}
+            )
+    finally:
+        await server.stop()
+    assert response.status_code == 404

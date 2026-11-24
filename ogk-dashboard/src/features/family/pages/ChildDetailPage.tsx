@@ -85,6 +85,7 @@ function ChildDetail({ id }: { id: number }) {
           <Link to={`/children/${id}/apps`}>Ứng dụng</Link>
           <Link to={`/children/${id}/webfilter`}>Lọc website</Link>
           <Link to={`/children/${id}/policy`}>Chính sách</Link>
+          <Link to={`/children/${id}/reports`}>Báo cáo</Link>
         </nav>
       </div>
 

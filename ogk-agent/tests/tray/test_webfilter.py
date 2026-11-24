@@ -15,9 +15,7 @@ def test_tracker_ignores_initial_state_then_notifies_new_block():
     tracker = BlockTracker()
 
     assert tracker.update(_snapshot()) is None
-    notice = tracker.update(
-        _snapshot(1, domain="youtube.com", reason="danh sách tên miền bị chặn", set_by="Tom")
-    )
+    notice = tracker.update(_snapshot(1, domain="youtube.com", reason="danh sách tên miền bị chặn", set_by="Tom"))
 
     assert notice is not None
     assert notice.seq == 1

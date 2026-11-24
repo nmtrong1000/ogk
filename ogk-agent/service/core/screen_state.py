@@ -30,8 +30,10 @@ class ScreenState:
     command_seq: int = 0
     command_type: str | None = None
     used_today: dict[int, int] = field(default_factory=dict)
+    usage_day: str | None = None
 
     def snapshot(self) -> dict[str, Any]:
         data = asdict(self)
         data.pop("used_today")
+        data.pop("usage_day")
         return data

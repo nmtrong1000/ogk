@@ -2,6 +2,7 @@
 so it is the only file given a user-readable ACL.
 idle_seconds and foreground in a heartbeat are optional so an older Tray UI still counts as alive.
 foreground is only an exe basename; a path would leak the child's folder names into events.
+The child-view handler raises LookupError when no child is signed in, which the route reports as no_child.
 """
 
 import hmac
@@ -30,6 +31,7 @@ AppProvider = Callable[[], dict[str, Any]]
 WebFilterProvider = Callable[[], dict[str, Any]]
 RequestProvider = Callable[[], dict[str, Any]]
 RequestHandler = Callable[[dict[str, Any]], Any]
+ChildViewHandler = Callable[[], Any]
 MAX_APP_NAME = 255
 
 
@@ -46,7 +48,9 @@ class IpcServer:
         webfilter_provider: WebFilterProvider | None = None,
         request_provider: RequestProvider | None = None,
         request_handler: RequestHandler | None = None,
+        child_view_handler: ChildViewHandler | None = None,
     ) -> None:
+        self._child_view = child_view_handler
         self._apps = app_provider
         self._webfilter = webfilter_provider
         self._requests = request_provider
@@ -74,6 +78,7 @@ class IpcServer:
         app.router.add_get("/ipc/webfilter", self._handle_webfilter)
         app.router.add_get("/ipc/requests", self._handle_requests)
         app.router.add_post("/ipc/requests", self._handle_request)
+        app.router.add_post("/ipc/child-view", self._handle_child_view)
         app.router.add_routes(self._extra_routes)
         self._runner = web.AppRunner(app, access_log=None)
         await self._runner.setup()
@@ -169,6 +174,18 @@ class IpcServer:
             log.warning("request submission failed: %s", exc or type(exc).__name__)
             return web.json_response({"error": "request_failed"}, status=503)
         return web.json_response(result)
+
+    async def _handle_child_view(self, request: web.Request) -> web.Response:
+        if self._child_view is None:
+            return web.json_response({"error": "not_available"}, status=404)
+        try:
+            result = await self._child_view()
+        except LookupError:
+            return web.json_response({"error": "no_child"}, status=409)
+        except Exception as exc:
+            log.warning("child-view link failed: %s", exc or type(exc).__name__)
+            return web.json_response({"error": "child_view_failed"}, status=503)
+        return web.json_response({"status": "ok", **result})
 
 
 def _app_name_ok(value: Any) -> bool:

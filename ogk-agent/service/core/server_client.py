@@ -68,6 +68,14 @@ class _PinnedStream(httpcore.AsyncNetworkStream):
     async def write(self, buffer: bytes, timeout: float | None = None) -> None:
         await self._inner.write(buffer, timeout)
 
+    async def create_child_view_code(self, access_token: str, child_id: int, code: str) -> Any:
+        return await self._json(
+            "POST",
+            "/api/device/child-view-codes",
+            json={"child_id": child_id, "code": code},
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+
     async def aclose(self) -> None:
         await self._inner.aclose()
 
@@ -188,6 +196,14 @@ class ServerClient:
             "POST",
             "/api/device/requests",
             json=body,
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+
+    async def create_child_view_code(self, access_token: str, child_id: int, code: str) -> Any:
+        return await self._json(
+            "POST",
+            "/api/device/child-view-codes",
+            json={"child_id": child_id, "code": code},
             headers={"Authorization": f"Bearer {access_token}"},
         )
 

@@ -1,4 +1,6 @@
-"""IpcError.code is the contract with the UI, which maps it to user-facing text; the message is English for logs."""
+"""IpcError.code is the contract with the UI, which maps it to user-facing text; the message is English for logs.
+A route may name error codes it passes through from the service body; any other failure stays bad_status.
+"""
 
 import json
 import os
@@ -30,7 +32,7 @@ class IpcClient:
         except (OSError, ValueError, KeyError, TypeError):
             raise IpcError("bad_ipc_file", f"Invalid IPC file: {self._file}") from None
 
-    def _request(self, method: str, path: str, body: Any = None) -> Any:
+    def _request(self, method: str, path: str, body: Any = None, passthrough: frozenset[str] = frozenset()) -> Any:
         port, token = self._endpoint()
         try:
             response = httpx.request(
@@ -45,6 +47,9 @@ class IpcClient:
         if response.status_code == 401:
             raise IpcError("unauthorized", "Service rejected the token")
         if response.status_code != 200:
+            code = _error_code(response)
+            if code in passthrough:
+                raise IpcError(code, f"Service refused: {code}")
             raise IpcError("bad_status", f"Service returned HTTP {response.status_code}")
         try:
             return response.json()
@@ -76,3 +81,18 @@ class IpcClient:
 
     def create_request(self, body: dict[str, Any]) -> dict[str, Any]:
         return self._request("POST", "/ipc/requests", body)
+
+    def child_view_link(self) -> dict[str, Any]:
+        return self._request("POST", "/ipc/child-view", passthrough=CHILD_VIEW_ERRORS)
+
+
+CHILD_VIEW_ERRORS = frozenset({"no_child", "child_view_failed", "not_available"})
+
+
+def _error_code(response: httpx.Response) -> str | None:
+    try:
+        body = response.json()
+    except ValueError:
+        return None
+    code = body.get("error") if isinstance(body, dict) else None
+    return code if isinstance(code, str) else None
