@@ -281,3 +281,9 @@ async def child_profile(db: AsyncSession, child_id: int) -> dict:
 async def child_today(db: AsyncSession, child_id: int) -> dict:
     day = today()
     return await build_report(db, child_id, day, day)
+
+
+async def delete_child_views(db: AsyncSession, child_id: int) -> int:
+    codes = await db.execute(delete(ChildViewCode).where(ChildViewCode.child_id == child_id))
+    sessions = await db.execute(delete(ChildViewSession).where(ChildViewSession.child_id == child_id))
+    return codes.rowcount + sessions.rowcount

@@ -303,7 +303,7 @@ erDiagram
 | at | Thời điểm thay đổi. | Thời điểm UTC | No | None |
 | ip | IP của client: IP socket, hoặc hop cuối không phải proxy tin cậy trong `X-Forwarded-For` khi request đến từ proxy tin cậy (`OGK_TRUSTED_PROXIES`). | Văn bản, tối đa 45 ký tự | No | None |
 | action | Loại thay đổi: `create`, `update` hoặc `delete`. | Văn bản, tối đa 16 ký tự | No | None |
-| target_type | Loại đối tượng bị thay đổi: `child`, `device` hoặc `windows_account`. | Văn bản, tối đa 32 ký tự | No | None |
+| target_type | Loại đối tượng bị thay đổi: `child`, `device`, `windows_account`, `policy`, `parent_command`, `child_request` hoặc `child_data` (xóa toàn bộ dữ liệu của trẻ; `old_value` là số dòng đã xóa theo bảng). | Văn bản, tối đa 32 ký tự | No | None |
 | target_id | Định danh đối tượng; không phải khóa ngoại để giữ nhật ký sau khi đối tượng bị xóa. | Số nguyên | No | None |
 | old_value | Bản mã AES-GCM của JSON các trường trước khi đổi; AAD là `audit_logs.old_value`. Rỗng khi `create`. | Bản mã của văn bản JSON | Yes | None |
 | new_value | Bản mã AES-GCM của JSON các trường sau khi đổi; AAD là `audit_logs.new_value`. Rỗng khi `delete`. | Bản mã của văn bản JSON | Yes | None |
@@ -422,11 +422,11 @@ Chỉ mục: `ix_events_device_id`, `ix_events_child_id`, `ix_events_child_id_ts
 
 | Column | Description | Data type | Nullable? | Default |
 |---|---|---|---|---|
-| id | Định danh lệnh. | Số nguyên, tự tăng | No | Tự sinh |
+| id | Định danh lệnh; AUTOINCREMENT nên id đã xóa không được cấp lại (agent ghi biên nhận theo id). | Số nguyên, tự tăng | No | Tự sinh |
 | device_id | Thiết bị nhận lệnh; xóa thiết bị thì xóa lệnh. | Khóa ngoại đến `devices.id` | No | None |
 | child_id | Trẻ bị tác động; xóa trẻ thì xóa lệnh. | Khóa ngoại đến `children.id` | No | None |
 | actor_id | Phụ huynh gửi lệnh. | Khóa ngoại đến `accounts.id` | No | None |
-| type | `lock`, `unlock` hoặc `add_time`. | Văn bản, tối đa 16 ký tự | No | None |
+| type | `lock`, `unlock`, `add_time` do phụ huynh gửi, hoặc `purge_child` do server tạo khi phụ huynh xóa toàn bộ dữ liệu của trẻ. | Văn bản, tối đa 16 ký tự | No | None |
 | minutes | 15 với `add_time`, còn lại 0. | Số nguyên | No | 0 |
 | status | `pending` hoặc `acknowledged`. | Văn bản, tối đa 16 ký tự | No | `pending` |
 | created_at | Thời điểm tạo lệnh UTC. | Thời điểm UTC | No | None |
@@ -464,7 +464,7 @@ Ràng buộc DB: `ck_parent_commands_type`, `ck_parent_commands_status`, `ck_par
 
 | Column | Description | Data type | Nullable? | Default |
 |---|---|---|---|---|
-| id | Định danh yêu cầu. | Số nguyên, tự tăng | No | Tự sinh |
+| id | Định danh yêu cầu; AUTOINCREMENT nên id đã xóa không được cấp lại (agent giữ kết quả yêu cầu theo id). | Số nguyên, tự tăng | No | Tự sinh |
 | device_id | Thiết bị gửi yêu cầu, tham chiếu `devices.id`. | Số nguyên | No | None |
 | child_id | Trẻ gửi yêu cầu, tham chiếu `children.id`. | Số nguyên | No | None |
 | type | `add_time` hoặc `blocked_domain`. | Văn bản, tối đa 20 ký tự | No | None |
@@ -1222,9 +1222,9 @@ $$
 
 ### IC-041: Loại lệnh khẩn hợp lệ
 
-**Statement:** `parent_commands.type` chỉ nhận `lock`, `unlock` hoặc `add_time`.
+**Statement:** `parent_commands.type` chỉ nhận `lock`, `unlock`, `add_time` hoặc `purge_child`.
 
-**Context:** DB kiểm tra bằng `ck_parent_commands_type`; API từ chối loại khác bằng `422 invalid_command`.
+**Context:** DB kiểm tra bằng `ck_parent_commands_type` (migration 0015 thêm `purge_child`). API lệnh khẩn của phụ huynh chỉ nhận ba loại đầu và từ chối loại khác bằng `422 invalid_command`; `purge_child` chỉ do module retention tạo.
 
 **Impacted Data Objects:** `parent_commands.type`
 
@@ -1238,7 +1238,7 @@ $$
 
 ### IC-043: Thời lượng lệnh hợp lệ
 
-**Statement:** `parent_commands.minutes` chỉ nhận 0 hoặc 15; `add_time` nhận 15 và hai lệnh còn lại nhận 0.
+**Statement:** `parent_commands.minutes` chỉ nhận 0 hoặc 15; `add_time` nhận 15 và các lệnh còn lại nhận 0.
 
 **Context:** DB kiểm tra miền bằng `ck_parent_commands_minutes`; service bảo đảm quan hệ giữa loại và số phút.
 
@@ -1297,3 +1297,27 @@ $$
 **Context:** `child_id` là khóa ngoại NOT NULL. Service lấy id trẻ chỉ từ phiên, không từ request, và coi phiên hết hạn, hoặc phiên của thiết bị đã gỡ (`devices.revoked_at` khác rỗng), như không tồn tại; `expires_at = created_at + 30 phút` do service đặt.
 
 **Impacted Data Objects:** `child_view_sessions.child_id`, `child_view_sessions.expires_at`
+
+### IC-050: Lịch sử chỉ giữ 90 ngày
+
+**Statement:** Không giữ quá 90 ngày: `events` theo `ts`, `event_batches` theo `received_at`, `child_requests` và `parent_commands` theo `created_at`, `device_alerts` theo `resolved_at` (cảnh báo còn mở theo `last_seen_at`), `daily_usage` theo `day` tính trong `OGK_REPORT_TZ`.
+
+**Context:** DB không kiểm tra. Module retention chạy khi server khởi động và sau đó mỗi 24 giờ, xóa các dòng cũ hơn mốc; giữa hai lần chạy, dữ liệu có thể quá hạn tối đa một ngày. `audit_logs` chỉ ghi thêm nên không bị xóa.
+
+**Impacted Data Objects:** `events.ts`, `event_batches.received_at`, `child_requests.created_at`, `parent_commands.created_at`, `device_alerts.last_seen_at`, `device_alerts.resolved_at`, `daily_usage.day`
+
+### IC-051: Xóa toàn bộ dữ liệu của trẻ giữ hồ sơ và gửi lệnh xóa bộ đệm
+
+**Statement:** Khi phụ huynh xóa toàn bộ dữ liệu của trẻ, mọi dòng `events`, `child_requests`, `parent_commands`, `daily_usage`, `child_view_codes`, `child_view_sessions` của trẻ bị xóa, `policy_versions` chỉ giữ version hiện hành. `children`, `policies` và `windows_accounts` được giữ. Mỗi thiết bị đang gán trẻ nhận đúng một lệnh `purge_child` mới, và có đúng một dòng `audit_logs` (`delete`, `child_data`).
+
+**Context:** Service làm mọi việc trên trong một giao dịch, và tạo lệnh `purge_child` sau bước xóa để lệnh không bị xóa theo.
+
+**Impacted Data Objects:** `events`, `child_requests`, `parent_commands`, `daily_usage`, `child_view_codes`, `child_view_sessions`, `policy_versions`, `audit_logs`
+
+### IC-052: Id lệnh và id yêu cầu không được cấp lại
+
+**Statement:** Một `parent_commands.id` hoặc `child_requests.id` đã từng cấp thì không được cấp cho dòng mới, kể cả sau khi dòng cũ bị xóa.
+
+**Context:** DB bảo đảm bằng AUTOINCREMENT (migration 0015 dựng lại hai bảng). Agent ghi biên nhận theo id lệnh và bỏ qua id đã thấy, nên nếu id bị cấp lại sau tác vụ xóa 90 ngày hoặc xóa toàn bộ dữ liệu của trẻ, agent sẽ xác nhận lệnh mới mà không thực hiện.
+
+**Impacted Data Objects:** `parent_commands.id`, `child_requests.id`

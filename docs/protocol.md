@@ -839,6 +839,8 @@ Agent nhận lệnh qua heartbeat xác nhận bằng `POST /api/device/commands/
 
 Agent thực hiện `lock` qua yêu cầu khóa hiện có của Tray UI; `unlock` gỡ khóa do agent áp và bật cờ override cho phiên trẻ hiện tại để không khóa lại ngay; `add_time` cộng 900 giây bonus vào quota của ngày, trừ dần khi trẻ đang sử dụng máy. Giờ đóng lịch vẫn được áp dụng. Agent đưa `locked` hoặc `override_granted` vào hàng đợi sự kiện hiện có.
 
+Ngoài ba loại trên, server tự tạo lệnh `purge_child` (`minutes` là 0) khi phụ huynh xóa toàn bộ dữ liệu của trẻ; API này không nhận `purge_child`. Lệnh đi theo cùng hai đường truyền. Agent xóa dữ liệu cục bộ của `child_id` (xem [Lưu trữ và xóa dữ liệu](#lưu-trữ-và-xóa-dữ-liệu)) rồi mới xác nhận; xóa lỗi thì không xác nhận để server gửi lại.
+
 | HTTP | Body |
 | :---- | :---- |
 | 200 | Như trên |
@@ -1127,3 +1129,24 @@ Cookie `ogk_child_view`; thiếu, hết hạn hoặc thiết bị đã cấp mã
 | `GET /api/child-view/me` | `{ "name": "An" }` |
 | `GET /api/child-view/today` | Report của hôm nay, cùng hàm và cùng số liệu với báo cáo phụ huynh cho ngày đó |
 | `GET /api/child-view/rule-log?page=1&size=20` | Nhật ký thay đổi chính sách của trẻ, phân trang; mỗi mục `{ "id", "at", "changes": { "weekday_quota_minutes": { "old": 120, "new": 90 } } }`; không có email hay IP của phụ huynh |
+
+## Lưu trữ và xóa dữ liệu
+
+Chi tiết từng trường dữ liệu, mục đích, thời hạn lưu và ai xem được nằm trong `PRIVACY.md`.
+
+### Tự xóa sau 90 ngày
+
+- Server: tác vụ chạy khi khởi động và sau đó mỗi 24 giờ, xóa sự kiện, lô sự kiện, cảnh báo thiết bị, yêu cầu của trẻ, lệnh và thời gian dùng máy theo ngày cũ hơn 90 ngày. Nhật ký kiểm toán chỉ ghi thêm, không bị xóa.
+- Agent: module retention chạy khi service khởi động và sau đó mỗi 24 giờ theo giờ tin cậy, xóa `usage` có ngày cũ hơn 90 ngày, sự kiện trong outbox và biên nhận lệnh cũ hơn 90 ngày.
+
+### `DELETE /api/children/{id}/data`
+
+Phiên `parent`, cần CSRF. Xóa sự kiện, yêu cầu, lệnh, thời gian dùng máy theo ngày, mã và phiên child-view của trẻ, cùng các version chính sách cũ (giữ version hiện hành). Hồ sơ trẻ, chính sách hiện hành và việc gán tài khoản Windows được giữ. Server tạo một lệnh `purge_child` cho mỗi thiết bị đang gán trẻ và ghi nhật ký kiểm toán `delete` trên `child_data`, tất cả trong một giao dịch.
+
+| HTTP | Body |
+| :---- | :---- |
+| 200 | `{ "devices_notified": 1 }` |
+| 403 | `csrf_failed`; admin: `forbidden` |
+| 404 | `not_found` khi trẻ không thuộc phụ huynh |
+
+Khi nhận `purge_child`, agent xóa trong DB cục bộ `usage`, `command_state` và sự kiện trong outbox của trẻ, xóa bộ đếm và yêu cầu của trẻ trong bộ nhớ, rồi xác nhận. Chính sách đã lưu được giữ để tiếp tục quản lý máy.

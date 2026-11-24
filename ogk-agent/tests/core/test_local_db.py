@@ -113,6 +113,9 @@ def test_command_state_and_receipt_round_trip(data_dir):
     assert db.load_command_state(7) == (None, None, 0)
     db.save_command_state(7, "2026-11-22", "2026-11-22", 840)
     assert db.load_command_state(7) == ("2026-11-22", "2026-11-22", 840)
+    db.save_command_state(7, None, None, 0)
+    assert db.load_command_state(7) == (None, None, 0)
+    assert db.purge_child(7)["command_state"] == 0
     assert not db.has_command_receipt(12)
     db.save_command_receipt(12, datetime(2026, 11, 22, 10, 0, tzinfo=UTC))
     assert db.has_command_receipt(12)

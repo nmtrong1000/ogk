@@ -1,3 +1,8 @@
+import asyncio
+import contextlib
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 
 from app.core import dashboard, errors, health
@@ -16,6 +21,8 @@ from app.modules.policy.router import router as policy_router
 from app.modules.reports.router import child_view_router as reports_child_view_router
 from app.modules.reports.router import device_router as reports_device_router
 from app.modules.reports.router import router as reports_router
+from app.modules.retention import service as retention
+from app.modules.retention.router import router as retention_router
 from app.modules.sync.router import command_router as sync_command_router
 from app.modules.sync.router import device_router as sync_device_router
 from app.modules.sync.router import request_router as sync_request_router
@@ -26,8 +33,19 @@ from app.modules.webfilter.router import parent_router as webfilter_parent_route
 CSRF_EXEMPT_PREFIXES: tuple[str, ...] = DEVICE_PREFIXES
 
 
+@asynccontextmanager
+async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+    task = asyncio.create_task(retention.run_daily())
+    try:
+        yield
+    finally:
+        task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await task
+
+
 def create_app() -> FastAPI:
-    app = FastAPI(title="OGK-Server")
+    app = FastAPI(title="OGK-Server", lifespan=lifespan)
     app.state.rate_limiter = RateLimiter()
     errors.register(app)
     app.add_middleware(CSRFMiddleware, exempt_prefixes=CSRF_EXEMPT_PREFIXES)
@@ -50,6 +68,7 @@ def create_app() -> FastAPI:
     app.include_router(reports_router)
     app.include_router(reports_device_router)
     app.include_router(reports_child_view_router)
+    app.include_router(retention_router)
     dist = get_settings().dashboard_dist
     if dist and (dist / "index.html").is_file():
         dashboard.register(app, dist)

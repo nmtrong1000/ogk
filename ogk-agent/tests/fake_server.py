@@ -1,6 +1,7 @@
 """In-memory stand-in for the OGK server's device API, served through httpx.MockTransport.
 It mirrors the server contract: rotating refresh tokens, token_expired, device_revoked, invalid_refresh,
-heartbeat versions and idempotent event batches. offline makes every request fail like a dropped connection;
+heartbeat versions, pending commands until acknowledged, and idempotent event batches.
+offline makes every request fail like a dropped connection;
 drop_response stores an event batch and then fails, like a response lost on the way back.
 """
 
@@ -33,6 +34,8 @@ class FakeServer:
         self.heartbeats: list[dict] = []
         self.batch_keys: list[str] = []
         self.events: list[dict] = []
+        self.commands: list[dict] = []
+        self.acked: list[int] = []
 
     def _tokens(self) -> dict:
         self.counter += 1
@@ -100,12 +103,21 @@ class FakeServer:
                 self.heartbeats.append(json.loads(request.content))
                 versions = {str(child_id): version for child_id, version in self.versions.items()}
                 server_time = self.now.isoformat().replace("+00:00", "Z")
+                pending = [c for c in self.commands if c["id"] not in self.acked]
                 return httpx.Response(
-                    200, json={"policy_versions": versions, "commands": [], "server_time": server_time}
+                    200, json={"policy_versions": versions, "commands": pending, "server_time": server_time}
                 )
             if path == "/api/device/events":
                 return self._events(request)
             return httpx.Response(200, json={"id": 1, "name": "PC"})
+        if path.startswith("/api/device/commands/") and path.endswith("/ack"):
+            denied = self._check_access(request)
+            if denied is not None:
+                return denied
+            command_id = int(path.split("/")[4])
+            fresh = command_id not in self.acked
+            self.acked.append(command_id)
+            return httpx.Response(200, json={"acknowledged": fresh})
         return httpx.Response(404, json={"detail": "not_found"})
 
     def client(self, *_args, **_kwargs) -> ServerClient:
