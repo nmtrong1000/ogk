@@ -8,6 +8,7 @@ TITLE = "OGK - Website bị chặn"
 class BlockNotice:
     seq: int
     text: str
+    domain: str
 
 
 def notice_text(snapshot: dict[str, Any]) -> str:
@@ -31,5 +32,5 @@ class BlockTracker:
         if previous is None:
             return None
         if run != previous_run:
-            return BlockNotice(seq, notice_text(snapshot)) if seq else None
-        return BlockNotice(seq, notice_text(snapshot)) if seq > previous else None
+            return BlockNotice(seq, notice_text(snapshot), snapshot.get("domain") or "") if seq else None
+        return BlockNotice(seq, notice_text(snapshot), snapshot.get("domain") or "") if seq > previous else None

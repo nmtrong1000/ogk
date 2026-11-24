@@ -28,6 +28,8 @@ HeartbeatHandler = Callable[[TrayPing], None]
 ScreenProvider = Callable[[], dict[str, Any]]
 AppProvider = Callable[[], dict[str, Any]]
 WebFilterProvider = Callable[[], dict[str, Any]]
+RequestProvider = Callable[[], dict[str, Any]]
+RequestHandler = Callable[[dict[str, Any]], Any]
 MAX_APP_NAME = 255
 
 
@@ -42,9 +44,13 @@ class IpcServer:
         screen_provider: ScreenProvider | None = None,
         app_provider: AppProvider | None = None,
         webfilter_provider: WebFilterProvider | None = None,
+        request_provider: RequestProvider | None = None,
+        request_handler: RequestHandler | None = None,
     ) -> None:
         self._apps = app_provider
         self._webfilter = webfilter_provider
+        self._requests = request_provider
+        self._request_handler = request_handler
         self._file = data_dir / IPC_FILE
         self._screen = screen_provider
         self._port = port
@@ -66,6 +72,8 @@ class IpcServer:
         app.router.add_get("/ipc/screentime", self._handle_screentime)
         app.router.add_get("/ipc/appcontrol", self._handle_appcontrol)
         app.router.add_get("/ipc/webfilter", self._handle_webfilter)
+        app.router.add_get("/ipc/requests", self._handle_requests)
+        app.router.add_post("/ipc/requests", self._handle_request)
         app.router.add_routes(self._extra_routes)
         self._runner = web.AppRunner(app, access_log=None)
         await self._runner.setup()
@@ -133,6 +141,34 @@ class IpcServer:
         if self._webfilter is None:
             return web.json_response({"error": "not_available"}, status=404)
         return web.json_response({"status": "ok", **self._webfilter()})
+
+    async def _handle_requests(self, request: web.Request) -> web.Response:
+        if self._requests is None:
+            return web.json_response({"error": "not_available"}, status=404)
+        return web.json_response({"status": "ok", **self._requests()})
+
+    async def _handle_request(self, request: web.Request) -> web.Response:
+        if self._request_handler is None:
+            return web.json_response({"error": "not_available"}, status=404)
+        try:
+            body = await request.json()
+        except ValueError:
+            body = None
+        if (
+            not isinstance(body, dict)
+            or set(body) - {"type", "domain"}
+            or not isinstance(body.get("type"), str)
+            or body["type"] not in {"add_time", "blocked_domain"}
+            or (body.get("type") == "blocked_domain" and not _app_name_ok(body.get("domain")))
+            or (body.get("type") == "add_time" and "domain" in body)
+        ):
+            return web.json_response({"error": "bad_request"}, status=400)
+        try:
+            result = await self._request_handler(body)
+        except Exception as exc:
+            log.warning("request submission failed: %s", exc or type(exc).__name__)
+            return web.json_response({"error": "request_failed"}, status=503)
+        return web.json_response(result)
 
 
 def _app_name_ok(value: Any) -> bool:

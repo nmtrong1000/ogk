@@ -183,5 +183,13 @@ class ServerClient:
         headers = {"Authorization": f"Bearer {access_token}", "Idempotency-Key": idempotency_key}
         return await self._json("POST", "/api/device/events", json={"events": events}, headers=headers)
 
+    async def create_request(self, access_token: str, body: dict[str, Any]) -> Any:
+        return await self._json(
+            "POST",
+            "/api/device/requests",
+            json=body,
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+
     async def aclose(self) -> None:
         await self._client.aclose()

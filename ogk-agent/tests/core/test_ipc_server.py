@@ -183,3 +183,42 @@ async def test_appcontrol_route_returns_snapshot(tmp_path):
         await server.stop()
     assert ok.json() == {"status": "ok", "block_seq": 1, "app": "game.exe"}
     assert denied.status_code == 401
+
+
+@pytest.mark.anyio
+async def test_child_request_routes_use_authenticated_ipc(tmp_path):
+    submitted = []
+
+    async def submit(body):
+        submitted.append(body)
+        return {"id": 12, "status": "pending"}
+
+    server = IpcServer(
+        tmp_path,
+        0,
+        dict,
+        request_provider=lambda: {"results": [{"id": 3, "status": "approved"}]},
+        request_handler=submit,
+    )
+    await server.start()
+    token = _read(tmp_path)["token"]
+    headers = {"Authorization": f"Bearer {token}"}
+    try:
+        async with httpx.AsyncClient() as client:
+            results = await client.get(f"http://127.0.0.1:{server.port}/ipc/requests", headers=headers)
+            created = await client.post(
+                f"http://127.0.0.1:{server.port}/ipc/requests",
+                json={"type": "blocked_domain", "domain": "school.example"},
+                headers=headers,
+            )
+            invalid = await client.post(
+                f"http://127.0.0.1:{server.port}/ipc/requests",
+                json={"type": "unknown"},
+                headers=headers,
+            )
+    finally:
+        await server.stop()
+    assert results.json()["results"] == [{"id": 3, "status": "approved"}]
+    assert created.json() == {"id": 12, "status": "pending"}
+    assert invalid.status_code == 400
+    assert submitted == [{"type": "blocked_domain", "domain": "school.example"}]

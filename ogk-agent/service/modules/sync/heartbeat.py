@@ -23,6 +23,7 @@ from service.core.event_queue import EventQueue
 from service.core.events import format_ts
 from service.core.offline import OfflineGuard
 from service.core.policy_store import PolicyStore
+from service.core.request_state import RequestState
 from service.core.screen_state import ScreenState
 from service.core.server_client import ApiError
 
@@ -50,10 +51,12 @@ class SyncModule:
         screen: ScreenState | None = None,
         alerts: AlertBoard | None = None,
         commands: CommandState | None = None,
+        request_state: RequestState | None = None,
     ) -> None:
         self._screen = screen
         self._alerts = alerts
         self._commands = commands
+        self._request_state = request_state
         self._session = session
         self._queue = queue
         self._offline = offline
@@ -131,6 +134,8 @@ class SyncModule:
                         await self._session.acknowledge_command(command["id"])
                     except (NotEnrolled, DeviceRevoked, httpx.HTTPError, ApiError) as exc:
                         log.warning("command acknowledgement failed: %s", exc or type(exc).__name__)
+        if self._request_state is not None:
+            self._request_state.update(response.get("requests", []))
         return True
 
     async def run(self) -> None:
@@ -191,4 +196,5 @@ def create(context: ModuleContext) -> SyncModule:
         context.screen,
         context.alerts,
         context.commands,
+        context.request_state,
     )

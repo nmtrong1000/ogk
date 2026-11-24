@@ -17,12 +17,13 @@ from app.modules.auth.service import require_parent
 from app.modules.enrollment.models import TOKEN_ACCESS, DeviceToken
 from app.modules.enrollment.service import current_device
 from app.modules.family.models import Device
-from app.modules.sync import commands, service
+from app.modules.sync import commands, requests, service
 from app.modules.sync.schemas import AlertOut, EventsOut, HeartbeatIn, HeartbeatOut
 
 router = APIRouter(prefix="/api/alerts", tags=["sync"], dependencies=[Depends(require_parent)])
 device_router = APIRouter(tags=["device"])
 command_router = APIRouter(prefix="/api", tags=["commands"], dependencies=[Depends(require_parent)])
+request_router = APIRouter(prefix="/api/requests", tags=["requests"], dependencies=[Depends(require_parent)])
 
 
 @router.get("", response_model=list[AlertOut])
@@ -49,6 +50,46 @@ async def post_events(
     except ValueError as exc:
         raise AppError(422, "invalid_batch") from exc
     return await service.receive_events(db, device, idempotency_key, payload)
+
+
+@device_router.post("/api/device/requests", status_code=201)
+async def create_child_request(
+    body: dict, device: Device = Depends(current_device), db: AsyncSession = Depends(get_db)
+):
+    allowed = {"child_id", "type", "domain"}
+    if not isinstance(body, dict) or not {"child_id", "type"} <= set(body) or set(body) - allowed:
+        raise AppError(422, "invalid_request")
+    child_id, kind, domain = body.get("child_id"), body.get("type"), body.get("domain")
+    if isinstance(child_id, bool) or not isinstance(child_id, int) or not isinstance(kind, str):
+        raise AppError(422, "invalid_request")
+    if domain is not None and not isinstance(domain, str):
+        raise AppError(422, "invalid_request")
+    return await requests.create(db, device, child_id, kind, domain)
+
+
+@request_router.get("")
+async def list_child_requests(
+    status: str | None = None,
+    account: Account = Depends(require_parent),
+    db: AsyncSession = Depends(get_db),
+):
+    return await requests.list_for_parent(db, account.id, status)
+
+
+@request_router.post("/{request_id}/decision")
+async def decide_child_request(
+    request_id: int,
+    body: dict,
+    account: Account = Depends(require_parent),
+    actor: Actor = Depends(current_actor),
+    db: AsyncSession = Depends(get_db),
+):
+    if not isinstance(body, dict) or set(body) - {"approve", "message"}:
+        raise AppError(422, "invalid_request_decision")
+    approve, message = body.get("approve"), body.get("message")
+    if not isinstance(approve, bool) or (message is not None and not isinstance(message, str)):
+        raise AppError(422, "invalid_request_decision")
+    return await requests.decision(db, request_id, account.id, approve, message, actor)
 
 
 @command_router.post("/devices/{device_id}/children/{child_id}/commands", status_code=201)

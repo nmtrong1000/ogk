@@ -371,7 +371,15 @@ class WebFilterModule:
                     self.servers.append(server)
             log.info("DNS proxy listening on 127.0.0.1 and ::1 port 53")
             await upstream_failure.wait()
-            log.error("web filtering stopped because every DNS upstream failed; network DNS was restored")
+            log.error(
+                "web filtering entered fail-open mode because every DNS upstream failed; "
+                "system DNS was restored and the OGK agent remains running"
+            )
+            # A module returning is treated by Agent.run() as a service-wide
+            # shutdown. Keep this task alive in degraded mode so IPC, requests,
+            # heartbeats, and the tray continue working while Windows uses its
+            # restored DNS configuration. Filtering resumes on service restart.
+            await asyncio.Event().wait()
         finally:
             for server in self.servers:
                 server.stop()

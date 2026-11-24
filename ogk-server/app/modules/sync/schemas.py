@@ -38,6 +38,7 @@ class HeartbeatIn(BaseModel):
 class HeartbeatOut(BaseModel):
     policy_versions: dict[str, int]
     commands: list[dict]
+    requests: list[dict] = Field(default_factory=list)
     server_time: str
 
 

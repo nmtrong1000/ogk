@@ -17,7 +17,7 @@ from app.core.errors import AppError
 from app.modules.family import service as family
 from app.modules.family.models import Child, Device
 from app.modules.policy import service as policy
-from app.modules.sync import commands
+from app.modules.sync import commands, requests
 from app.modules.sync.models import (
     EVENT_TYPES,
     MAX_DURATION_SEC,
@@ -172,6 +172,7 @@ async def heartbeat(db: AsyncSession, device: Device, body: HeartbeatIn) -> dict
     return {
         "policy_versions": {str(p.child_id): p.version for p in policies},
         "commands": await commands.pending_commands(db, device.id),
+        "requests": await requests.decided_for_device(db, device.id),
         "server_time": policy.iso(at),
     }
 
