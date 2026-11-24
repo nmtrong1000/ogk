@@ -5,10 +5,10 @@ because the agent may deliver events buffered before an account was reassigned.
 """
 
 import re
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import delete, func, select
 from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -25,10 +25,12 @@ from app.modules.sync.models import (
     MAX_DURATION_SEC,
     MAX_IDEMPOTENCY_KEY,
     MAX_SUBJECT,
+    ChildRequest,
     DailyUsage,
     DeviceAlert,
     Event,
     EventBatch,
+    ParentCommand,
 )
 from app.modules.sync.schemas import HeartbeatIn
 
@@ -226,3 +228,27 @@ async def list_alerts(db: AsyncSession, owner_id: int, device_id: int | None) ->
         }
         for alert, name in (await db.execute(stmt)).all()
     ]
+
+
+async def purge_before(db: AsyncSession, cutoff: datetime, cutoff_day: date) -> dict[str, int]:
+    statements = {
+        "events": delete(Event).where(Event.ts < cutoff),
+        "event_batches": delete(EventBatch).where(EventBatch.received_at < cutoff),
+        "device_alerts": delete(DeviceAlert).where(
+            func.coalesce(DeviceAlert.resolved_at, DeviceAlert.last_seen_at) < cutoff
+        ),
+        "child_requests": delete(ChildRequest).where(ChildRequest.created_at < cutoff),
+        "parent_commands": delete(ParentCommand).where(ParentCommand.created_at < cutoff),
+        "daily_usage": delete(DailyUsage).where(DailyUsage.day < cutoff_day),
+    }
+    return {name: (await db.execute(stmt)).rowcount for name, stmt in statements.items()}
+
+
+async def delete_child_history(db: AsyncSession, child_id: int) -> dict[str, int]:
+    statements = {
+        "events": delete(Event).where(Event.child_id == child_id),
+        "child_requests": delete(ChildRequest).where(ChildRequest.child_id == child_id),
+        "parent_commands": delete(ParentCommand).where(ParentCommand.child_id == child_id),
+        "daily_usage": delete(DailyUsage).where(DailyUsage.child_id == child_id),
+    }
+    return {name: (await db.execute(stmt)).rowcount for name, stmt in statements.items()}

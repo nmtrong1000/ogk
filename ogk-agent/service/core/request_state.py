@@ -14,6 +14,10 @@ class RequestState:
                     self._items[item["id"]] = item
             self._items = dict(sorted(self._items.items())[-20:])
 
+    def forget_child(self, child_id: int) -> None:
+        with self._lock:
+            self._items = {key: item for key, item in self._items.items() if item.get("child_id") != child_id}
+
     def snapshot(self) -> dict[str, Any]:
         with self._lock:
             return {"results": list(self._items.values())}

@@ -11,7 +11,7 @@ import json
 import re
 from datetime import UTC, datetime
 
-from sqlalchemy import select, update
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -312,3 +312,11 @@ async def device_policies(db: AsyncSession, device: Device) -> dict:
     for row in rows:
         category_domains.setdefault(row.category, []).append(row.domain)
     return {"policies": [signed(p, sids[p.child_id], emails.get(p.updated_by), category_domains) for p in policies]}
+
+
+async def delete_old_versions(db: AsyncSession, child_id: int) -> int:
+    current = select(Policy.version).where(Policy.child_id == child_id).scalar_subquery()
+    stmt = delete(PolicyVersion).where(
+        PolicyVersion.child_id == child_id, PolicyVersion.version != func.coalesce(current, -1)
+    )
+    return (await db.execute(stmt)).rowcount

@@ -1,6 +1,8 @@
 """events holds exactly the 7 fields of the event schema plus a surrogate id; device alerts live in
 device_alerts so the events table keeps only the 9 required types.
 uq_device_alerts_open is a partial index: at most one unresolved alert per (device, type).
+parent_commands and child_requests use AUTOINCREMENT because the agent keys them by id, and the retention
+purge would otherwise let SQLite hand a deleted id out again.
 daily_usage.day is the agent's local day, not a UTC day: the agent counts screen time per local day and the
 heartbeat repeats recent days, so each row is overwritten with the latest value.
 """
@@ -28,7 +30,8 @@ MAX_SUBJECT = 255
 MAX_DURATION_SEC = 86400
 MAX_IDEMPOTENCY_KEY = 64
 MAX_ALERT_DETAIL = 64
-COMMAND_TYPES = ("lock", "unlock", "add_time")
+PARENT_COMMAND_TYPES = ("lock", "unlock", "add_time")
+COMMAND_TYPES = (*PARENT_COMMAND_TYPES, "purge_child")
 
 
 def _in(column: str, values: tuple[str, ...]) -> str:
@@ -93,6 +96,7 @@ class ParentCommand(Base):
         CheckConstraint(_in("type", COMMAND_TYPES), name="ck_parent_commands_type"),
         CheckConstraint("status IN ('pending', 'acknowledged')", name="ck_parent_commands_status"),
         CheckConstraint("minutes IN (0, 15)", name="ck_parent_commands_minutes"),
+        {"sqlite_autoincrement": True},
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -111,6 +115,7 @@ class ChildRequest(Base):
     __table_args__ = (
         CheckConstraint("type IN ('add_time', 'blocked_domain')", name="ck_child_requests_type"),
         CheckConstraint("status IN ('pending', 'approved', 'rejected')", name="ck_child_requests_status"),
+        {"sqlite_autoincrement": True},
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)

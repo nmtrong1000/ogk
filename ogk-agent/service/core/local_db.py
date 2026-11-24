@@ -5,7 +5,11 @@ The schema version lives in PRAGMA user_version; migrate() applies steps above t
 policies rows are not trusted on read: policy_store re-verifies each signature, so this layer stores raw text.
 next_event_batch assigns a batch_key and stores it before the batch is sent, so a resend after a lost response
 carries the same key and the server ignores it; rows keep their key until the server acknowledges the batch.
-usage keeps one row per child, local day and counter; old days stay until P17 reports on them.
+usage keeps one row per child, local day and counter; the retention module deletes days older than 90.
+purge_child matches outbox rows on the child_id inside the JSON payload; a batch that loses rows keeps its key,
+so the server either already has the whole batch or receives what is left exactly once.
+command_state keeps a row only while it holds an override or bonus; an empty state deletes the row, so a
+purged child does not get a row back from the next periodic save.
 Methods are synchronous; async callers run them in a worker thread.
 """
 
@@ -338,6 +342,9 @@ class LocalDb:
         self, child_id: int, override_day: str | None, bonus_day: str | None, bonus_seconds: int
     ) -> None:
         with closing(self._connect()) as conn, conn:
+            if override_day is None and int(bonus_seconds) <= 0:
+                conn.execute("DELETE FROM command_state WHERE child_id = ?", (child_id,))
+                return
             conn.execute(
                 "INSERT INTO command_state (child_id, override_day, bonus_day, bonus_seconds) VALUES (?, ?, ?, ?) "
                 "ON CONFLICT (child_id) DO UPDATE SET override_day = excluded.override_day, "
@@ -359,3 +366,22 @@ class LocalDb:
                 "INSERT OR IGNORE INTO command_receipts (command_id, processed_at) VALUES (?, ?)",
                 (command_id, _iso(at)),
             )
+
+    def purge_before(self, cutoff: datetime, cutoff_day: str) -> dict[str, int]:
+        at = _iso(cutoff)
+        with closing(self._connect()) as conn, conn:
+            return {
+                "usage": conn.execute("DELETE FROM usage WHERE day < ?", (cutoff_day,)).rowcount,
+                "event_outbox": conn.execute("DELETE FROM event_outbox WHERE created_at < ?", (at,)).rowcount,
+                "command_receipts": conn.execute("DELETE FROM command_receipts WHERE processed_at < ?", (at,)).rowcount,
+            }
+
+    def purge_child(self, child_id: int) -> dict[str, int]:
+        with closing(self._connect()) as conn, conn:
+            return {
+                "usage": conn.execute("DELETE FROM usage WHERE child_id = ?", (child_id,)).rowcount,
+                "command_state": conn.execute("DELETE FROM command_state WHERE child_id = ?", (child_id,)).rowcount,
+                "event_outbox": conn.execute(
+                    "DELETE FROM event_outbox WHERE json_extract(payload, '$.child_id') = ?", (child_id,)
+                ).rowcount,
+            }

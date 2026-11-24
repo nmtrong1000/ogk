@@ -336,7 +336,7 @@ $$
 
 **Statement:** Mỗi trẻ có tối đa một trạng thái lệnh và thời gian cộng thêm không âm.
 
-**Context:** DB kiểm tra bằng khóa chính `command_state.child_id` và `CHECK (bonus_seconds >= 0)`. Lệnh cộng thời gian tăng số dư; tick chỉ giảm theo thời gian hoạt động.
+**Context:** DB kiểm tra bằng khóa chính `command_state.child_id` và `CHECK (bonus_seconds >= 0)`. Lệnh cộng thời gian tăng số dư; tick chỉ giảm theo thời gian hoạt động. Trạng thái rỗng (không override, bonus bằng 0) không giữ dòng: lần lưu đó xóa dòng của trẻ.
 
 **Impacted Data Objects:** `command_state`
 
@@ -347,3 +347,19 @@ $$
 **Context:** DB kiểm tra bằng khóa chính `command_receipts.command_id`; CommandState tra cứu trước khi gọi handler và ghi biên nhận sau khi handler hoàn tất.
 
 **Impacted Data Objects:** `command_receipts`
+
+### IC-013: Dữ liệu cục bộ chỉ giữ 90 ngày
+
+**Statement:** Không giữ quá 90 ngày: `usage` theo `day` (ngày địa phương), `event_outbox` theo `created_at`, `command_receipts` theo `processed_at`.
+
+**Context:** DB không kiểm tra. Module retention xóa khi service khởi động và sau đó mỗi 24 giờ, lấy mốc từ giờ tin cậy; giữa hai lần chạy, dữ liệu có thể quá hạn tối đa một ngày.
+
+**Impacted Data Objects:** `usage.day`, `event_outbox.created_at`, `command_receipts.processed_at`
+
+### IC-014: Lệnh xóa bộ đệm xóa hết dữ liệu cục bộ của trẻ trước khi xác nhận
+
+**Statement:** Sau khi xử lý xong lệnh `purge_child` cho một `child_id`, `usage`, `command_state` và `event_outbox` (theo `child_id` trong `payload`) không còn dòng nào của trẻ đó. `policies` được giữ vì chính sách hiện hành vẫn còn trên server.
+
+**Context:** Code bảo đảm, DB không kiểm tra. Module retention phát `CHILD_PURGED` để screen time bỏ bộ đếm trong bộ nhớ trước, rồi xóa trong một giao dịch. Biên nhận lệnh và xác nhận với server chỉ ghi sau khi xóa thành công.
+
+**Impacted Data Objects:** `usage`, `command_state`, `event_outbox`, `command_receipts`

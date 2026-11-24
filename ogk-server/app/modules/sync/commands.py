@@ -8,7 +8,7 @@ from app.core.db import utcnow
 from app.core.errors import AppError
 from app.modules.audit import service as audit
 from app.modules.family.models import Child, Device, WindowsAccount
-from app.modules.sync.models import COMMAND_TYPES, ParentCommand
+from app.modules.sync.models import PARENT_COMMAND_TYPES, ParentCommand
 
 _listeners: dict[int, set[asyncio.Queue]] = {}
 
@@ -54,7 +54,7 @@ async def create_command(
     kind: str,
     actor: audit.Actor,
 ) -> dict:
-    if kind not in COMMAND_TYPES:
+    if kind not in PARENT_COMMAND_TYPES:
         raise AppError(422, "invalid_command")
     device = (
         await db.execute(
@@ -97,6 +97,21 @@ async def create_command(
     body = command_body(row)
     await publish(device_id, body)
     return body
+
+
+async def queue_purge(db: AsyncSession, device_id: int, child_id: int, actor: audit.Actor) -> ParentCommand:
+    row = ParentCommand(
+        device_id=device_id,
+        child_id=child_id,
+        actor_id=actor.account_id,
+        type="purge_child",
+        minutes=0,
+        status="pending",
+        created_at=utcnow(),
+    )
+    db.add(row)
+    await db.flush()
+    return row
 
 
 async def list_commands(db: AsyncSession, device_id: int, child_id: int, owner_id: int) -> list[dict]:

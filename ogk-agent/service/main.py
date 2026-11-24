@@ -7,7 +7,17 @@ import sys
 from functools import partial
 
 from service.core.agent import run_agent
-from service.modules import appcontrol, childview, policy, presence, requests, screentime, sync, webfilter
+from service.modules import (
+    appcontrol,
+    childview,
+    policy,
+    presence,
+    requests,
+    retention,
+    screentime,
+    sync,
+    webfilter,
+)
 from service.platform import get_platform
 
 ENROLL_COMMAND = "enroll"
@@ -21,6 +31,7 @@ MODULES = [
     webfilter.create,
     requests.create,
     childview.create,
+    retention.create,
 ]
 
 

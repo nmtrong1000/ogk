@@ -45,6 +45,10 @@ export const router = createBrowserRouter([
             path: '/children/:id/reports',
             lazy: async () => ({ Component: (await import('@/features/reports/index.ts')).ReportsPage }),
           },
+          {
+            path: '/children/:id/data',
+            lazy: async () => ({ Component: (await import('@/features/retention/index.ts')).RetentionPage }),
+          },
           { path: '/devices', element: <DevicesPage /> },
           { path: '/devices/add', element: <AddDevicePage /> },
           { path: '/alerts', element: <AlertsPage /> },

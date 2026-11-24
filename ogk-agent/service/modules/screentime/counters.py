@@ -60,6 +60,9 @@ class CounterSet:
                 self._values[key] = self._values.get(key, 0.0) + seconds
                 self._dirty = True
 
+    def forget(self, child_id: int) -> None:
+        self._values = {key: value for key, value in self._values.items() if key[0] != child_id}
+
     def used(self, child_id: int, counter: str = CHILD_COUNTER) -> float:
         return self._values.get((child_id, counter), 0.0)
 

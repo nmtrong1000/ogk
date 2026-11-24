@@ -18,7 +18,7 @@ from types import ModuleType
 
 from service.core.agent import ModuleContext
 from service.core.alerts import AlertBoard
-from service.core.bus import SESSION, TRAY_HEARTBEAT, Bus, SessionEvent, SessionInfo, TrayPing
+from service.core.bus import CHILD_PURGED, SESSION, TRAY_HEARTBEAT, Bus, SessionEvent, SessionInfo, TrayPing
 from service.core.device_session import DeviceSession
 from service.core.event_queue import EventQueue
 from service.core.events import MAX_DURATION_SEC, EventInvalid, format_ts
@@ -89,6 +89,7 @@ class ScreenTimeModule:
         self._bonus_seconds: dict[int, int] = {}
         bus.subscribe(SESSION, self._on_session)
         bus.subscribe(TRAY_HEARTBEAT, self._on_ping)
+        bus.subscribe(CHILD_PURGED, self._on_child_purged)
 
     def _on_session(self, event: SessionEvent) -> None:
         if event.kind in ("logon", "unlock"):
@@ -104,6 +105,27 @@ class ScreenTimeModule:
             self._screen_locked = False
             self._override_child = None
             self._save_now = True
+
+    def _on_child_purged(self, child_id: int) -> None:
+        self._counters.forget(child_id)
+        self._bonus_seconds.pop(child_id, None)
+        if self._override_child == child_id:
+            self._override_child = None
+        self._screen.used_today = {cid: s for cid, s in self._screen.used_today.items() if cid != child_id}
+        if self._screen.child_id == child_id:
+            self._screen.used_seconds = 0
+            # A quota lock is derived from usage, which the purge just reset. Clear its
+            # in-memory latches so the next tick evaluates the fresh counter immediately.
+            # Schedule and parent locks are independent of usage and remain in force.
+            if self._screen.lock_reason == REASON_QUOTA:
+                self._screen.state = STATE_OK
+                self._screen.lock_reason = None
+                self._screen.grace_seconds = None
+                self._grace_until = None
+                self._last_lock = None
+                self._fresh = True
+                self._prev_remaining = None
+                self._warned.clear()
 
     def _on_ping(self, ping: TrayPing) -> None:
         self._last_ping = self._monotonic()
@@ -408,5 +430,5 @@ def create(context: ModuleContext) -> ScreenTimeModule:
         context.db,
     )
     if context.commands is not None:
-        context.commands.set_handler(module.execute_command)
+        context.commands.register(("lock", "unlock", "add_time"), module.execute_command)
     return module

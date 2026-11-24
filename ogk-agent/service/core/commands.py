@@ -13,12 +13,13 @@ log = logging.getLogger("ogk.commands")
 class CommandState:
     def __init__(self, db: LocalDb | None = None) -> None:
         self._db = db
-        self._handler: CommandHandler | None = None
+        self._handlers: dict[str, CommandHandler] = {}
         self._processed: set[int] = set()
         self._lock = asyncio.Lock()
 
-    def set_handler(self, handler: CommandHandler) -> None:
-        self._handler = handler
+    def register(self, kinds: tuple[str, ...], handler: CommandHandler) -> None:
+        for kind in kinds:
+            self._handlers[kind] = handler
 
     async def process(self, command: dict[str, Any]) -> bool:
         command_id = command.get("id")
@@ -29,10 +30,12 @@ class CommandState:
             if not already_processed and self._db is not None:
                 already_processed = await asyncio.to_thread(self._db.has_command_receipt, command_id)
             if not already_processed:
-                if self._handler is None:
+                handler = self._handlers.get(command.get("type"))
+                if handler is None:
+                    log.error("parent command %s has no handler for type %r", command_id, command.get("type"))
                     return False
                 try:
-                    await self._handler(command)
+                    await handler(command)
                 except Exception:
                     log.exception("parent command %s could not be applied", command_id)
                     return False
