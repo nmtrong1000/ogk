@@ -92,6 +92,7 @@ class Agent:
         extra_routes: Sequence[web.AbstractRouteDef] = (),
         request_state: RequestState | None = None,
         request_handler: Callable[[dict[str, Any]], Any] | None = None,
+        child_view_handler: Callable[[], Any] | None = None,
     ) -> None:
         self._config = config
         self._client = client
@@ -114,6 +115,7 @@ class Agent:
             self._web_state.snapshot,
             None if request_state is None else request_state.snapshot,
             request_handler,
+            child_view_handler,
         )
         self._started = time.monotonic()
         self._server_reachable: bool | None = None
@@ -256,6 +258,7 @@ async def run_agent(data_dir: Path, stop_event: asyncio.Event, modules: Sequence
     )
     instances = [factory(context) for factory in modules]
     request_module = next((module for module in instances if hasattr(module, "submit")), None)
+    child_view_module = next((module for module in instances if hasattr(module, "issue_child_view_link")), None)
     platform.set_session_listener(lambda event: bus.publish(SESSION, event))
     agent = Agent(
         config,
@@ -273,5 +276,6 @@ async def run_agent(data_dir: Path, stop_event: asyncio.Event, modules: Sequence
         extra_routes=dev_routes(context),
         request_state=request_state,
         request_handler=None if request_module is None else request_module.submit,
+        child_view_handler=None if child_view_module is None else child_view_module.issue_child_view_link,
     )
     await agent.run(stop_event)

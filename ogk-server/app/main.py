@@ -13,6 +13,9 @@ from app.modules.family.router import devices_router as family_devices_router
 from app.modules.family.router import router as family_router
 from app.modules.policy.router import device_router as policy_device_router
 from app.modules.policy.router import router as policy_router
+from app.modules.reports.router import child_view_router as reports_child_view_router
+from app.modules.reports.router import device_router as reports_device_router
+from app.modules.reports.router import router as reports_router
 from app.modules.sync.router import command_router as sync_command_router
 from app.modules.sync.router import device_router as sync_device_router
 from app.modules.sync.router import request_router as sync_request_router
@@ -44,6 +47,9 @@ def create_app() -> FastAPI:
     app.include_router(sync_request_router)
     app.include_router(webfilter_parent_router)
     app.include_router(webfilter_admin_router)
+    app.include_router(reports_router)
+    app.include_router(reports_device_router)
+    app.include_router(reports_child_view_router)
     dist = get_settings().dashboard_dist
     if dist and (dist / "index.html").is_file():
         dashboard.register(app, dist)

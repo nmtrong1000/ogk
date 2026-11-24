@@ -5,13 +5,15 @@ because the agent may deliver events buffered before an account was reassigned.
 """
 
 import re
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from sqlalchemy import select
+from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import get_settings
 from app.core.db import utcnow
 from app.core.errors import AppError
 from app.modules.family import service as family
@@ -23,6 +25,7 @@ from app.modules.sync.models import (
     MAX_DURATION_SEC,
     MAX_IDEMPOTENCY_KEY,
     MAX_SUBJECT,
+    DailyUsage,
     DeviceAlert,
     Event,
     EventBatch,
@@ -33,6 +36,7 @@ EVENT_FIELDS = ("ts", "device_id", "child_id", "type", "subject", "duration_sec"
 DOMAIN_TYPES = ("domain_query", "blocked_domain")
 MAX_BATCH = 500
 MAX_ALERTS = 200
+USAGE_RETENTION_DAYS = 90
 TS_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 TS_PATTERN = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z")
 KEY_PATTERN = re.compile(rf"[A-Za-z0-9_-]{{1,{MAX_IDEMPOTENCY_KEY}}}")
@@ -164,9 +168,30 @@ async def _sync_alerts(db: AsyncSession, device_id: int, body: HeartbeatIn, at: 
         )
 
 
+async def _store_usage(db: AsyncSession, device: Device, body: HeartbeatIn, at: datetime) -> None:
+    if not body.usage_days:
+        return
+    today = at.astimezone(get_settings().report_zone).date()
+    first, last = today - timedelta(days=USAGE_RETENTION_DAYS), today + timedelta(days=1)
+    owners = await family.owner_ids(db, sorted({u.child_id for u in body.usage_days}))
+    for usage in body.usage_days:
+        if owners.get(usage.child_id) != device.owner_id or not first <= usage.day <= last:
+            continue
+        stmt = insert(DailyUsage).values(
+            device_id=device.id, child_id=usage.child_id, day=usage.day, seconds=usage.seconds, updated_at=at
+        )
+        await db.execute(
+            stmt.on_conflict_do_update(
+                index_elements=["device_id", "child_id", "day"],
+                set_={"seconds": stmt.excluded.seconds, "updated_at": stmt.excluded.updated_at},
+            )
+        )
+
+
 async def heartbeat(db: AsyncSession, device: Device, body: HeartbeatIn) -> dict:
     at = now()
     await _sync_alerts(db, device.id, body, at)
+    await _store_usage(db, device, body, at)
     await db.commit()
     policies = await policy.ensure_policies(db, await family.child_ids_on_device(db, device.id))
     return {

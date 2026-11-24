@@ -10,6 +10,7 @@ import ntpath
 import os
 import threading
 import tkinter as tk
+import webbrowser
 from ctypes import wintypes
 from pathlib import Path
 
@@ -133,3 +134,7 @@ def foreground_app() -> str | None:
     if name == FRAME_HOST:
         return _hosted_app(hwnd, pid) or name
     return name
+
+
+def open_url(url: str) -> bool:
+    return webbrowser.open(url, new=2)

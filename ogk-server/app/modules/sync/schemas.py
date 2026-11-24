@@ -1,11 +1,13 @@
 """Events are validated by the service from the raw body so every error carries the string code invalid_event."""
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Literal
 
 from pydantic import AwareDatetime, BaseModel, Field
 
-from app.modules.sync.models import MAX_ALERT_DETAIL
+from app.modules.sync.models import MAX_ALERT_DETAIL, MAX_DURATION_SEC
+
+MAX_USAGE_DAYS = 200
 
 AlertType = Literal["enforcement_disabled", "clock_tampered"]
 
@@ -28,9 +30,16 @@ class AlertIn(BaseModel):
     ts: AwareDatetime
 
 
+class UsageDayIn(BaseModel):
+    child_id: int
+    day: date
+    seconds: int = Field(ge=0, le=MAX_DURATION_SEC)
+
+
 class HeartbeatIn(BaseModel):
     status: StatusIn
     quota_used: dict[int, int] = Field(default_factory=dict)
+    usage_days: list[UsageDayIn] = Field(default_factory=list, max_length=MAX_USAGE_DAYS)
     policy_versions: dict[int, int] = Field(default_factory=dict)
     alerts: list[AlertIn] = Field(default_factory=list, max_length=8)
 

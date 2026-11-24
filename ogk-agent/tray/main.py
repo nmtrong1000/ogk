@@ -5,6 +5,8 @@ from collections.abc import Callable
 from tray.features import appcontrol
 from tray.features.presence import STARTUP_MESSAGE, STARTUP_TITLE, StatusWindow, create_icon, start_heartbeat
 from tray.features.presence.icon import TOOLTIP
+from tray.features.reports import MENU_TEXT as REPORT_MENU_TEXT
+from tray.features.reports import open_child_view
 from tray.features.requests import RequestView
 from tray.features.requests import start_polling as start_request_polling
 from tray.features.screentime import MENU_TEXT, Plan, ScreenTimeView, start_polling
@@ -33,6 +35,12 @@ def main() -> None:
         extra=[
             (MENU_TEXT, lambda: jobs.put(screentime.show_remaining)),
             ("Xin thêm giờ", lambda: jobs.put(request_view.show)),
+            (
+                REPORT_MENU_TEXT,
+                lambda: open_child_view(
+                    client, platform.open_url, lambda title, text: platform.notify(icon, title, text)
+                ),
+            ),
         ],
     )
     screentime = ScreenTimeView(root, platform.lock_workstation, lambda title, text: platform.notify(icon, title, text))

@@ -19,6 +19,7 @@ from pathlib import Path
 from service.platform import dpapi, get_platform
 
 DB_FILE = "agent.db"
+CHILD_COUNTER = "child"
 
 SCHEMA = [
     """
@@ -306,6 +307,16 @@ class LocalDb:
                     for (child_id, counter), seconds in values.items()
                 ],
             )
+
+    def recent_usage(self, days: int, counter: str = CHILD_COUNTER) -> list[tuple[int, str, float]]:
+        with closing(self._connect()) as conn:
+            rows = conn.execute(
+                "SELECT child_id, day, seconds FROM usage WHERE counter = ? AND day IN "
+                "(SELECT DISTINCT day FROM usage WHERE counter = ? ORDER BY day DESC LIMIT ?) "
+                "ORDER BY day, child_id",
+                (counter, counter, days),
+            ).fetchall()
+        return [(child_id, day, seconds) for child_id, day, seconds in rows]
 
     def load_last_trusted(self) -> datetime | None:
         with closing(self._connect()) as conn:

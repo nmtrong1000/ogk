@@ -2,12 +2,16 @@
 an unreachable server, a revoked device or a pinning failure all lead to the default policy after the limit.
 quota_used is today's counted seconds per child from the screen-time state; device alerts are the
 enforcement alert plus whatever the AlertBoard holds.
+usage_days repeats the last days stored in the local DB so a day that ended while offline still reaches the
+server; today's row comes from memory because the DB copy is up to 30 seconds old.
 """
 
 import asyncio
 import logging
 import time
+from collections.abc import Callable
 from datetime import UTC, datetime
+from functools import partial
 from typing import Any
 
 import aiohttp
@@ -28,6 +32,9 @@ from service.core.screen_state import ScreenState
 from service.core.server_client import ApiError
 
 log = logging.getLogger("ogk.sync")
+
+USAGE_DAYS = 7
+UsageSource = Callable[[], list[tuple[int, str, float]]]
 
 ALERT_ENFORCEMENT_DISABLED = "enforcement_disabled"
 
@@ -52,7 +59,9 @@ class SyncModule:
         alerts: AlertBoard | None = None,
         commands: CommandState | None = None,
         request_state: RequestState | None = None,
+        usage: UsageSource | None = None,
     ) -> None:
+        self._usage = usage
         self._screen = screen
         self._alerts = alerts
         self._commands = commands
@@ -67,7 +76,17 @@ class SyncModule:
         self._started = time.monotonic()
         self._last_error: str | None = None
 
-    def body(self) -> dict[str, Any]:
+    def usage_days(self, stored: list[tuple[int, str, float]]) -> list[dict[str, Any]]:
+        days = {(child_id, day): int(seconds) for child_id, day, seconds in stored}
+        if self._screen is not None and self._screen.usage_day is not None:
+            for child_id, seconds in self._screen.used_today.items():
+                days[(child_id, self._screen.usage_day)] = int(seconds)
+        return [
+            {"child_id": child_id, "day": day, "seconds": min(seconds, 86400)}
+            for (child_id, day), seconds in sorted(days.items(), key=lambda item: (item[0][1], item[0][0]))
+        ]
+
+    def body(self, stored_usage: list[tuple[int, str, float]] | None = None) -> dict[str, Any]:
         versions = self._store.versions()
         snapshot = self._enforcement.snapshot()
         alerts = []
@@ -94,6 +113,7 @@ class SyncModule:
             "quota_used": {str(child_id): used.get(child_id, 0) for child_id in versions},
             "policy_versions": {str(child_id): version for child_id, version in versions.items()},
             "alerts": alerts,
+            "usage_days": self.usage_days(stored_usage or []),
         }
 
     def _stale(self, server_versions: dict[str, int]) -> bool:
@@ -110,8 +130,9 @@ class SyncModule:
         if self._session is None:
             return False
         await self._queue.flush()
+        stored = [] if self._usage is None else await asyncio.to_thread(self._usage)
         try:
-            response = await self._session.heartbeat(self.body())
+            response = await self._session.heartbeat(self.body(stored))
             server_time = parse_server_time(response.get("server_time"))
             versions = response.get("policy_versions") or {}
         except (NotEnrolled, DeviceRevoked, httpx.HTTPError, ApiError, ValueError, AttributeError) as exc:
@@ -197,4 +218,5 @@ def create(context: ModuleContext) -> SyncModule:
         context.alerts,
         context.commands,
         context.request_state,
+        None if context.db is None else partial(context.db.recent_usage, USAGE_DAYS),
     )

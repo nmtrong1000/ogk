@@ -34,6 +34,12 @@ erDiagram
     devices ||--o{ child_requests : "gửi"
     children ||--o{ child_requests : "tạo"
     accounts |o--o{ child_requests : "duyệt"
+    devices ||--o{ daily_usage : "báo"
+    children ||--o{ daily_usage : "dùng"
+    devices ||--o{ child_view_codes : "đăng ký"
+    children ||--o{ child_view_codes : "được xem"
+    devices ||--o{ child_view_sessions : "mở"
+    children ||--o{ child_view_sessions : "được xem"
     accounts {
         integer id PK
         text email UK
@@ -192,6 +198,30 @@ erDiagram
         datetime created_at
         datetime decided_at
         integer decided_by FK
+    }
+    daily_usage {
+        integer id PK
+        integer device_id FK
+        integer child_id FK
+        date day
+        integer seconds
+        datetime updated_at
+    }
+    child_view_codes {
+        integer id PK
+        text code_hash UK
+        integer device_id FK
+        integer child_id FK
+        datetime created_at
+        datetime expires_at
+        datetime used_at
+    }
+    child_view_sessions {
+        text id PK
+        integer child_id FK
+        integer device_id FK
+        datetime created_at
+        datetime expires_at
     }
 ```
 
@@ -372,6 +402,8 @@ erDiagram
 | duration_sec | Số giây của sự kiện; sự kiện tức thời là 0. | Số nguyên từ 0 đến 86400 | No | None |
 | policy_id | `policy_version` của chính sách đang áp cho trẻ; 0 là chính sách mặc định của agent. | Số nguyên từ 0 | No | None |
 
+Chỉ mục: `ix_events_device_id`, `ix_events_child_id`, `ix_events_child_id_ts` (`child_id`, `ts`) cho truy vấn báo cáo theo trẻ và khoảng thời gian.
+
 ### event_batches
 
 **Purpose:** Khóa chống trùng (idempotency key) của các lô sự kiện đã nhận. Lô gửi lại với khóa đã có thì bị bỏ qua.
@@ -444,6 +476,51 @@ Ràng buộc DB: `ck_parent_commands_type`, `ck_parent_commands_status`, `ck_par
 | decided_by | Phụ huynh quyết định, tham chiếu `accounts.id`; đặt rỗng nếu tài khoản bị xóa. | Số nguyên | Yes | None |
 
 Ràng buộc DB: `ck_child_requests_type`, `ck_child_requests_status`. Service chỉ nhận yêu cầu từ thiết bị có trẻ đang gán và chỉ cho quyết định khi trạng thái còn `pending`.
+
+### daily_usage
+
+**Purpose:** Thời gian dùng máy mỗi ngày của một trẻ trên một thiết bị, theo bộ đếm quota của agent gửi trong heartbeat. Báo cáo cộng các thiết bị của cùng trẻ.
+
+| Column | Description | Data type | Nullable? | Default |
+|---|---|---|---|---|
+| id | Định danh dòng. | Số nguyên, tự tăng | No | Tự sinh |
+| device_id | Thiết bị báo, tham chiếu `devices.id`. | Số nguyên | No | None |
+| child_id | Trẻ dùng máy, tham chiếu `children.id`. | Số nguyên | No | None |
+| day | Ngày theo giờ tin cậy của máy trẻ, không phải ngày UTC. | Ngày | No | None |
+| seconds | Số giây đã tính trong ngày. | Số nguyên từ 0 đến 86400 | No | None |
+| updated_at | Lần heartbeat ghi gần nhất. | Thời điểm UTC | No | None |
+
+Ràng buộc DB: `uq_daily_usage_device_child_day`, `ck_daily_usage_seconds`. Chỉ mục: `ix_daily_usage_device_id`, `ix_daily_usage_child_id_day`.
+
+### child_view_codes
+
+**Purpose:** Mã dùng một lần agent đăng ký để trẻ đang đăng nhập Windows mở trang child-view. Server chỉ lưu SHA-256 của mã.
+
+| Column | Description | Data type | Nullable? | Default |
+|---|---|---|---|---|
+| id | Định danh mã; dùng AUTOINCREMENT nên id không bị cấp lại. | Số nguyên, tự tăng | No | Tự sinh |
+| code_hash | SHA-256 hex của mã. | Văn bản, 64 ký tự | No | None |
+| device_id | Thiết bị đăng ký mã, tham chiếu `devices.id`. | Số nguyên | No | None |
+| child_id | Trẻ được xem, tham chiếu `children.id`. | Số nguyên | No | None |
+| created_at | Thời điểm đăng ký. | Thời điểm UTC | No | None |
+| expires_at | `created_at` cộng 60 giây. | Thời điểm UTC | No | None |
+| used_at | Thời điểm mã được đổi lấy phiên; rỗng khi chưa dùng. | Thời điểm UTC | Yes | None |
+
+Ràng buộc DB: `code_hash` UNIQUE. Chỉ mục: `ix_child_view_codes_device_id`, `ix_child_view_codes_child_id`. Mã hết hạn bị xóa mỗi khi đăng ký mã mới.
+
+### child_view_sessions
+
+**Purpose:** Phiên chỉ đọc của trẻ trên trang child-view. Phiên không gắn với tài khoản nào và chỉ đọc được dữ liệu của `child_id`.
+
+| Column | Description | Data type | Nullable? | Default |
+|---|---|---|---|---|
+| id | SHA-256 hex của token trong cookie `ogk_child_view`. | Văn bản, 64 ký tự | No | None |
+| child_id | Trẻ được xem, tham chiếu `children.id`. | Số nguyên | No | None |
+| device_id | Thiết bị đã cấp mã, tham chiếu `devices.id`. | Số nguyên | No | None |
+| created_at | Thời điểm đổi mã. | Thời điểm UTC | No | None |
+| expires_at | `created_at` cộng 30 phút. | Thời điểm UTC | No | None |
+
+Chỉ mục: `ix_child_view_sessions_child_id`, `ix_child_view_sessions_device_id`. Phiên hết hạn bị xóa mỗi khi mở phiên mới.
 
 ## Integrity Constraints
 
@@ -1182,3 +1259,41 @@ $$
 **Context:** DB kiểm tra bằng `ck_child_requests_status`; service cập nhật có điều kiện trong cùng giao dịch với lệnh, chính sách và audit.
 
 **Impacted Data Objects:** `child_requests.status`, `child_requests.decided_at`, `child_requests.decided_by`
+
+### IC-046: Mỗi ngày một dòng thời gian dùng máy cho mỗi thiết bị và trẻ
+
+**Statement:** `daily_usage` có tối đa một dòng cho mỗi bộ (`device_id`, `child_id`, `day`), và `seconds` từ 0 đến 86400.
+
+**Context:** DB kiểm tra bằng `uq_daily_usage_device_child_day` và `ck_daily_usage_seconds`. Heartbeat ghi đè bằng `INSERT ... ON CONFLICT DO UPDATE`. Service chỉ ghi khi trẻ thuộc chủ thiết bị và ngày nằm trong 90 ngày trước đến 1 ngày sau hôm nay theo `OGK_REPORT_TZ`; DB không kiểm tra hai điều này.
+
+**Impacted Data Objects:** `daily_usage.device_id`, `daily_usage.child_id`, `daily_usage.day`, `daily_usage.seconds`
+
+### IC-047: Mã child-view là duy nhất và chỉ cho trẻ được gán trên thiết bị
+
+**Statement:** `child_view_codes.code_hash` là duy nhất; khi đăng ký, trẻ phải thuộc chủ thiết bị và đang được gán vào một tài khoản Windows của thiết bị đó.
+
+**Context:** Tính duy nhất do UNIQUE kiểm tra. Điều kiện về trẻ do service kiểm tra khi đăng ký (`windows_accounts`), DB không kiểm tra.
+
+**Impacted Data Objects:** `child_view_codes.code_hash`, `child_view_codes.child_id`, `child_view_codes.device_id`, `windows_accounts.child_id`
+
+### IC-048: Mã child-view dùng một lần trong 60 giây
+
+**Statement:** Mã chỉ đổi được lấy phiên khi `used_at` còn rỗng và thời điểm đổi trước `expires_at`; đổi xong thì `used_at` được đặt.
+
+**Formal Expression:**
+
+$$
+\forall c \in child\_view\_codes:\ c.used\_at \neq null \Rightarrow c.created\_at \le c.used\_at < c.expires\_at = c.created\_at + 60s
+$$
+
+**Context:** Service đánh dấu bằng một câu `UPDATE ... WHERE used_at IS NULL AND expires_at > now` và chỉ tạo phiên khi câu lệnh đổi đúng một dòng, nên hai trình duyệt dùng cùng mã không thể cùng thành công. Thiết bị đã gỡ thì mã vẫn bị đánh dấu nhưng không tạo phiên.
+
+**Impacted Data Objects:** `child_view_codes.used_at`, `child_view_codes.expires_at`, `child_view_sessions`
+
+### IC-049: Phiên child-view chỉ thuộc một trẻ và hết hạn sau 30 phút
+
+**Statement:** Mỗi phiên trỏ tới đúng một trẻ; phiên có `expires_at` đã qua không được dùng.
+
+**Context:** `child_id` là khóa ngoại NOT NULL. Service lấy id trẻ chỉ từ phiên, không từ request, và coi phiên hết hạn, hoặc phiên của thiết bị đã gỡ (`devices.revoked_at` khác rỗng), như không tồn tại; `expires_at = created_at + 30 phút` do service đặt.
+
+**Impacted Data Objects:** `child_view_sessions.child_id`, `child_view_sessions.expires_at`

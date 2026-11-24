@@ -1,5 +1,6 @@
 /*
- * A 401 on /api/auth/me, /login and /register is a normal result, not an expired session.
+ * A 401 on /api/auth/me, /login and /register is a normal result, not an expired session. Child-view routes
+ * never lead to the parent login: the child page shows its own expired message instead.
  * When the ogk_csrf cookie is missing, a GET is sent first because the server sets the cookie on any response.
  */
 export class ApiError extends Error {
@@ -19,6 +20,7 @@ export class ApiError extends Error {
 const CSRF_COOKIE = 'ogk_csrf'
 const UNSAFE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE'])
 const NO_REDIRECT_ON_401 = new Set(['/api/auth/me', '/api/auth/login', '/api/auth/register'])
+const NO_REDIRECT_PREFIX = '/api/child-view/'
 
 let onUnauthorized: (() => void) | null = null
 
@@ -69,7 +71,9 @@ export async function apiFetch<T>(path: string, init: ApiInit = {}): Promise<T> 
   if (response.status === 204) return undefined as T
   const body = await response.json().catch(() => null)
   if (!response.ok) {
-    if (response.status === 401 && !NO_REDIRECT_ON_401.has(path)) onUnauthorized?.()
+    if (response.status === 401 && !NO_REDIRECT_ON_401.has(path) && !path.startsWith(NO_REDIRECT_PREFIX)) {
+      onUnauthorized?.()
+    }
     const code = typeof body?.detail === 'string' ? body.detail : `http_${response.status}`
     throw new ApiError(response.status, code, body)
   }

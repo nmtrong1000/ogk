@@ -37,7 +37,7 @@ Mọi mốc thời gian là chuỗi ISO 8601 theo UTC, ví dụ `2026-11-17T10:1
 | `parent` | Tự đăng ký trên dashboard | Quản lý dữ liệu của chính mình |
 | `admin` | Lệnh `python -m app.cli create-admin <email>` trên máy chủ | Mở khóa tài khoản phụ huynh; không đọc dữ liệu của trẻ (mọi API `/api/children` trả 403) |
 | `device` | Ghép đôi bằng mã của phụ huynh (mục Thiết bị và ghép đôi) | Gọi API dưới `/api/device/` bằng access token thiết bị |
-| `child-view` | Token thiết bị (P18) | Chỉ đọc dữ liệu của trẻ đang đăng nhập Windows |
+| `child-view` | Mã dùng một lần do agent đăng ký cho trẻ đang đăng nhập Windows, đổi lấy cookie `ogk_child_view` (mục Báo cáo) | Chỉ đọc báo cáo hôm nay và nhật ký thay đổi luật của đúng trẻ đó |
 
 ### Mật khẩu và khóa tài khoản
 
@@ -57,6 +57,8 @@ Mọi mốc thời gian là chuỗi ISO 8601 theo UTC, ví dụ `2026-11-17T10:1
 | `POST /api/pairing-codes` | 10 request |
 | `POST /api/enroll` | 10 request |
 | `POST /api/device/token/refresh` | 30 request |
+| `POST /api/device/child-view-codes` | 30 request |
+| `POST /api/child-view/session` | 10 request |
 
 ### Phiên
 
@@ -775,6 +777,8 @@ Server giữ tối đa một cảnh báo đang mở cho mỗi cặp thiết bị
 
 Access token thiết bị. Khóa của `quota_used` và `policy_versions` là `child_id` dạng chuỗi. `quota_used` là số giây trẻ đã dùng hôm nay theo bộ đếm của agent; trẻ chưa dùng trên máy này hôm nay có giá trị 0. `alerts` là danh sách cảnh báo đang còn hiệu lực, mỗi loại một lần; danh sách rỗng nghĩa là mọi cảnh báo đã hết.
 
+`usage_days` (tùy chọn, tối đa 200 phần tử) lặp lại bộ đếm thời gian dùng máy của tối đa 7 ngày gần nhất có trong DB cục bộ, mỗi phần tử `{ "child_id": 7, "day": "2026-11-19", "seconds": 3600 }`. `day` là ngày theo giờ tin cậy của máy trẻ; giá trị hôm nay lấy từ bộ nhớ. `seconds` từ 0 đến 86400. Server ghi đè dòng `(thiết bị, trẻ, ngày)` trong `daily_usage`, bỏ qua trẻ không thuộc chủ thiết bị và ngày ngoài khoảng 90 ngày trước đến 1 ngày sau hôm nay theo `OGK_REPORT_TZ`. Phần tử sai kiểu hoặc `seconds` ngoài khoảng làm cả request trả 422.
+
 ```json
 {
   "status": {
@@ -783,6 +787,7 @@ Access token thiết bị. Khóa của `quota_used` và `policy_versions` là `c
     "policy_mode": "cached"
   },
   "quota_used": { "7": 0 },
+  "usage_days": [{ "child_id": 7, "day": "2026-11-19", "seconds": 0 }],
   "policy_versions": { "7": 3 },
   "alerts": [{ "type": "enforcement_disabled", "detail": "tray_unavailable", "ts": "2026-11-19T08:00:00Z" }]
 }
@@ -1036,6 +1041,18 @@ Tray UI hỏi mỗi giây.
 | `set_by` | Email phụ huynh đặt luật; rỗng khi áp chính sách mặc định |
 | `source` | `cached` (chính sách đã ký) hoặc `default` (chính sách mặc định) |
 
+### `POST /ipc/child-view`
+
+Tray UI gọi khi trẻ chọn "Hôm nay em đã dùng gì". Không có body. Service sinh mã ngẫu nhiên 43 ký tự (`secrets.token_urlsafe(32)`), đăng ký mã cho trẻ đang đăng nhập bằng `POST /api/device/child-view-codes`, rồi trả đường dẫn mở trang child-view. Mỗi lần gọi là một mã mới.
+
+| HTTP | Body |
+| :---- | :---- |
+| 200 | `{ "status": "ok", "url": "https://192.168.100.238:8443/child-view/start#code=...", "expires_at": "2026-11-19T08:01:00Z" }` |
+| 409 | `{ "error": "no_child" }` (phiên hiện tại không thuộc trẻ nào) |
+| 503 | `{ "error": "child_view_failed" }` (chưa ghép đôi, mất kết nối hoặc server từ chối) |
+
+Tray UI mở URL bằng trình duyệt mặc định trong phiên của trẻ (Windows: `webbrowser.open`; Mac: ghi vào `fake_browser.jsonl`) và không ghi URL vào log.
+
 ### Công cụ phát triển
 
 Chỉ có khi service chạy với biến môi trường `OGK_DEV=1` và gói `service.devtools` có trong bản build. Bản phát hành build với `--exclude-module service.devtools` nên không có các route này; gọi tới thì nhận 404. Dùng qua `python -m service.devtools`.
@@ -1051,4 +1068,62 @@ Chỉ có khi service chạy với biến môi trường `OGK_DEV=1` và gói `s
 
 Phụ huynh dùng `GET /api/requests?status=pending` để xem yêu cầu của các trẻ thuộc tài khoản. `POST /api/requests/{id}/decision` nhận `{ "approve": true, "message": "..." }`. Quyết định chỉ áp dụng một lần. Từ chối chỉ lưu quyết định và lời nhắn. Duyệt thêm giờ tạo `add_time` 15 phút; duyệt báo chặn nhầm thêm domain vào `web_allowlist`, tăng phiên bản chính sách và ghi audit cùng giao dịch.
 
+`GET /api/children/{id}/reports/requests?page=1&size=20` trả yêu cầu của một trẻ, mới nhất trước, theo dạng phân trang `{ "items", "total", "page", "size" }` (`size` tối đa 100).
+
 Heartbeat trả thêm `requests`, tối đa 20 kết quả đã quyết định gần nhất của thiết bị: `{ "id": 1, "child_id": 7, "type": "blocked_domain", "domain": "example.com", "status": "approved", "message": "Đã mở", "created_at": "...", "decided_at": "..." }`. Agent chuyển kết quả này qua IPC cho Tray UI.
+
+## Báo cáo
+
+### Ngày và tuần
+
+- Server cắt ngày theo múi giờ `OGK_REPORT_TZ` (mặc định `Asia/Ho_Chi_Minh`); tuần bắt đầu từ thứ Hai.
+- Thời gian dùng máy lấy từ `daily_usage`, ngày là ngày của máy trẻ; nhiều máy cùng ngày thì cộng lại.
+- Ứng dụng, tên miền và số lần chặn lấy từ sự kiện, cắt theo `OGK_REPORT_TZ`. Hai nguồn chỉ khớp nhau khi máy trẻ dùng cùng múi giờ với `OGK_REPORT_TZ`.
+
+### Đối tượng Report
+
+```json
+{
+  "child_id": 7,
+  "from": "2026-11-13",
+  "to": "2026-11-19",
+  "time_zone": "Asia/Ho_Chi_Minh",
+  "daily": [{ "date": "2026-11-13", "seconds": 3600 }],
+  "weekly": [{ "week_start": "2026-11-10", "seconds": 3600 }],
+  "total_seconds": 3600,
+  "top_apps": [{ "name": "chrome.exe", "seconds": 3000 }],
+  "top_domains": [{ "domain": "wikipedia.org", "count": 7 }],
+  "blocked": { "apps": 2, "domains": 4, "total": 6 },
+  "quota_today_seconds": 7200
+}
+```
+
+| Trường | Ý nghĩa |
+| :---- | :---- |
+| `daily` | Mỗi ngày trong khoảng một phần tử, kể cả ngày bằng 0 |
+| `weekly` | Tổng theo tuần của các ngày trong khoảng; tuần đầu và cuối có thể chỉ gồm một phần |
+| `top_apps` | Tối đa 10, tổng `duration_sec` của `app_stop` theo tên, nhiều nhất trước |
+| `top_domains` | Tối đa 10, số sự kiện `domain_query` theo tên miền |
+| `blocked` | Số sự kiện `blocked_app` và `blocked_domain` |
+| `quota_today_seconds` | Quota hôm nay theo chính sách hiện hành (ngày thường hoặc cuối tuần) |
+
+### `GET /api/children/{id}/reports`
+
+Phiên phụ huynh. Tham số: `from` và `to` (`YYYY-MM-DD`), hoặc `days` (1 đến 90) để lấy số ngày tính lùi từ hôm nay. Không có tham số thì lấy 7 ngày tính đến hôm nay. Khoảng quá 90 ngày, `from` sau `to` hoặc `days` ngoài khoảng trả 422 `invalid_range`. Trẻ của phụ huynh khác trả 404 `not_found`; admin nhận 403.
+
+### Mã child-view
+
+- `POST /api/device/child-view-codes` (access token thiết bị). Body `{ "child_id": 7, "code": "..." }`; `code` 32 đến 128 ký tự `A-Z a-z 0-9 _ -`. Trẻ phải đang được gán vào một tài khoản Windows của thiết bị, nếu không trả 404 `not_found`. Server chỉ lưu SHA-256 của mã. Mã hết hạn sau 60 giây. Trả 201 `{ "expires_at": "..." }`.
+- `POST /api/child-view/session` (cần CSRF). Body `{ "code": "..." }`. Mã chưa có, đã dùng, hết hạn hoặc của thiết bị đã gỡ đều trả 400 `invalid_code`. Thành công trả 204 và đặt cookie `ogk_child_view`: `HttpOnly; Secure; SameSite=Strict; Path=/api/child-view; Max-Age=1800`. Mã chỉ đổi được một lần; phiên hết hạn tuyệt đối sau 30 phút.
+- `POST /api/child-view/logout` xóa phiên và cookie, trả 204.
+- Dashboard nhận mã trong fragment `#code=` của `/child-view/start`, xóa fragment khỏi lịch sử bằng `history.replaceState` rồi mới đổi mã. Fragment không được gửi lên server nên mã không nằm trong log truy cập.
+
+### API child-view
+
+Cookie `ogk_child_view`; thiếu, hết hạn hoặc thiết bị đã cấp mã bị gỡ thì trả 401 `not_authenticated`. Không route nào nhận id trẻ từ client.
+
+| Route | Trả về |
+| :---- | :---- |
+| `GET /api/child-view/me` | `{ "name": "An" }` |
+| `GET /api/child-view/today` | Report của hôm nay, cùng hàm và cùng số liệu với báo cáo phụ huynh cho ngày đó |
+| `GET /api/child-view/rule-log?page=1&size=20` | Nhật ký thay đổi chính sách của trẻ, phân trang; mỗi mục `{ "id", "at", "changes": { "weekday_quota_minutes": { "old": 120, "new": 90 } } }`; không có email hay IP của phụ huynh |

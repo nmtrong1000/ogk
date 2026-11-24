@@ -233,6 +233,7 @@ class ScreenTimeModule:
             await self._evaluate(child, policy, local, now, active)
             self._screen.override = False
         self._screen.used_today = {cid: int(seconds) for cid, seconds in self._counters.by_child().items()}
+        self._screen.usage_day = self._counters.day
         await self._persist(now)
 
     def _reset_screen(self) -> None:

@@ -7,6 +7,7 @@ line to fake_session.jsonl in the format of the service's fake platform, so the 
 locked just as SESSIONCHANGE would report it on Windows.
 foreground_app reads <data>/fake_foreground (an exe name; missing or empty means no foreground window), e.g.
 `echo chrome.exe > .ogk-data/fake_foreground`.
+open_url only records the URL in fake_browser.jsonl so tests never start a real browser.
 """
 
 import contextlib
@@ -23,6 +24,7 @@ IDLE_FILE = "fake_idle"
 FOREGROUND_FILE = "fake_foreground"
 LOCK_FILE = "fake_lock.jsonl"
 SESSION_FILE = "fake_session.jsonl"
+BROWSER_FILE = "fake_browser.jsonl"
 FAKE_SESSION_ID = 1
 
 
@@ -75,3 +77,8 @@ def notify(icon: pystray.Icon, title: str, message: str) -> None:
     script = f"display notification {_quote(message)} with title {_quote(title)}"
     with contextlib.suppress(OSError):
         subprocess.Popen(["osascript", "-e", script], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+def open_url(url: str) -> bool:
+    _append(BROWSER_FILE, {"url": url})
+    return True

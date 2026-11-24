@@ -1,4 +1,8 @@
-import { Link, NavLink, Outlet } from 'react-router-dom'
+/*
+ * Child-view pages get a header without parent navigation and never ask /api/auth/me, so a child's browser never
+ * learns whether a parent is signed in on it.
+ */
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { LogoutButton, useMe } from '@/features/auth/index.ts'
 import { cn } from '@/shared/utils/cn.ts'
 
@@ -10,19 +14,47 @@ function navClass({ isActive }: { isActive: boolean }) {
 }
 
 export default function Layout() {
+  const { pathname } = useLocation()
+  return pathname === '/child-view' || pathname.startsWith('/child-view/') ? <ChildLayout /> : <ParentLayout />
+}
+
+function Brand() {
+  return (
+    <span className="flex items-center gap-2.5 text-ink">
+      <span
+        aria-hidden
+        className="grid size-9 place-items-center rounded-xl bg-linear-to-br from-brand-400 to-brand-600 text-sm font-bold text-white shadow-control"
+      >
+        O
+      </span>
+      <span className="text-lg font-bold tracking-tight">OGK</span>
+    </span>
+  )
+}
+
+function ChildLayout() {
+  return (
+    <div className="flex min-h-dvh flex-col">
+      <header className="px-3 pt-3 sm:px-4">
+        <div className="glass mx-auto flex max-w-5xl items-center rounded-glass px-4 py-2.5">
+          <Brand />
+        </div>
+      </header>
+      <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 sm:py-10">
+        <Outlet />
+      </main>
+    </div>
+  )
+}
+
+function ParentLayout() {
   const { data: me } = useMe()
   return (
     <div className="flex min-h-dvh flex-col">
       <header className="sticky top-0 z-10 px-3 pt-3 sm:px-4">
         <div className="glass mx-auto flex max-w-5xl flex-wrap items-center gap-x-4 gap-y-2 rounded-glass px-4 py-2.5">
-          <Link to="/" className="flex items-center gap-2.5 text-ink no-underline hover:text-ink">
-            <span
-              aria-hidden
-              className="grid size-9 place-items-center rounded-xl bg-linear-to-br from-brand-400 to-brand-600 text-sm font-bold text-white shadow-control"
-            >
-              O
-            </span>
-            <span className="text-lg font-bold tracking-tight">OGK</span>
+          <Link to="/" className="no-underline hover:text-ink">
+            <Brand />
           </Link>
           {me && (
             <>

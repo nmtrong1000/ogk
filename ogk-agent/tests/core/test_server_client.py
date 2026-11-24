@@ -1,3 +1,5 @@
+import json
+
 import httpx
 import pytest
 
@@ -36,3 +38,23 @@ async def test_health_raises_on_server_error():
             await client.health()
     finally:
         await client.aclose()
+
+
+@pytest.mark.anyio
+async def test_create_child_view_code_posts_with_device_token():
+    seen = []
+
+    def handle(request):
+        seen.append(request)
+        return httpx.Response(201, json={"expires_at": "2026-11-19T08:01:00Z"})
+
+    client = ServerClient("https://server", transport=httpx.MockTransport(handle))
+    try:
+        result = await client.create_child_view_code("tok", 9, "c" * 43)
+    finally:
+        await client.aclose()
+    assert result == {"expires_at": "2026-11-19T08:01:00Z"}
+    (request,) = seen
+    assert (request.method, request.url.path) == ("POST", "/api/device/child-view-codes")
+    assert request.headers["Authorization"] == "Bearer tok"
+    assert json.loads(request.content) == {"child_id": 9, "code": "c" * 43}

@@ -1,5 +1,6 @@
 import asyncio
 from datetime import timedelta
+from functools import partial
 
 import pytest
 
@@ -15,6 +16,7 @@ from service.core.policy_store import MODE_CACHED, MODE_DEFAULT, PolicyStore
 from service.core.screen_state import ScreenState
 from service.modules.policy import PolicyLoader
 from service.modules.sync import SyncModule
+from service.modules.sync.heartbeat import USAGE_DAYS
 from tests.core.test_default_policy import DEFAULT
 from tests.core.test_device_session import CONFIG, enrolled
 from tests.fake_server import FakeServer
@@ -28,6 +30,7 @@ class Rig:
         self.server = FakeServer()
         self.mono = 0.0
         db = LocalDb(data_dir)
+        self.db = db
         enrolled(self.server, db)
         self.session = DeviceSession(CONFIG, db, client_factory=self.server.client, clock=lambda: self.server.now)
         self.bus = Bus()
@@ -50,6 +53,7 @@ class Rig:
             interval=0.01,
             screen=self.screen,
             alerts=self.alerts,
+            usage=partial(db.recent_usage, USAGE_DAYS),
         )
 
     def publish_policy(self, version: int, quota: int) -> None:
@@ -118,6 +122,26 @@ async def test_quota_used_and_clock_alert_are_sent(rig):
     sent = rig.server.heartbeats[-1]
     assert sent["quota_used"] == {"7": 1234}
     assert [(a["type"], a["detail"]) for a in sent["alerts"]] == [("clock_tampered", "backward")]
+
+
+async def test_usage_days_send_stored_days_and_todays_live_value(rig):
+    for day in range(10, 20):
+        rig.db.save_usage(f"2026-11-{day:02}", {(7, "child"): 100.0 * day, (7, "group:games"): 5.0}, rig.server.now)
+    rig.screen.used_today = {7: 2500, 8: 40}
+    rig.screen.usage_day = "2026-11-19"
+    await rig.sync.tick()
+    sent = rig.server.heartbeats[-1]["usage_days"]
+    assert [(u["child_id"], u["day"]) for u in sent] == [(7, f"2026-11-{day:02}") for day in range(13, 19)] + [
+        (7, "2026-11-19"),
+        (8, "2026-11-19"),
+    ]
+    assert sent[0]["seconds"] == 1300
+    assert [u["seconds"] for u in sent if u["day"] == "2026-11-19"] == [2500, 40]
+
+
+async def test_usage_days_empty_without_any_usage(rig):
+    await rig.sync.tick()
+    assert rig.server.heartbeats[-1]["usage_days"] == []
 
 
 async def test_heartbeat_outcome_published_as_server_time(rig):

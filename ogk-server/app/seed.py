@@ -15,6 +15,7 @@ from datetime import datetime, timedelta
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import get_settings
 from app.modules.audit.service import Actor
 from app.modules.auth import service as auth
 from app.modules.auth.models import ROLE_ADMIN
@@ -22,7 +23,7 @@ from app.modules.enrollment import service as enrollment
 from app.modules.family import service as family
 from app.modules.policy import service as policy
 from app.modules.sync import service as sync
-from app.modules.sync.schemas import AlertIn, EnforcementIn, HeartbeatIn, StatusIn
+from app.modules.sync.schemas import AlertIn, EnforcementIn, HeartbeatIn, StatusIn, UsageDayIn
 
 SEED_IP = "127.0.0.1"
 ADMIN_EMAIL = "admin@ogk.local"
@@ -136,12 +137,23 @@ def sample_events(device_id: int, children: dict[str, int], versions: dict[int, 
             add(base.replace(hour=14), sorted(children.values())[0], "locked", "schedule", 600)
         if day % 3 == 0:
             add(base.replace(hour=15), sorted(children.values())[0], "blocked_app", "minecraft.exe", 0)
+        if day % 2 == 1:
+            add(base.replace(hour=16), sorted(children.values())[0], "blocked_domain", "game.example", 0)
     return events
 
 
-async def _heartbeat(db: AsyncSession, device, alerts: list[AlertIn]) -> None:
+def sample_usage(children: dict[str, int], now: datetime) -> list[UsageDayIn]:
+    today = now.astimezone(get_settings().report_zone).date()
+    return [
+        UsageDayIn(child_id=child_id, day=today - timedelta(days=day), seconds=3000 + 600 * ((day + offset) % 3))
+        for day in range(EVENT_DAYS, 0, -1)
+        for offset, child_id in enumerate(sorted(children.values()))
+    ]
+
+
+async def _heartbeat(db: AsyncSession, device, alerts: list[AlertIn], usage: list[UsageDayIn] | None = None) -> None:
     status = StatusIn(uptime=60.0, enforcement=EnforcementIn(enabled=True), policy_mode="cached")
-    await sync.heartbeat(db, device, HeartbeatIn(status=status, alerts=alerts))
+    await sync.heartbeat(db, device, HeartbeatIn(status=status, alerts=alerts, usage_days=usage or []))
 
 
 async def _seed_device(db: AsyncSession, parent_id: int, spec: ParentSeed, children: dict[str, int], now: datetime):
@@ -174,7 +186,7 @@ async def _seed_device(db: AsyncSession, parent_id: int, spec: ParentSeed, child
         await sync.receive_events(db, device, f"seed-{start}", {"events": events[start : start + 500]})
     tampered = AlertIn(type="clock_tampered", detail="backward", ts=now - timedelta(hours=3))
     disabled = AlertIn(type="enforcement_disabled", detail="tray_unavailable", ts=now - timedelta(days=1))
-    await _heartbeat(db, device, [disabled])
+    await _heartbeat(db, device, [disabled], sample_usage(children, now))
     await _heartbeat(db, device, [tampered])
     return device, len(events)
 
