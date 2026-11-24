@@ -1044,3 +1044,11 @@ Chỉ có khi service chạy với biến môi trường `OGK_DEV=1` và gói `s
 | :---- | :---- | :---- |
 | `POST /ipc/dev/events` | `{ "events": [...] }` hoặc `{ "vector": "<tên>", "child_id": 7, "count": 1 }` | Đưa sự kiện vào hàng đợi; `vector` lấy sự kiện mẫu hợp lệ trong `docs/test_vectors.json`, thay `ts` bằng giờ hiện tại, `child_id` bằng giá trị gửi lên hoặc trẻ đầu tiên có chính sách, `policy_id` bằng version đang áp. `device_id` luôn được thay bằng thiết bị hiện tại. Trả `{ "queued": n, "pending": m }`; sự kiện sai trả 400 `{ "error": "invalid_event", "field": "..." }`; chưa ghép đôi trả 409 `{ "error": "not_enrolled" }` |
 | `POST /ipc/dev/offline` | `{ "days": 7 }` | Cộng thêm số ngày mất kết nối giả lập rồi kiểm tra hạn chính sách ngay. Trả `{ "offline_seconds": ..., "policy_mode": "default" }` |
+
+## Yêu cầu của trẻ
+
+`POST /api/device/requests` dùng access token thiết bị. Body xin thêm giờ là `{ "child_id": 7, "type": "add_time" }`; báo chặn nhầm là `{ "child_id": 7, "type": "blocked_domain", "domain": "example.com" }`. Server chỉ nhận trẻ đang gán vào thiết bị đó. Domain được chuẩn hóa chữ thường và kiểm tra cú pháp.
+
+Phụ huynh dùng `GET /api/requests?status=pending` để xem yêu cầu của các trẻ thuộc tài khoản. `POST /api/requests/{id}/decision` nhận `{ "approve": true, "message": "..." }`. Quyết định chỉ áp dụng một lần. Từ chối chỉ lưu quyết định và lời nhắn. Duyệt thêm giờ tạo `add_time` 15 phút; duyệt báo chặn nhầm thêm domain vào `web_allowlist`, tăng phiên bản chính sách và ghi audit cùng giao dịch.
+
+Heartbeat trả thêm `requests`, tối đa 20 kết quả đã quyết định gần nhất của thiết bị: `{ "id": 1, "child_id": 7, "type": "blocked_domain", "domain": "example.com", "status": "approved", "message": "Đã mở", "created_at": "...", "decided_at": "..." }`. Agent chuyển kết quả này qua IPC cho Tray UI.

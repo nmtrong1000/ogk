@@ -5,6 +5,8 @@ from collections.abc import Callable
 from tray.features import appcontrol
 from tray.features.presence import STARTUP_MESSAGE, STARTUP_TITLE, StatusWindow, create_icon, start_heartbeat
 from tray.features.presence.icon import TOOLTIP
+from tray.features.requests import RequestView
+from tray.features.requests import start_polling as start_request_polling
 from tray.features.screentime import MENU_TEXT, Plan, ScreenTimeView, start_polling
 from tray.features.webfilter import BlockView as WebBlockView
 from tray.features.webfilter import start_polling as start_webfilter_polling
@@ -25,8 +27,13 @@ def main() -> None:
 
     client = IpcClient(platform.data_dir())
     window = StatusWindow(root, client, jobs.put)
+    request_view = RequestView(root, client, lambda title, text: platform.notify(icon, title, text))
     icon = create_icon(
-        on_open=lambda: jobs.put(window.show), extra=[(MENU_TEXT, lambda: jobs.put(screentime.show_remaining))]
+        on_open=lambda: jobs.put(window.show),
+        extra=[
+            (MENU_TEXT, lambda: jobs.put(screentime.show_remaining)),
+            ("Xin thêm giờ", lambda: jobs.put(request_view.show)),
+        ],
     )
     screentime = ScreenTimeView(root, platform.lock_workstation, lambda title, text: platform.notify(icon, title, text))
 
@@ -49,6 +56,7 @@ def main() -> None:
     start_heartbeat(client, idle=platform.idle_seconds, foreground=platform.foreground_app)
     start_polling(client, jobs.put, apply_screentime)
     appcontrol.start_polling(client, jobs.put, blocks.show)
-    web_blocks = WebBlockView(root)
+    web_blocks = WebBlockView(root, request_view.report_blocked)
     start_webfilter_polling(client, jobs.put, web_blocks.show)
+    start_request_polling(client, jobs.put, request_view.show_decision)
     platform.run_tray(icon, root)

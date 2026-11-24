@@ -101,3 +101,22 @@ class ParentCommand(Base):
     status: Mapped[str] = mapped_column(String(16), default="pending", server_default="pending")
     created_at: Mapped[datetime] = mapped_column(UTCDateTime())
     acknowledged_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
+
+
+class ChildRequest(Base):
+    __tablename__ = "child_requests"
+    __table_args__ = (
+        CheckConstraint("type IN ('add_time', 'blocked_domain')", name="ck_child_requests_type"),
+        CheckConstraint("status IN ('pending', 'approved', 'rejected')", name="ck_child_requests_status"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    device_id: Mapped[int] = mapped_column(ForeignKey("devices.id", ondelete="CASCADE"), index=True)
+    child_id: Mapped[int] = mapped_column(ForeignKey("children.id", ondelete="CASCADE"), index=True)
+    type: Mapped[str] = mapped_column(String(20))
+    domain: Mapped[str | None] = mapped_column(String(253))
+    status: Mapped[str] = mapped_column(String(16), default="pending", server_default="pending", index=True)
+    message: Mapped[str | None] = mapped_column(String(500))
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime())
+    decided_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
+    decided_by: Mapped[int | None] = mapped_column(ForeignKey("accounts.id", ondelete="SET NULL"), index=True)

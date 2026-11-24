@@ -31,6 +31,9 @@ erDiagram
     devices ||--o{ parent_commands : "nhận"
     children ||--o{ parent_commands : "điều khiển"
     accounts ||--o{ parent_commands : "gửi"
+    devices ||--o{ child_requests : "gửi"
+    children ||--o{ child_requests : "tạo"
+    accounts |o--o{ child_requests : "duyệt"
     accounts {
         integer id PK
         text email UK
@@ -177,6 +180,18 @@ erDiagram
         text domain PK
         text category
         datetime updated_at
+    }
+    child_requests {
+        integer id PK
+        integer device_id FK
+        integer child_id FK
+        text type
+        text domain
+        text status
+        text message
+        datetime created_at
+        datetime decided_at
+        integer decided_by FK
     }
 ```
 
@@ -410,6 +425,25 @@ Ràng buộc DB: `ck_parent_commands_type`, `ck_parent_commands_status`, `ck_par
 | domain | Tên miền ASCII chữ thường duy nhất, không có dấu chấm cuối. | Văn bản, tối đa 253 ký tự | No | None |
 | category | Một trong sáu nhóm phân loại. | Văn bản, tối đa 32 ký tự | No | None |
 | updated_at | Thời điểm phân loại được thêm hoặc đổi. | Thời điểm UTC | No | None |
+
+### child_requests
+
+**Purpose:** Yêu cầu của trẻ và phản hồi của phụ huynh. Tên miền chỉ có với yêu cầu báo chặn nhầm.
+
+| Column | Description | Data type | Nullable? | Default |
+|---|---|---|---|---|
+| id | Định danh yêu cầu. | Số nguyên, tự tăng | No | Tự sinh |
+| device_id | Thiết bị gửi yêu cầu, tham chiếu `devices.id`. | Số nguyên | No | None |
+| child_id | Trẻ gửi yêu cầu, tham chiếu `children.id`. | Số nguyên | No | None |
+| type | `add_time` hoặc `blocked_domain`. | Văn bản, tối đa 20 ký tự | No | None |
+| domain | Tên miền chuẩn hóa cho yêu cầu báo chặn nhầm. | Văn bản, tối đa 253 ký tự | Yes | None |
+| status | `pending`, `approved` hoặc `rejected`. | Văn bản, tối đa 16 ký tự | No | `pending` |
+| message | Lời nhắn của phụ huynh. | Văn bản, tối đa 500 ký tự | Yes | None |
+| created_at | Thời điểm trẻ gửi yêu cầu. | Thời điểm UTC | No | None |
+| decided_at | Thời điểm phụ huynh quyết định. | Thời điểm UTC | Yes | None |
+| decided_by | Phụ huynh quyết định, tham chiếu `accounts.id`; đặt rỗng nếu tài khoản bị xóa. | Số nguyên | Yes | None |
+
+Ràng buộc DB: `ck_child_requests_type`, `ck_child_requests_status`. Service chỉ nhận yêu cầu từ thiết bị có trẻ đang gán và chỉ cho quyết định khi trạng thái còn `pending`.
 
 ## Integrity Constraints
 
@@ -1132,3 +1166,19 @@ $$
 **Context:** DB kiểm tra miền bằng `ck_parent_commands_minutes`; service bảo đảm quan hệ giữa loại và số phút.
 
 **Impacted Data Objects:** `parent_commands.type`, `parent_commands.minutes`
+
+### IC-044: Loại yêu cầu của trẻ hợp lệ
+
+**Statement:** `child_requests.type` chỉ nhận `add_time` hoặc `blocked_domain`.
+
+**Context:** DB kiểm tra bằng `ck_child_requests_type`; service yêu cầu domain hợp lệ cho `blocked_domain` và cấm domain trên `add_time`.
+
+**Impacted Data Objects:** `child_requests.type`, `child_requests.domain`
+
+### IC-045: Trạng thái yêu cầu hợp lệ
+
+**Statement:** `child_requests.status` chỉ nhận `pending`, `approved` hoặc `rejected`; phụ huynh chỉ quyết định một lần khi trạng thái còn `pending`.
+
+**Context:** DB kiểm tra bằng `ck_child_requests_status`; service cập nhật có điều kiện trong cùng giao dịch với lệnh, chính sách và audit.
+
+**Impacted Data Objects:** `child_requests.status`, `child_requests.decided_at`, `child_requests.decided_by`

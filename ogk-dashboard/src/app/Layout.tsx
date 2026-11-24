@@ -41,6 +41,9 @@ export default function Layout() {
                     <NavLink to="/alerts" className={navClass}>
                       Cảnh báo
                     </NavLink>
+                    <NavLink to="/requests" className={navClass}>
+                      Yêu cầu
+                    </NavLink>
                   </>
                 )}
                 {me.role === 'admin' && (

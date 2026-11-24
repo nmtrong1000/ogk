@@ -70,3 +70,9 @@ class IpcClient:
 
     def webfilter(self) -> dict[str, Any]:
         return self._request("GET", "/ipc/webfilter")
+
+    def requests(self) -> dict[str, Any]:
+        return self._request("GET", "/ipc/requests")
+
+    def create_request(self, body: dict[str, Any]) -> dict[str, Any]:
+        return self._request("POST", "/ipc/requests", body)

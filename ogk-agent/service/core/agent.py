@@ -32,6 +32,7 @@ from service.core.ipc_server import IpcServer
 from service.core.local_db import LocalDb
 from service.core.offline import OfflineGuard
 from service.core.policy_store import PolicyStore, load_default_policy
+from service.core.request_state import RequestState
 from service.core.screen_state import ScreenState
 from service.core.server_client import ApiError, CertificatePinError, ServerClient
 from service.core.trusted_clock import TrustedClock
@@ -62,6 +63,7 @@ class ModuleContext:
     apps: AppState | None = None
     web_state: WebState | None = None
     commands: CommandState | None = None
+    request_state: RequestState | None = None
 
 
 class Module(Protocol):
@@ -88,6 +90,8 @@ class Agent:
         web_state: WebState | None = None,
         modules: Sequence[Module] = (),
         extra_routes: Sequence[web.AbstractRouteDef] = (),
+        request_state: RequestState | None = None,
+        request_handler: Callable[[dict[str, Any]], Any] | None = None,
     ) -> None:
         self._config = config
         self._client = client
@@ -108,6 +112,8 @@ class Agent:
             None if screen is None else screen.snapshot,
             None if apps is None else apps.snapshot,
             self._web_state.snapshot,
+            None if request_state is None else request_state.snapshot,
+            request_handler,
         )
         self._started = time.monotonic()
         self._server_reachable: bool | None = None
@@ -228,6 +234,7 @@ async def run_agent(data_dir: Path, stop_event: asyncio.Event, modules: Sequence
     apps = AppState()
     web_state = WebState()
     commands = CommandState(db)
+    request_state = RequestState()
     context = ModuleContext(
         bus,
         enforcement,
@@ -245,8 +252,10 @@ async def run_agent(data_dir: Path, stop_event: asyncio.Event, modules: Sequence
         apps=apps,
         web_state=web_state,
         commands=commands,
+        request_state=request_state,
     )
     instances = [factory(context) for factory in modules]
+    request_module = next((module for module in instances if hasattr(module, "submit")), None)
     platform.set_session_listener(lambda event: bus.publish(SESSION, event))
     agent = Agent(
         config,
@@ -262,5 +271,7 @@ async def run_agent(data_dir: Path, stop_event: asyncio.Event, modules: Sequence
         web_state=web_state,
         modules=instances,
         extra_routes=dev_routes(context),
+        request_state=request_state,
+        request_handler=None if request_module is None else request_module.submit,
     )
     await agent.run(stop_event)

@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 from types import SimpleNamespace
 
 from dnslib import QTYPE, RCODE, RR, A, DNSRecord
@@ -203,3 +204,41 @@ def test_all_doh_failures_restore_network_and_fall_back_to_saved_dns(monkeypatch
 
     assert failed_open == [True]
     assert str(response.rr[0].rdata) == "192.0.2.53"
+
+
+def test_upstream_failure_keeps_agent_module_alive_in_fail_open(monkeypatch, tmp_path):
+    restored = []
+    monkeypatch.setattr(module.netconfig, "configure_dns", lambda _path: None)
+    monkeypatch.setattr(module.firewall, "configure", lambda _path: None)
+    monkeypatch.setattr(module.netconfig, "disable_doh", lambda _path: None)
+    monkeypatch.setattr(module.firewall, "restore", lambda _path: restored.append("firewall"))
+    monkeypatch.setattr(module.netconfig, "restore_dns", lambda _path: restored.append("dns"))
+    monkeypatch.setattr(module.netconfig, "restore_doh", lambda _path: restored.append("doh"))
+
+    class FakeServer:
+        def __init__(self, resolver, **_kwargs):
+            self.resolver = resolver
+
+        def start_thread(self):
+            self.resolver.on_upstream_failure()
+
+        def stop(self):
+            pass
+
+    monkeypatch.setattr(module, "DNSServer", FakeServer)
+    context = SimpleNamespace(data_dir=tmp_path)
+    async def scenario():
+        task = asyncio.create_task(module.WebFilterModule(context).run())
+        for _ in range(100):
+            if restored:
+                break
+            await asyncio.sleep(0.01)
+
+        assert not task.done()
+        assert {"firewall", "dns", "doh"}.issubset(restored)
+
+        task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await task
+
+    asyncio.run(scenario())
