@@ -254,9 +254,7 @@ class PolicyResolver(BaseResolver):
             log.error(
                 "all DNS-over-HTTPS upstreams failed for %s; disabling web filtering to restore network access",
                 qname,
-                exc_info=None
-                if last_error is None
-                else (type(last_error), last_error, last_error.__traceback__),
+                exc_info=None if last_error is None else (type(last_error), last_error, last_error.__traceback__),
             )
             should_fail_open = False
             with self.state_lock:
@@ -267,9 +265,7 @@ class PolicyResolver(BaseResolver):
                 self.on_upstream_failure()
             for upstream in self.upstreams:
                 try:
-                    fallback = DNSRecord.parse(
-                        forwarded.send(upstream, port=53, timeout=1, ipv6=":" in upstream)
-                    )
+                    fallback = DNSRecord.parse(forwarded.send(upstream, port=53, timeout=1, ipv6=":" in upstream))
                     fallback.header.id = request.header.id
                     if target:
                         out = request.reply(ra=1)

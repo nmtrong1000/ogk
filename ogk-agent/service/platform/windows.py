@@ -180,11 +180,7 @@ def restore_dns(directory: Path) -> None:
             continue
         # Older builds could persist the proxy itself (127.0.0.1/::1) in the
         # snapshot. Never restore those values as the machine's upstream DNS.
-        servers = [
-            server
-            for server in entry.get("servers", [])
-            if server.split("%", 1)[0] not in {"127.0.0.1", "::1"}
-        ]
+        servers = [server for server in entry.get("servers", []) if server.split("%", 1)[0] not in {"127.0.0.1", "::1"}]
         if entry["source"] == "dhcp" or (entry.get("servers") and not servers):
             _set_dns(entry, source="dhcp")
         elif servers:
