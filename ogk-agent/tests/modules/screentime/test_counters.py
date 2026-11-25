@@ -43,3 +43,16 @@ def test_several_counters_share_one_set(data_dir):
     assert counters.used(7) == 15
     assert counters.used(7, "app_group:games") == 10
     assert counters.by_child() == {7: 15}
+
+
+def test_group_usage_is_independent_and_persists(data_dir):
+    counters = CounterSet(LocalDb(data_dir), [ChildCounter()])
+    counters.open_day("2026-11-19")
+    counters.record(Activity(7, True, "game.exe", "games"), 30)
+    counters.record(Activity(7, True, "word.exe", "education"), 20)
+    counters.save(NOW)
+    restarted = CounterSet(LocalDb(data_dir), [ChildCounter()])
+    restarted.open_day("2026-11-19")
+    assert restarted.used(7) == 50
+    assert restarted.used(7, "group:games") == 30
+    assert restarted.used(7, "group:education") == 20

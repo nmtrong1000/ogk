@@ -20,6 +20,14 @@ SCHEDULE_LENGTH = DAYS_PER_WEEK * SLOTS_PER_DAY
 DEFAULT_DAY = "0" * 14 + "1" * 28 + "0" * 6
 DEFAULT_SCHEDULE = DEFAULT_DAY * DAYS_PER_WEEK
 EMPTY_APP_RULES = "[]"
+APP_GROUPS = (
+    '[{"budget_minutes":null,"id":"education","name":"Học tập"},'
+    '{"budget_minutes":null,"id":"entertainment","name":"Giải trí"},'
+    '{"budget_minutes":null,"id":"social","name":"Mạng xã hội"},'
+    '{"budget_minutes":null,"id":"games","name":"Trò chơi"},'
+    '{"budget_minutes":null,"id":"adult","name":"Người lớn"},'
+    '{"budget_minutes":null,"id":"unclassified","name":"Chưa phân loại"}]'
+)
 EMPTY_DOMAIN_RULES = "[]"
 EMPTY_BLOCKED_CATEGORIES = '["adult","social"]'
 
@@ -32,6 +40,7 @@ class Policy(Base):
         CheckConstraint("weekend_quota_minutes BETWEEN 0 AND 1440", name="ck_policies_weekend_quota_minutes"),
         CheckConstraint("length(weekly_schedule) = 336", name="ck_policies_weekly_schedule"),
         CheckConstraint("json_valid(app_rules) AND json_type(app_rules) = 'array'", name="ck_policies_app_rules"),
+        CheckConstraint("json_valid(app_groups) AND json_type(app_groups) = 'array'", name="ck_policies_app_groups"),
         CheckConstraint(
             "json_valid(web_allowlist) AND json_type(web_allowlist) = 'array'", name="ck_policies_web_allowlist"
         ),
@@ -50,6 +59,7 @@ class Policy(Base):
     weekend_quota_minutes: Mapped[int]
     weekly_schedule: Mapped[str] = mapped_column(String(SCHEDULE_LENGTH))
     app_rules: Mapped[str] = mapped_column(Text, default=EMPTY_APP_RULES)
+    app_groups: Mapped[str] = mapped_column(Text, default=APP_GROUPS)
     web_allowlist: Mapped[str] = mapped_column(Text, default=EMPTY_DOMAIN_RULES)
     web_blocklist: Mapped[str] = mapped_column(Text, default=EMPTY_DOMAIN_RULES)
     blocked_categories: Mapped[str] = mapped_column(Text, default=EMPTY_BLOCKED_CATEGORIES)
@@ -67,6 +77,9 @@ class PolicyVersion(Base):
         CheckConstraint("length(weekly_schedule) = 336", name="ck_policy_versions_weekly_schedule"),
         CheckConstraint(
             "json_valid(app_rules) AND json_type(app_rules) = 'array'", name="ck_policy_versions_app_rules"
+        ),
+        CheckConstraint(
+            "json_valid(app_groups) AND json_type(app_groups) = 'array'", name="ck_policy_versions_app_groups"
         ),
         CheckConstraint(
             "json_valid(web_allowlist) AND json_type(web_allowlist) = 'array'", name="ck_policy_versions_web_allowlist"
@@ -87,6 +100,7 @@ class PolicyVersion(Base):
     weekend_quota_minutes: Mapped[int]
     weekly_schedule: Mapped[str] = mapped_column(String(SCHEDULE_LENGTH))
     app_rules: Mapped[str] = mapped_column(Text, default=EMPTY_APP_RULES)
+    app_groups: Mapped[str] = mapped_column(Text, default=APP_GROUPS)
     web_allowlist: Mapped[str] = mapped_column(Text, default=EMPTY_DOMAIN_RULES)
     web_blocklist: Mapped[str] = mapped_column(Text, default=EMPTY_DOMAIN_RULES)
     blocked_categories: Mapped[str] = mapped_column(Text, default=EMPTY_BLOCKED_CATEGORIES)

@@ -1,3 +1,4 @@
+import json
 import sqlite3
 import subprocess
 import sys
@@ -104,6 +105,17 @@ def test_upgrade_adds_empty_app_rules(db):
     )
     assert "ck_policies_app_rules" in table_sql(conn, "policies")
     assert "ck_policy_versions_app_rules" in table_sql(conn, "policy_versions")
+    groups = conn.execute("SELECT app_groups FROM policies").fetchone()[0]
+    assert {group["id"] for group in json.loads(groups)} == {
+        "education",
+        "entertainment",
+        "social",
+        "games",
+        "adult",
+        "unclassified",
+    }
+    assert "ck_policies_app_groups" in table_sql(conn, "policies")
+    assert "ck_policy_versions_app_groups" in table_sql(conn, "policy_versions")
 
 
 def test_webfilter_migration_bumps_existing_policy_versions(db):

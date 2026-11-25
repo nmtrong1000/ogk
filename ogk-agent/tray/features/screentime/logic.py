@@ -34,17 +34,32 @@ def format_duration(seconds: int) -> str:
     return f"{seconds // 3600:02d}:{seconds % 3600 // 60:02d}:{seconds % 60:02d}"
 
 
+def tray_tooltip_text(base: str, remaining: str) -> str:
+    summary = remaining.split("\n\n", 1)[0]
+    return f"{base}\n{summary}"[:127]
+
+
 def remaining_text(snapshot: dict[str, Any]) -> str:
     state = snapshot.get("state")
     if snapshot.get("child_id") is None or state == "none":
-        return "Không có giới hạn thời gian cho tài khoản này."
-    if snapshot.get("override"):
-        return "Được phụ huynh mở khóa đến hết ngày hôm nay."
-    if state == "locked":
-        return "Đã hết giờ dùng máy."
-    if state == "grace":
-        return f"Đã hết giờ. Máy sẽ khóa sau {snapshot.get('grace_seconds') or 0} giây."
-    return f"Còn lại {format_duration(snapshot.get('remaining_seconds') or 0)}"
+        result = "Không có giới hạn thời gian cho tài khoản này."
+    elif snapshot.get("override"):
+        result = "Được phụ huynh mở khóa đến hết ngày hôm nay."
+    elif state == "locked":
+        result = "Đã hết giờ dùng máy."
+    elif state == "grace":
+        result = f"Đã hết giờ. Máy sẽ khóa sau {snapshot.get('grace_seconds') or 0} giây."
+    else:
+        result = f"Còn lại {format_duration(snapshot.get('remaining_seconds') or 0)}"
+    groups = snapshot.get("group_remaining", [])
+    if groups:
+        lines = ["Thời gian theo nhóm ứng dụng:"]
+        for group in groups:
+            remaining = group.get("remaining_seconds")
+            value = "Không giới hạn" if remaining is None else format_duration(remaining)
+            lines.append(f"{group.get('name', 'Nhóm')}: {value}")
+        result += "\n\n" + "\n".join(lines)
+    return result
 
 
 def warning_message(minutes: int) -> str:

@@ -1,6 +1,6 @@
 import { useState, type ChangeEvent, type FormEvent } from 'react'
 import { Alert, Button, Select, TextField } from '@/shared/components/index.ts'
-import type { AppRule, AppRuleAction } from '@/shared/types/policy.ts'
+import type { AppGroup, AppRule, AppRuleAction } from '@/shared/types/policy.ts'
 import {
   ACTION_LABELS,
   DUPLICATE_ERROR,
@@ -13,6 +13,7 @@ import { canHash, sha256File } from '@/features/appcontrol/utils/sha256.ts'
 
 type Props = {
   rules: AppRule[]
+  groups: AppGroup[]
   pending: boolean
   onAdd: (rule: AppRule) => void
 }
@@ -24,10 +25,11 @@ function normalizeName(value: string): string | null {
   return name.length > 0 && name.length <= 255 && !/[\\/]/.test(name) ? name : null
 }
 
-export default function AppRuleForm({ rules, pending, onAdd }: Props) {
+export default function AppRuleForm({ rules, groups, pending, onAdd }: Props) {
   const [name, setName] = useState('')
   const [sha, setSha] = useState('')
   const [action, setAction] = useState<AppRuleAction>('block')
+  const [groupId, setGroupId] = useState('unclassified')
   const [errors, setErrors] = useState<{ name?: string; sha?: string; form?: string }>({})
   const [hashing, setHashing] = useState(false)
 
@@ -61,7 +63,7 @@ export default function AppRuleForm({ rules, pending, onAdd }: Props) {
     }
     setErrors(next)
     if (next.name || next.sha || next.form || normalized === null) return
-    onAdd({ name: normalized, sha256, action })
+    onAdd({ name: normalized, sha256, action, group_id: groupId })
     setName('')
     setSha('')
   }
@@ -93,6 +95,13 @@ export default function AppRuleForm({ rules, pending, onAdd }: Props) {
           onChange={(e) => setAction(e.target.value as AppRuleAction)}
         />
       </div>
+      <Select
+        label="Nhóm ứng dụng"
+        value={groupId}
+        options={groups.map((group) => ({ value: group.id, label: group.name }))}
+        hint="Thời gian ứng dụng được tính vào ngân sách của nhóm này."
+        onChange={(event) => setGroupId(event.target.value)}
+      />
       <TextField
         label="Mã SHA-256 (không bắt buộc)"
         hint="64 ký tự. Có thể chọn tệp bên dưới để tính tự động; tệp không được tải lên."

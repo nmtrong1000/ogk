@@ -2,6 +2,7 @@
 While the service is unreachable nothing is applied: the service, not the Tray UI, decides when to lock.
 """
 
+import logging
 import threading
 from collections.abc import Callable
 
@@ -9,6 +10,7 @@ from tray.features.screentime.logic import Plan, Tracker
 from tray.ipc_client import IpcClient, IpcError
 
 POLL_SECONDS = 1.0
+log = logging.getLogger("ogk.tray")
 
 
 def poll_once(client: IpcClient, tracker: Tracker) -> Plan | None:
@@ -16,7 +18,10 @@ def poll_once(client: IpcClient, tracker: Tracker) -> Plan | None:
         snapshot = client.screentime()
     except IpcError:
         return None
-    return tracker.update(snapshot)
+    plan = tracker.update(snapshot)
+    if plan.lock is not None:
+        log.info("screen-time poll produced workstation lock order seq=%s", plan.lock.seq)
+    return plan
 
 
 def poll_loop(

@@ -78,6 +78,7 @@ class ScreenTimeModule:
         self._last_tick: float | None = None
         self._last_ping: float | None = None
         self._idle: float | None = None
+        self._foreground: str | None = None
         self._grace_until: float | None = None
         self._last_lock: float | None = None
         self._last_save: float | None = None
@@ -130,6 +131,7 @@ class ScreenTimeModule:
     def _on_ping(self, ping: TrayPing) -> None:
         self._last_ping = self._monotonic()
         self._idle = ping.idle_seconds
+        self._foreground = ping.foreground
 
     def _is_idle(self, now: float) -> bool:
         if self._last_ping is None or now - self._last_ping > TRAY_STALE_SECONDS:
@@ -229,7 +231,14 @@ class ScreenTimeModule:
             self._reset_screen()
         else:
             active = not self._screen_locked and not self._is_idle(now) and self._screen.state != STATE_LOCKED
-            self._counters.record(Activity(child, active), step)
+            foreground = (
+                self._foreground
+                if self._last_ping is not None and now - self._last_ping <= TRAY_STALE_SECONDS
+                else None
+            )
+            group_id = self._group_for_app(policy, foreground) if active else None
+            self._counters.record(Activity(child, active, foreground, group_id), step)
+            self._update_group_remaining(child, policy)
             if active and self._bonus_seconds.get(child, 0):
                 self._bonus_seconds[child] = max(0, self._bonus_seconds[child] - int(step))
             if self._parent_lock:
@@ -268,6 +277,30 @@ class ScreenTimeModule:
         self._screen.lock_reason = None
         self._screen.warning = None
         self._screen.override = False
+        self._screen.group_remaining = []
+
+    @staticmethod
+    def _group_for_app(policy: EffectivePolicy, app: str | None) -> str | None:
+        if app is None:
+            return None
+        return next(
+            (rule.get("group_id", "unclassified") for rule in policy.rules["app_rules"] if rule["name"] == app),
+            "unclassified",
+        )
+
+    def _update_group_remaining(self, child: int, policy: EffectivePolicy) -> None:
+        self._screen.group_remaining = [
+            {
+                "group_id": group["id"],
+                "name": group["name"],
+                "budget_seconds": None if group["budget_minutes"] is None else group["budget_minutes"] * 60,
+                "used_seconds": int(self._counters.used(child, f"group:{group['id']}")),
+                "remaining_seconds": None
+                if group["budget_minutes"] is None
+                else max(0, group["budget_minutes"] * 60 - int(self._counters.used(child, f"group:{group['id']}"))),
+            }
+            for group in policy.rules.get("app_groups", [])
+        ]
 
     async def _evaluate(self, child: int, policy: EffectivePolicy, local: datetime, now: float, active: bool) -> None:
         rules = policy.rules

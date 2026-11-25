@@ -37,6 +37,14 @@ MAX_QUOTA_MINUTES = 1440
 MAX_APP_RULES = 200
 MAX_APP_NAME = 255
 APP_ACTIONS = ("allow", "block")
+DEFAULT_APP_GROUPS = [
+    {"budget_minutes": None, "id": "education", "name": "Học tập"},
+    {"budget_minutes": None, "id": "entertainment", "name": "Giải trí"},
+    {"budget_minutes": None, "id": "social", "name": "Mạng xã hội"},
+    {"budget_minutes": None, "id": "games", "name": "Trò chơi"},
+    {"budget_minutes": None, "id": "adult", "name": "Người lớn"},
+    {"budget_minutes": None, "id": "unclassified", "name": "Chưa phân loại"},
+]
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 DOMAIN_RE = re.compile(r"^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$")
 WEB_CATEGORIES = ("education", "entertainment", "social", "games", "adult", "unclassified")
@@ -117,6 +125,7 @@ def _app_rule_ok(rule: Any) -> bool:
     if not isinstance(rule, dict):
         return False
     name, sha256, action = rule.get("name"), rule.get("sha256"), rule.get("action")
+    group_id = rule.get("group_id", "unclassified")
     return (
         isinstance(name, str)
         and 1 <= len(name) <= MAX_APP_NAME
@@ -125,11 +134,24 @@ def _app_rule_ok(rule: Any) -> bool:
         and "\\" not in name
         and (sha256 is None or (isinstance(sha256, str) and SHA256_RE.match(sha256) is not None))
         and action in APP_ACTIONS
+        and isinstance(group_id, str)
+        and re.fullmatch(r"(?:education|entertainment|social|games|adult|unclassified|custom_[0-9a-f-]{36})", group_id)
     )
 
 
 def _app_rules_ok(value: Any) -> bool:
-    return isinstance(value, list) and len(value) <= MAX_APP_RULES and all(_app_rule_ok(r) for r in value)
+    if not isinstance(value, list) or len(value) > MAX_APP_RULES or not all(_app_rule_ok(rule) for rule in value):
+        return False
+    pairs = set()
+    groups_by_name = {}
+    for rule in value:
+        pair = (rule["name"], rule.get("sha256"))
+        group_id = rule.get("group_id", "unclassified")
+        if pair in pairs or rule["name"] in groups_by_name and groups_by_name[rule["name"]] != group_id:
+            return False
+        pairs.add(pair)
+        groups_by_name[rule["name"]] = group_id
+    return True
 
 
 def _domain_list_ok(value: Any) -> bool:
@@ -150,12 +172,18 @@ def _category_domains_ok(value: Any) -> bool:
 
 
 def rules_ok(rules: Any) -> bool:
+    groups = rules.get("app_groups", DEFAULT_APP_GROUPS) if isinstance(rules, dict) else None
     return (
         isinstance(rules, dict)
         and _quota_ok(rules.get("weekday_quota_minutes"))
         and _quota_ok(rules.get("weekend_quota_minutes"))
         and _schedule_ok(rules.get("weekly_schedule"))
         and _app_rules_ok(rules.get("app_rules", []))
+        and _app_groups_ok(groups)
+        and all(
+            rule.get("group_id", "unclassified") in {group["id"] for group in groups}
+            for rule in rules.get("app_rules", [])
+        )
         and _domain_list_ok(rules.get("web_allowlist", []))
         and _domain_list_ok(rules.get("web_blocklist", []))
         and isinstance(rules.get("blocked_categories", []), list)
@@ -167,12 +195,40 @@ def rules_ok(rules: Any) -> bool:
 def _with_defaults(rules: dict) -> dict:
     return {
         "app_rules": [],
+        "app_groups": DEFAULT_APP_GROUPS,
         "web_allowlist": [],
         "web_blocklist": [],
         "blocked_categories": [],
         "category_domains": {},
         **rules,
     }
+
+
+def _app_groups_ok(value: Any) -> bool:
+    if not isinstance(value, list) or len(value) < len(DEFAULT_APP_GROUPS) or len(value) > 30:
+        return False
+    ids = set()
+    names = set()
+    defaults = {group["id"]: group["name"] for group in DEFAULT_APP_GROUPS}
+    for group in value:
+        if not isinstance(group, dict):
+            return False
+        group_id, name, budget = group.get("id"), group.get("name"), group.get("budget_minutes")
+        if not isinstance(group_id, str) or group_id in ids or not isinstance(name, str) or not 1 <= len(name) <= 40:
+            return False
+        if group_id in defaults:
+            if defaults[group_id] != name:
+                return False
+        elif re.fullmatch(r"custom_[0-9a-f-]{36}", group_id) is None:
+            return False
+        folded = name.strip().casefold()
+        if not folded or folded in names or not name.isprintable():
+            return False
+        names.add(folded)
+        if budget is not None and not _quota_ok(budget):
+            return False
+        ids.add(group_id)
+    return set(defaults) <= ids
 
 
 def verify_bytes(public_key: Ed25519PublicKey, canonical: bytes, signature: str) -> SignedPolicy:

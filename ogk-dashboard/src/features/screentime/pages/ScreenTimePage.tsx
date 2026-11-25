@@ -18,6 +18,7 @@ import { Alert, Card, Spinner } from '@/shared/components/index.ts'
 import type { Policy, PolicyUpdate } from '@/shared/types/policy.ts'
 import QuotaForm from '@/features/screentime/components/QuotaForm.tsx'
 import ScheduleGrid from '@/features/screentime/components/ScheduleGrid.tsx'
+import AppGroupForm from '@/features/screentime/components/AppGroupForm.tsx'
 import { screentimeErrorMessage } from '@/features/screentime/utils/messages.ts'
 
 function parseId(value: string | undefined): number | null {
@@ -58,8 +59,10 @@ function ScreenTime({ id }: { id: number }) {
   const policy = useQuery({ queryKey: policyKey(id), queryFn: () => getPolicy(id) })
   const quotas = usePolicyMutation(id)
   const schedule = usePolicyMutation(id)
+  const groups = usePolicyMutation(id)
   const [savedQuotas, setSavedQuotas] = useState(false)
   const [savedSchedule, setSavedSchedule] = useState(false)
+  const [savedGroups, setSavedGroups] = useState(false)
 
   if (child.isPending || policy.isPending) {
     return (
@@ -109,6 +112,24 @@ function ScreenTime({ id }: { id: number }) {
           onSubmit={(days) => {
             setSavedSchedule(false)
             schedule.mutate({ weekly_schedule: days }, { onSuccess: () => setSavedSchedule(true) })
+          }}
+        />
+      </Card>
+
+      <Card
+        title="Ngân sách theo nhóm ứng dụng"
+        description="Mỗi nhóm có bộ đếm riêng, đặt lại vào đầu ngày. Để trống để không giới hạn."
+      >
+        {groups.error != null && <Alert tone="error">{screentimeErrorMessage(groups.error)}</Alert>}
+        {savedGroups && groups.error == null && <Alert tone="success">Đã lưu nhóm và ngân sách ứng dụng.</Alert>}
+        <AppGroupForm
+          key={`groups-${data.policy_version}`}
+          groups={data.app_groups}
+          rules={data.app_rules}
+          pending={groups.isPending}
+          onSave={(app_groups) => {
+            setSavedGroups(false)
+            groups.mutate({ app_groups }, { onSuccess: () => setSavedGroups(true) })
           }}
         />
       </Card>

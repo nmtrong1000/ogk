@@ -9,9 +9,9 @@ pytestmark = pytest.mark.anyio
 
 SHA = "AB" * 32
 NOTEPAD = {"name": "Notepad.EXE", "sha256": SHA, "action": "block"}
-STORED_NOTEPAD = {"name": "notepad.exe", "sha256": SHA.lower(), "action": "block"}
+STORED_NOTEPAD = {"name": "notepad.exe", "sha256": SHA.lower(), "action": "block", "group_id": "unclassified"}
 GAME = {"name": "game.exe", "action": "block"}
-STORED_GAME = {"name": "game.exe", "sha256": None, "action": "block"}
+STORED_GAME = {"name": "game.exe", "sha256": None, "action": "block", "group_id": "unclassified"}
 
 
 async def test_default_policy_has_no_app_rules(parent):

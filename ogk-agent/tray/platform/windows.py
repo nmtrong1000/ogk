@@ -61,7 +61,8 @@ def idle_seconds() -> float:
 
 
 def lock_workstation() -> bool:
-    return bool(ctypes.windll.user32.LockWorkStation())
+    ctypes.set_last_error(0)
+    return bool(_user32.LockWorkStation())
 
 
 PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
@@ -70,6 +71,8 @@ FRAME_HOST = "applicationframehost.exe"
 
 _user32 = ctypes.WinDLL("user32", use_last_error=True)
 _kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+_user32.LockWorkStation.argtypes = []
+_user32.LockWorkStation.restype = wintypes.BOOL
 _kernel32.CreateMutexW.argtypes = [ctypes.c_void_p, wintypes.BOOL, wintypes.LPCWSTR]
 _kernel32.CreateMutexW.restype = wintypes.HANDLE
 _kernel32.CloseHandle.argtypes = [wintypes.HANDLE]

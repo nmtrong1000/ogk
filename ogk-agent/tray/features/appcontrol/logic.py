@@ -3,6 +3,7 @@ The first snapshot only sets the baseline, so a restarted Tray UI does not expla
 A new run_id means the service restarted and block_seq started again at 0, so any block in that run is new.
 """
 
+import time
 from dataclasses import dataclass
 from typing import Any
 
@@ -27,6 +28,14 @@ def setter_text(snapshot: dict[str, Any]) -> str:
 
 def notice_text(snapshot: dict[str, Any]) -> str:
     app = snapshot.get("app") or "ứng dụng"
+    reason = snapshot.get("reason", "app_rule")
+    if isinstance(reason, str) and reason.startswith("group_budget:"):
+        group = reason.partition(":")[2]
+        return (
+            f"Ứng dụng {app} đã bị đóng vì đã hết thời gian của nhóm {group}.\n"
+            f"Người đặt luật: {setter_text(snapshot)}.\n"
+            "Hãy dùng ứng dụng thuộc nhóm khác hoặc trao đổi với phụ huynh."
+        )
     return (
         f"Ứng dụng {app} đã bị đóng vì nằm trong danh sách ứng dụng bị chặn.\n"
         f"Người đặt luật: {setter_text(snapshot)}.\n"
@@ -53,3 +62,18 @@ class BlockTracker:
         if seq <= previous:
             return None
         return BlockNotice(seq, notice_text(snapshot))
+
+
+class NotificationGate:
+    def __init__(self, interval: float = 60.0, monotonic=time.monotonic) -> None:
+        self._interval = interval
+        self._monotonic = monotonic
+        self._last_sent: dict[str, float] = {}
+
+    def allow(self, notice: BlockNotice) -> bool:
+        now = self._monotonic()
+        previous = self._last_sent.get(notice.text)
+        if previous is not None and now - previous < self._interval:
+            return False
+        self._last_sent[notice.text] = now
+        return True

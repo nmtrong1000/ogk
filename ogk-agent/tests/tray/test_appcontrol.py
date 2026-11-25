@@ -2,7 +2,7 @@ import threading
 
 from tray.features.appcontrol import BlockTracker
 from tray.features.appcontrol import poller as poller_module
-from tray.features.appcontrol.logic import DEFAULT_POLICY_SETTER, notice_text
+from tray.features.appcontrol.logic import DEFAULT_POLICY_SETTER, BlockNotice, NotificationGate, notice_text
 from tray.ipc_client import IpcError
 
 
@@ -54,6 +54,23 @@ def test_bad_snapshot_ignored():
 def test_default_policy_setter_text():
     assert DEFAULT_POLICY_SETTER in notice_text(snap(1, set_by="", source="default"))
     assert "Phụ huynh" in notice_text(snap(1, set_by=""))
+
+
+def test_group_budget_notice_explains_the_group():
+    text = notice_text({**snap(1), "reason": "group_budget:Trò chơi"})
+    assert "đã hết thời gian của nhóm Trò chơi" in text
+
+
+def test_block_notifications_are_throttled_per_message():
+    now = [10.0]
+    gate = NotificationGate(interval=60, monotonic=lambda: now[0])
+    game = BlockNotice(1, "Trò chơi đã hết giờ")
+    study = BlockNotice(2, "Ứng dụng bị chặn")
+    assert gate.allow(game)
+    assert not gate.allow(game)
+    assert gate.allow(study)
+    now[0] = 70.0
+    assert gate.allow(game)
 
 
 class FakeClient:

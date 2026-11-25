@@ -1,7 +1,7 @@
 import json
 
 from tray.features.screentime import Tracker
-from tray.features.screentime.logic import format_duration, remaining_text
+from tray.features.screentime.logic import format_duration, remaining_text, tray_tooltip_text
 from tray.features.screentime.poller import poll_once
 from tray.ipc_client import IpcError
 from tray.platform import fake
@@ -27,6 +27,26 @@ def test_remaining_clock_text():
     assert remaining_text(snap(remaining_seconds=59)) == "Còn lại 00:00:59"
     assert "Không có giới hạn" in remaining_text(snap(child_id=None, state="none"))
     assert "khóa sau 42 giây" in remaining_text(snap(state="grace", grace_seconds=42))
+
+
+def test_remaining_clock_shows_category_budgets():
+    text = remaining_text(
+        snap(
+            group_remaining=[
+                {"name": "Trò chơi", "remaining_seconds": 2700},
+                {"name": "Học tập", "remaining_seconds": None},
+            ]
+        )
+    )
+    assert "Trò chơi: 00:45:00" in text
+    assert "Học tập: Không giới hạn" in text
+
+
+def test_tray_tooltip_stays_within_windows_limit_and_uses_summary():
+    text = remaining_text(snap(group_remaining=[{"name": "Trò chơi", "remaining_seconds": 2700}] * 7))
+    tooltip = tray_tooltip_text("OGK đang chạy", text)
+    assert len(tooltip) <= 127
+    assert "Thời gian theo nhóm ứng dụng" not in tooltip
 
 
 def test_each_warning_is_shown_once():

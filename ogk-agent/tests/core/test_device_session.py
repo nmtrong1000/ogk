@@ -61,6 +61,13 @@ async def test_uses_access_token(session, server, db):
     assert session.state == "active"
 
 
+async def test_child_view_retry_can_use_fresh_client(session, server, db):
+    enrolled(server, db)
+    result = await session.create_child_view_code_fresh(9, "c" * 43)
+    assert result == {"expires_at": "2026-11-19T08:01:00Z"}
+    assert server.requests == [("POST", "/api/device/child-view-codes")]
+
+
 async def test_refreshes_before_expiry(session, server, db, caplog):
     caplog.set_level(logging.INFO)
     enrolled(server, db)

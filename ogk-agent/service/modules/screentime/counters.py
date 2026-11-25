@@ -18,6 +18,7 @@ class Activity:
     child_id: int
     active: bool
     foreground: str | None = None
+    group_id: str | None = None
 
 
 class UsageCounter(Protocol):
@@ -59,6 +60,10 @@ class CounterSet:
                 key = (activity.child_id, counter.name)
                 self._values[key] = self._values.get(key, 0.0) + seconds
                 self._dirty = True
+        if activity.active and activity.group_id is not None:
+            key = (activity.child_id, f"group:{activity.group_id}")
+            self._values[key] = self._values.get(key, 0.0) + seconds
+            self._dirty = True
 
     def forget(self, child_id: int) -> None:
         self._values = {key: value for key, value in self._values.items() if key[0] != child_id}

@@ -125,6 +125,7 @@ erDiagram
         integer weekend_quota_minutes
         text weekly_schedule
         text app_rules
+        text app_groups
         text web_allowlist
         text web_blocklist
         text blocked_categories
@@ -139,6 +140,7 @@ erDiagram
         integer weekend_quota_minutes
         text weekly_schedule
         text app_rules
+        text app_groups
         text web_allowlist
         text web_blocklist
         text blocked_categories
@@ -361,7 +363,8 @@ erDiagram
 | weekday_quota_minutes | Số phút dùng máy mỗi ngày từ thứ Hai đến thứ Sáu. | Số nguyên từ 0 đến 1440 | No | 120 khi tạo |
 | weekend_quota_minutes | Số phút dùng máy mỗi ngày thứ Bảy và Chủ nhật. | Số nguyên từ 0 đến 1440 | No | 120 khi tạo |
 | weekly_schedule | Lịch tuần 7 x 48 ghép thành một chuỗi: 7 đoạn 48 ký tự, đoạn đầu là thứ Hai; ký tự thứ k của một đoạn là ô 30 phút bắt đầu lúc k x 30 phút theo giờ máy trẻ, `1` là được dùng, `0` là khóa. API và tài liệu đã ký tách thành mảng 7 chuỗi. | Văn bản đúng 336 ký tự `0`/`1` | No | 07:00 đến 21:00 mỗi ngày khi tạo |
-| app_rules | Danh sách luật ứng dụng dạng JSON chuẩn hóa: mảng đối tượng `{"action", "name", "sha256"}` sắp theo `name`, rồi `sha256`, rồi `action`. API và tài liệu đã ký trả về mảng này. | Văn bản JSON, là mảng, tối đa 200 phần tử | No | `[]` khi tạo |
+| app_rules | Danh sách luật ứng dụng dạng JSON chuẩn hóa: mảng đối tượng `{"action", "name", "sha256", "group_id"}` sắp theo `name`, `sha256`, `action`, `group_id`. | Văn bản JSON, là mảng, tối đa 200 phần tử | No | `[]` khi tạo |
+| app_groups | Nhóm ứng dụng và ngân sách ngày dạng JSON: sáu nhóm mặc định cùng tối đa 24 nhóm tùy chỉnh. | Văn bản JSON, là mảng | No | Sáu nhóm mặc định, không giới hạn |
 | web_allowlist | Tên miền được miễn chặn; áp dụng cho cả tên miền con và luôn ưu tiên hơn danh sách chặn. | Văn bản JSON, mảng tối đa 1000 tên miền chuẩn hóa | No | `[]` khi tạo |
 | web_blocklist | Tên miền bị chặn; áp dụng cho cả tên miền con. | Văn bản JSON, mảng tối đa 1000 tên miền chuẩn hóa | No | `[]` khi tạo |
 | blocked_categories | Nhóm phân loại bị chặn: education, entertainment, social, games, adult, unclassified. | Văn bản JSON, mảng không trùng | No | `adult`, `social` |
@@ -381,6 +384,7 @@ erDiagram
 | weekend_quota_minutes | Như `policies.weekend_quota_minutes` tại version này. | Số nguyên từ 0 đến 1440 | No | None |
 | weekly_schedule | Như `policies.weekly_schedule` tại version này. | Văn bản đúng 336 ký tự `0`/`1` | No | None |
 | app_rules | Như `policies.app_rules` tại version này. | Văn bản JSON, là mảng | No | `[]` khi tạo |
+| app_groups | Như `policies.app_groups` tại version này. | Văn bản JSON, là mảng | No | Sáu nhóm mặc định, không giới hạn |
 | web_allowlist | Như `policies.web_allowlist` tại version này. | Văn bản JSON, mảng tên miền | No | `[]` khi tạo |
 | web_blocklist | Như `policies.web_blocklist` tại version này. | Văn bản JSON, mảng tên miền | No | `[]` khi tạo |
 | blocked_categories | Như `policies.blocked_categories` tại version này. | Văn bản JSON, mảng nhóm | No | `adult`, `social` khi tạo |
@@ -1181,7 +1185,7 @@ $$
 
 ### IC-038: Luật ứng dụng hợp lệ
 
-**Statement:** `app_rules` là mảng JSON tối đa 200 luật. Mỗi luật có `name` là tên tệp chữ thường dài 1 đến 255 ký tự, không chứa `/` hay `\`; `sha256` là null hoặc 64 ký tự hex chữ thường; `action` là `allow` hoặc `block`. Trong một chính sách, mỗi cặp (`name`, `sha256`) xuất hiện tối đa một lần. Áp dụng cho cả `policies` và `policy_versions`.
+**Statement:** `app_rules` là mảng JSON tối đa 200 luật. Mỗi luật có tên tệp chữ thường, SHA-256 tùy chọn, hành động `allow` hoặc `block`, và `group_id` trỏ đến một nhóm trong `app_groups`. Trong một chính sách, mỗi cặp (`name`, `sha256`) xuất hiện tối đa một lần; cùng tên ứng dụng không được gán nhiều nhóm.
 
 **Formal Expression:**
 
@@ -1189,13 +1193,21 @@ $$
 \forall p \in policies \cup policy\_versions:\ |p.app\_rules| \leq 200 \land \forall r \in p.app\_rules:\ r.name = lower(r.name) \land 1 \leq |r.name| \leq 255 \land \text{'/'} \notin r.name \land \text{'\textbackslash'} \notin r.name \land (r.sha256 = null \lor r.sha256 \in [0\text{-}9a\text{-}f]^{64}) \land r.action \in \{allow, block\} \quad \land \quad \forall r_1 \neq r_2 \in p.app\_rules:\ (r_1.name, r_1.sha256) \neq (r_2.name, r_2.sha256)
 $$
 
-**Context:** DB chỉ kiểm tra cột là mảng JSON bằng `ck_policies_app_rules` và `ck_policy_versions_app_rules`. Nội dung từng luật, giới hạn 200 luật và tính duy nhất của cặp (`name`, `sha256`) do server kiểm tra trong `validate_app_rules` trước khi lưu; vi phạm trả `422 invalid_app_rules`. Server chuẩn hóa chữ thường và thứ tự trước khi lưu nên danh sách chỉ đổi thứ tự không làm tăng version. Migration 0010 đặt `[]` cho mọi dòng đã có.
+**Context:** DB chỉ kiểm tra cột là mảng JSON bằng các CHECK hiện có. Nội dung luật và tính duy nhất do server kiểm tra trong `validate_app_rules`; vi phạm trả `422 invalid_app_rules`. Luật cũ thiếu `group_id` được hiểu là `unclassified`.
 
 **Impacted Data Objects:**
 
 - `policies`
 - `policy_versions`
-- Relevant attributes: `policies.app_rules`, `policy_versions.app_rules`
+- Relevant attributes: `policies.app_rules`, `policy_versions.app_rules`, `policies.app_groups`, `policy_versions.app_groups`
+
+### IC-053: Nhóm ứng dụng và ngân sách ngày hợp lệ
+
+**Statement:** Mỗi chính sách có sáu nhóm mặc định bất biến và tối đa 24 nhóm tùy chỉnh. Id nhóm là duy nhất, tên không trùng và dài 1 đến 40 ký tự, ngân sách là null hoặc 0 đến 1440 phút. Ngân sách null là không giới hạn.
+
+**Context:** DB kiểm tra `app_groups` là mảng JSON bằng `ck_policies_app_groups` và `ck_policy_versions_app_groups`. Server kiểm tra nhóm trước khi lưu; vi phạm trả `422 invalid_app_groups`. Nhóm được chụp trong mỗi version và ký cùng chính sách. Agent đếm theo ngày và appcontrol đóng ứng dụng đã gán vào nhóm khi ngân sách hết.
+
+**Impacted Data Objects:** `policies.app_groups`, `policy_versions.app_groups`, `policies.app_rules`, `policy_versions.app_rules`
 
 ### IC-039: Luật website hợp lệ
 
