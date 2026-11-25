@@ -48,6 +48,15 @@ def test_dns_over_https_names_are_blocked():
     assert blocked_reason("dns.google", {}) == "doh"
 
 
+def test_doh_connection_reuses_bundled_ca_context(monkeypatch):
+    context = object()
+    monkeypatch.setattr(module, "DOH_SSL_CONTEXT", context)
+
+    connection = module.FixedIPHTTPSConnection("cloudflare-dns.com", "1.1.1.1", 2)
+
+    assert connection._context is context
+
+
 def test_dns_query_for_doh_endpoint_returns_nxdomain(monkeypatch):
     context = _context(child_id=7)
     resolver = module.PolicyResolver(context, [], asyncio.new_event_loop())
