@@ -93,6 +93,7 @@ Tài liệu này liệt kê mọi trường dữ liệu OGK lưu, mục đích, 
 | `policies.weekend_quota_minutes` | Quota cuối tuần | Đến khi xóa trẻ | Phụ huynh, agent, trẻ |
 | `policies.weekly_schedule` | Giờ được dùng máy | Đến khi xóa trẻ | Phụ huynh, agent, trẻ |
 | `policies.app_rules` | Luật chặn và cho phép ứng dụng | Đến khi xóa trẻ | Phụ huynh, agent, trẻ |
+| `policies.app_groups` | Tên nhóm ứng dụng và ngân sách thời gian mỗi ngày | Đến khi xóa trẻ | Phụ huynh, agent, trẻ |
 | `policies.web_allowlist` | Website luôn được mở | Đến khi xóa trẻ | Phụ huynh, agent, trẻ |
 | `policies.web_blocklist` | Website bị chặn | Đến khi xóa trẻ | Phụ huynh, agent, trẻ |
 | `policies.blocked_categories` | Nhóm website bị chặn | Đến khi xóa trẻ | Phụ huynh, agent, trẻ |
@@ -105,6 +106,7 @@ Tài liệu này liệt kê mọi trường dữ liệu OGK lưu, mục đích, 
 | `policy_versions.weekend_quota_minutes` | Như trên | Như `policy_versions.id` | Phụ huynh |
 | `policy_versions.weekly_schedule` | Như trên | Như `policy_versions.id` | Phụ huynh |
 | `policy_versions.app_rules` | Như trên | Như `policy_versions.id` | Phụ huynh |
+| `policy_versions.app_groups` | Như trên | Như `policy_versions.id` | Phụ huynh |
 | `policy_versions.web_allowlist` | Như trên | Như `policy_versions.id` | Phụ huynh |
 | `policy_versions.web_blocklist` | Như trên | Như `policy_versions.id` | Phụ huynh |
 | `policy_versions.blocked_categories` | Như trên | Như `policy_versions.id` | Phụ huynh |

@@ -22,6 +22,14 @@ def write_public_key(directory: Path) -> Path:
 
 OPEN_DAY = "1" * 48
 ALLOWED_DAY = "0" * 14 + "1" * 28 + "0" * 6
+DEFAULT_APP_GROUPS = [
+    {"id": "education", "name": "Học tập", "budget_minutes": None},
+    {"id": "entertainment", "name": "Giải trí", "budget_minutes": None},
+    {"id": "social", "name": "Mạng xã hội", "budget_minutes": None},
+    {"id": "games", "name": "Trò chơi", "budget_minutes": None},
+    {"id": "adult", "name": "Người lớn", "budget_minutes": None},
+    {"id": "unclassified", "name": "Chưa phân loại", "budget_minutes": None},
+]
 
 
 def rules(
@@ -29,13 +37,16 @@ def rules(
     weekend: int | None = None,
     schedule: list[str] | None = None,
     app_rules: list[dict] | None = None,
+    app_groups: list[dict] | None = None,
 ) -> dict:
-    return {
+    result = {
         "weekday_quota_minutes": quota,
         "weekend_quota_minutes": quota if weekend is None else weekend,
         "weekly_schedule": [ALLOWED_DAY] * 7 if schedule is None else schedule,
         "app_rules": [] if app_rules is None else app_rules,
+        "app_groups": DEFAULT_APP_GROUPS if app_groups is None else app_groups,
     }
+    return result
 
 
 def document(
@@ -47,6 +58,7 @@ def document(
     weekend: int | None = None,
     schedule: list[str] | None = None,
     app_rules: list[dict] | None = None,
+    app_groups: list[dict] | None = None,
     set_by: str = "parent@example.com",
 ) -> dict:
     return {
@@ -55,7 +67,7 @@ def document(
         "format": 1,
         "issued_at": "2026-11-18T08:00:00Z",
         "policy_version": version,
-        "rules": rules(quota, weekend, schedule, app_rules),
+        "rules": rules(quota, weekend, schedule, app_rules, app_groups),
         "set_by": set_by,
     }
 

@@ -23,6 +23,7 @@ from app.modules.auth import service as auth
 from app.modules.family import service as family
 from app.modules.family.models import Device
 from app.modules.policy.models import (
+    APP_GROUPS,
     DAYS_PER_WEEK,
     DEFAULT_QUOTA_MINUTES,
     DEFAULT_SCHEDULE,
@@ -45,6 +46,7 @@ RULE_FIELDS = (
     "weekend_quota_minutes",
     "weekly_schedule",
     "app_rules",
+    "app_groups",
     "web_allowlist",
     "web_blocklist",
     "blocked_categories",
@@ -52,6 +54,9 @@ RULE_FIELDS = (
 MAX_APP_RULES = 200
 MAX_APP_NAME = 255
 APP_ACTIONS = ("allow", "block")
+DEFAULT_APP_GROUPS = json.loads(APP_GROUPS)
+DEFAULT_APP_GROUP_IDS = {group["id"] for group in DEFAULT_APP_GROUPS}
+GROUP_ID_RE = re.compile(r"^custom_[0-9a-f-]{36}$")
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 DOMAIN_RE = re.compile(r"^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$")
 WEB_CATEGORIES = ("education", "entertainment", "social", "games", "adult", "unclassified")
@@ -77,8 +82,9 @@ def validate_schedule(days: list[str]) -> str:
     return "".join(days)
 
 
-def _app_rule(rule: dict) -> dict:
+def _app_rule(rule: dict, group_ids: set[str]) -> dict:
     name, sha256, action = rule.get("name"), rule.get("sha256"), rule.get("action")
+    group_id = rule.get("group_id", "unclassified")
     if not isinstance(name, str) or not isinstance(action, str):
         raise AppError(422, "invalid_app_rules")
     name = name.strip().lower()
@@ -90,18 +96,56 @@ def _app_rule(rule: dict) -> dict:
         sha256 = sha256.strip().lower()
     if action not in APP_ACTIONS:
         raise AppError(422, "invalid_app_rules")
-    return {"action": action, "name": name, "sha256": sha256}
+    if group_id not in group_ids:
+        raise AppError(422, "invalid_app_rules")
+    return {"action": action, "group_id": group_id, "name": name, "sha256": sha256}
 
 
-def validate_app_rules(items: list[dict]) -> str:
+def validate_app_rules(items: list[dict], groups: list[dict]) -> str:
     if len(items) > MAX_APP_RULES:
         raise AppError(422, "invalid_app_rules")
-    normalized = [_app_rule(item) for item in items]
+    group_ids = {group["id"] for group in groups}
+    normalized = [_app_rule(item, group_ids) for item in items]
+    names = {}
+    for rule in normalized:
+        if rule["name"] in names and names[rule["name"]] != rule["group_id"]:
+            raise AppError(422, "invalid_app_rules")
+        names[rule["name"]] = rule["group_id"]
     pairs = {(r["name"], r["sha256"]) for r in normalized}
     if len(pairs) != len(normalized):
         raise AppError(422, "invalid_app_rules")
-    normalized.sort(key=lambda r: (r["name"], r["sha256"] or "", r["action"]))
+    normalized.sort(key=lambda r: (r["name"], r["sha256"] or "", r["action"], r["group_id"]))
     return dump_app_rules(normalized)
+
+
+def validate_app_groups(items: list[dict]) -> str:
+    if not isinstance(items, list) or len(items) < len(DEFAULT_APP_GROUPS) or len(items) > 30:
+        raise AppError(422, "invalid_app_groups")
+    normalized = []
+    seen_ids = set()
+    seen_names = set()
+    defaults = {group["id"]: group["name"] for group in DEFAULT_APP_GROUPS}
+    for group in items:
+        group_id, name, budget = group.get("id"), group.get("name"), group.get("budget_minutes")
+        if not isinstance(group_id, str) or not isinstance(name, str) or group_id in seen_ids:
+            raise AppError(422, "invalid_app_groups")
+        if group_id in defaults:
+            if name != defaults[group_id]:
+                raise AppError(422, "invalid_app_groups")
+        elif not GROUP_ID_RE.fullmatch(group_id):
+            raise AppError(422, "invalid_app_groups")
+        folded = name.strip().casefold()
+        if not 1 <= len(name.strip()) <= 40 or not name.isprintable() or folded in seen_names:
+            raise AppError(422, "invalid_app_groups")
+        if budget is not None and (not isinstance(budget, int) or isinstance(budget, bool) or not 0 <= budget <= 1440):
+            raise AppError(422, "invalid_app_groups")
+        seen_ids.add(group_id)
+        seen_names.add(folded)
+        normalized.append({"budget_minutes": budget, "id": group_id, "name": name.strip()})
+    if seen_ids & DEFAULT_APP_GROUP_IDS != DEFAULT_APP_GROUP_IDS:
+        raise AppError(422, "invalid_app_groups")
+    normalized.sort(key=lambda group: group["id"])
+    return json.dumps(normalized, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
 
 
 def dump_app_rules(items: list[dict]) -> str:
@@ -135,7 +179,8 @@ def rules(row: Policy | PolicyVersion) -> dict:
         "weekday_quota_minutes": row.weekday_quota_minutes,
         "weekend_quota_minutes": row.weekend_quota_minutes,
         "weekly_schedule": schedule_days(row.weekly_schedule),
-        "app_rules": json.loads(row.app_rules),
+        "app_rules": [{**item, "group_id": item.get("group_id", "unclassified")} for item in json.loads(row.app_rules)],
+        "app_groups": json.loads(row.app_groups or APP_GROUPS),
         "web_allowlist": json.loads(row.web_allowlist),
         "web_blocklist": json.loads(row.web_blocklist),
         "blocked_categories": json.loads(row.blocked_categories),
@@ -180,6 +225,7 @@ def record_version(db: AsyncSession, policy: Policy) -> None:
             weekend_quota_minutes=policy.weekend_quota_minutes,
             weekly_schedule=policy.weekly_schedule,
             app_rules=policy.app_rules,
+            app_groups=policy.app_groups,
             web_allowlist=policy.web_allowlist,
             web_blocklist=policy.web_blocklist,
             blocked_categories=policy.blocked_categories,
@@ -202,6 +248,7 @@ async def ensure_policies(db: AsyncSession, child_ids: list[int]) -> list[Policy
             "weekend_quota_minutes": DEFAULT_QUOTA_MINUTES,
             "weekly_schedule": DEFAULT_SCHEDULE,
             "app_rules": EMPTY_APP_RULES,
+            "app_groups": APP_GROUPS,
             "web_allowlist": EMPTY_DOMAIN_RULES,
             "web_blocklist": EMPTY_DOMAIN_RULES,
             "blocked_categories": EMPTY_BLOCKED_CATEGORIES,
@@ -248,7 +295,7 @@ async def _bump(db: AsyncSession, child_id: int, values: dict, actor: audit.Acto
 
 
 def _audit_values(values: dict) -> dict:
-    json_fields = {"app_rules", "web_allowlist", "web_blocklist", "blocked_categories"}
+    json_fields = {"app_rules", "app_groups", "web_allowlist", "web_blocklist", "blocked_categories"}
     return {f: json.loads(v) if f in json_fields else v for f, v in values.items()}
 
 
@@ -260,14 +307,23 @@ async def update_policy(db: AsyncSession, child_id: int, owner_id: int, changes:
             values[field] = validate_quota(changes[field])
     if changes.get("weekly_schedule") is not None:
         values["weekly_schedule"] = validate_schedule(changes["weekly_schedule"])
-    if changes.get("app_rules") is not None:
-        values["app_rules"] = validate_app_rules(changes["app_rules"])
     if changes.get("web_allowlist") is not None:
         values["web_allowlist"] = validate_domain_rules(changes["web_allowlist"])
     if changes.get("web_blocklist") is not None:
         values["web_blocklist"] = validate_domain_rules(changes["web_blocklist"])
     if changes.get("blocked_categories") is not None:
         values["blocked_categories"] = validate_blocked_categories(changes["blocked_categories"])
+    groups = changes.get("app_groups")
+    if groups is not None:
+        values["app_groups"] = validate_app_groups(groups)
+    current_policy = await db.scalar(select(Policy).where(Policy.child_id == child.id))
+    current_groups = json.loads(
+        values.get("app_groups", APP_GROUPS if current_policy is None else current_policy.app_groups)
+    )
+    if changes.get("app_rules") is not None:
+        values["app_rules"] = validate_app_rules(changes["app_rules"], current_groups)
+    elif "app_groups" in values and current_policy is not None:
+        values["app_rules"] = validate_app_rules(json.loads(current_policy.app_rules), current_groups)
     (policy,) = await ensure_policies(db, [child.id])
     values = {field: value for field, value in values.items() if getattr(policy, field) != value}
     if not values:

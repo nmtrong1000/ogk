@@ -155,6 +155,51 @@ async def test_blocked_name_is_killed_with_event_and_tray_notice(rig):
     assert (event["type"], event["subject"], event["child_id"], event["policy_id"]) == ("blocked_app", "game.exe", 7, 1)
 
 
+async def test_exhausted_group_budget_closes_an_already_running_app(rig):
+    groups = [
+        {"id": "education", "name": "Học tập", "budget_minutes": None},
+        {"id": "entertainment", "name": "Giải trí", "budget_minutes": None},
+        {"id": "social", "name": "Mạng xã hội", "budget_minutes": None},
+        {"id": "games", "name": "Trò chơi", "budget_minutes": 0},
+        {"id": "adult", "name": "Người lớn", "budget_minutes": None},
+        {"id": "unclassified", "name": "Chưa phân loại", "budget_minutes": None},
+    ]
+    rules = [{"name": "game.exe", "sha256": None, "action": "allow", "group_id": "games"}]
+    rig.store.save(body(document(7, 1, accounts=[SID], app_rules=rules, app_groups=groups)))
+    rig.screen.group_remaining = [{"group_id": "games", "name": "Trò chơi", "remaining_seconds": 0}]
+    await rig.start()
+    rig.platform.launch("game.exe")
+    await rig.run(1)
+    assert rig.platform.killed == ["game.exe"]
+    assert rig.apps.reason == "group_budget:Trò chơi"
+
+
+async def test_another_group_stays_available_after_budget_expires(rig):
+    groups = [
+        {"id": "education", "name": "Học tập", "budget_minutes": None},
+        {"id": "entertainment", "name": "Giải trí", "budget_minutes": None},
+        {"id": "social", "name": "Mạng xã hội", "budget_minutes": None},
+        {"id": "games", "name": "Trò chơi", "budget_minutes": 45},
+        {"id": "adult", "name": "Người lớn", "budget_minutes": None},
+        {"id": "unclassified", "name": "Chưa phân loại", "budget_minutes": None},
+    ]
+    rules = [
+        {"name": "game.exe", "sha256": None, "action": "allow", "group_id": "games"},
+        {"name": "word.exe", "sha256": None, "action": "allow", "group_id": "education"},
+    ]
+    rig.store.save(body(document(7, 1, accounts=[SID], app_rules=rules, app_groups=groups)))
+    rig.screen.group_remaining = [
+        {"group_id": "games", "name": "Trò chơi", "remaining_seconds": 0},
+        {"group_id": "education", "name": "Học tập", "remaining_seconds": None},
+    ]
+    await rig.start()
+    rig.platform.launch("game.exe")
+    rig.platform.launch("word.exe")
+    await rig.run(1)
+    assert rig.platform.killed == ["game.exe"]
+    assert [proc.name for proc in rig.platform.processes] == ["word.exe"]
+
+
 async def test_renamed_notepad_is_blocked_by_hash(rig):
     notepad = b"notepad binary"
     rig.policy([block("notepad.exe", hashlib.sha256(notepad).hexdigest())])

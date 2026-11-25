@@ -31,6 +31,7 @@ class ScreenState:
     command_type: str | None = None
     used_today: dict[int, int] = field(default_factory=dict)
     usage_day: str | None = None
+    group_remaining: list[dict[str, Any]] = field(default_factory=list)
 
     def snapshot(self) -> dict[str, Any]:
         data = asdict(self)

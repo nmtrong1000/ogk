@@ -3,12 +3,16 @@ from history before it exchanges the code; the server also accepts each code onc
 """
 
 import asyncio
+import logging
 import secrets
 from typing import Any
+
+import httpx
 
 from service.core.agent import ModuleContext
 
 START_PATH = "/child-view/start"
+log = logging.getLogger("ogk.childview")
 
 
 class ChildViewModule:
@@ -23,7 +27,12 @@ class ChildViewModule:
         if child_id is None:
             raise LookupError("no child is signed in")
         code = secrets.token_urlsafe(32)
-        result = await session.create_child_view_code(child_id, code)
+        try:
+            result = await session.create_child_view_code(child_id, code)
+        except httpx.TransportError as exc:
+            log.warning("child-view code request lost its connection; retrying on a fresh connection: %s", exc)
+            code = secrets.token_urlsafe(32)
+            result = await session.create_child_view_code_fresh(child_id, code)
         return {
             "url": f"{config.server_url.rstrip('/')}{START_PATH}#code={code}",
             "expires_at": result.get("expires_at") if isinstance(result, dict) else None,

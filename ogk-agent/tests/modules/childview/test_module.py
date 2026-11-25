@@ -1,6 +1,7 @@
 from types import SimpleNamespace
 from urllib.parse import urlsplit
 
+import httpx
 import pytest
 
 from service.modules.childview.module import ChildViewModule
@@ -9,11 +10,20 @@ pytestmark = pytest.mark.anyio
 
 
 class FakeSession:
-    def __init__(self):
+    def __init__(self, fail_first=False):
         self.calls = []
+        self.fresh_calls = []
+        self.fail_first = fail_first
 
     async def create_child_view_code(self, child_id, code):
         self.calls.append((child_id, code))
+        if self.fail_first:
+            self.fail_first = False
+            raise httpx.RemoteProtocolError("Server disconnected")
+        return {"expires_at": "2026-11-19T08:01:00Z"}
+
+    async def create_child_view_code_fresh(self, child_id, code):
+        self.fresh_calls.append((child_id, code))
         return {"expires_at": "2026-11-19T08:01:00Z"}
 
 
@@ -51,3 +61,12 @@ async def test_no_signed_in_child_raises_lookup_error():
 async def test_not_enrolled_raises_runtime_error():
     with pytest.raises(RuntimeError):
         await ChildViewModule(context(None, 9)).issue_child_view_link()
+
+
+async def test_transient_disconnect_retries_with_fresh_connection_and_code():
+    session = FakeSession(fail_first=True)
+    link = await ChildViewModule(context(session, 9)).issue_child_view_link()
+    code = urlsplit(link["url"]).fragment.removeprefix("code=")
+    assert session.calls[0][0] == 9
+    assert session.fresh_calls == [(9, code)]
+    assert session.calls[0][1] != code

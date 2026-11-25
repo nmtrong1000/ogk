@@ -181,6 +181,21 @@ class DeviceSession:
     async def create_child_view_code(self, child_id: int, code: str) -> Any:
         return await self.call(lambda client, token: client.create_child_view_code(token, child_id, code))
 
+    async def create_child_view_code_fresh(self, child_id: int, code: str) -> Any:
+        creds, _ = await self._ready()
+        if creds.access_expires_at - self._clock() <= REFRESH_MARGIN:
+            await self.refresh()
+            creds, _ = await self._ready()
+        client = self._factory(self._config, creds.cert_sha256)
+        try:
+            return await client.create_child_view_code(creds.access_token, child_id, code)
+        except ApiError as exc:
+            if exc.code == "device_revoked":
+                await self._revoke(exc.code)
+            raise
+        finally:
+            await client.aclose()
+
     async def _close_client(self) -> None:
         if self._client is not None:
             await self._client.aclose()

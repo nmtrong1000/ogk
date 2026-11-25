@@ -93,6 +93,7 @@ function AppControl({ id }: { id: number }) {
         <AppRuleForm
           key={`app-form-${data.policy_version}`}
           rules={rules}
+          groups={data.app_groups}
           pending={save.isPending}
           onAdd={(rule) => submit([...rules, rule], `Đã thêm luật cho ${rule.name}.`)}
         />
@@ -101,11 +102,18 @@ function AppControl({ id }: { id: number }) {
       <Card title="Danh sách ứng dụng" description={`${rules.length} luật`}>
         <AppRuleTable
           rules={rules}
+          groups={data.app_groups}
           pending={save.isPending}
           onRemove={(rule) =>
             submit(
               rules.filter((r) => r !== rule),
               `Đã xóa luật cho ${rule.name}.`,
+            )
+          }
+          onAssign={(rule, group_id) =>
+            submit(
+              rules.map((item) => (item === rule ? { ...item, group_id } : item)),
+              `Đã chuyển ${rule.name} sang nhóm mới.`,
             )
           }
         />

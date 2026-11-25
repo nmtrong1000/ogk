@@ -4,6 +4,7 @@ quotas, the schedule and app rules separately.
 """
 
 from datetime import datetime
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -12,6 +13,13 @@ class AppRule(BaseModel):
     name: str
     sha256: str | None = None
     action: str
+    group_id: str = "unclassified"
+
+
+class AppGroup(BaseModel):
+    id: str
+    name: str
+    budget_minutes: Any = None
 
 
 class PolicyUpdate(BaseModel):
@@ -19,6 +27,7 @@ class PolicyUpdate(BaseModel):
     weekend_quota_minutes: int | None = None
     weekly_schedule: list[str] | None = None
     app_rules: list[AppRule] | None = None
+    app_groups: list[AppGroup] | None = None
     web_allowlist: list[str] | None = None
     web_blocklist: list[str] | None = None
     blocked_categories: list[str] | None = None
@@ -31,6 +40,7 @@ class PolicyOut(BaseModel):
     weekend_quota_minutes: int
     weekly_schedule: list[str]
     app_rules: list[AppRule]
+    app_groups: list[AppGroup]
     web_allowlist: list[str]
     web_blocklist: list[str]
     blocked_categories: list[str]
@@ -44,6 +54,7 @@ class PolicyVersionOut(BaseModel):
     weekend_quota_minutes: int
     weekly_schedule: list[str]
     app_rules: list[AppRule]
+    app_groups: list[AppGroup]
     web_allowlist: list[str]
     web_blocklist: list[str]
     blocked_categories: list[str]

@@ -110,6 +110,11 @@ class FakeServer:
             if path == "/api/device/events":
                 return self._events(request)
             return httpx.Response(200, json={"id": 1, "name": "PC"})
+        if path == "/api/device/child-view-codes":
+            denied = self._check_access(request)
+            if denied is not None:
+                return denied
+            return httpx.Response(201, json={"expires_at": "2026-11-19T08:01:00Z"})
         if path.startswith("/api/device/commands/") and path.endswith("/ack"):
             denied = self._check_access(request)
             if denied is not None:

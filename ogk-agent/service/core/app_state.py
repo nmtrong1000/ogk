@@ -16,10 +16,11 @@ class AppState:
     app: str | None = None
     set_by: str = ""
     source: str = ""
+    reason: str = "app_rule"
     run_id: str = field(default_factory=lambda: uuid.uuid4().hex)
 
-    def blocked(self, app: str, set_by: str, source: str) -> None:
-        self.app, self.set_by, self.source = app, set_by, source
+    def blocked(self, app: str, set_by: str, source: str, reason: str = "app_rule") -> None:
+        self.app, self.set_by, self.source, self.reason = app, set_by, source, reason
         self.block_seq += 1
 
     def snapshot(self) -> dict[str, Any]:

@@ -1,6 +1,9 @@
+import json
+
 import pytest
 
 from app.core import signing
+from app.modules.policy.models import APP_GROUPS
 from app.modules.webfilter.catalog_data import catalog_rows
 from tests.conftest import csrf_headers
 from tests.enrollment.conftest import bearer, enroll_device
@@ -36,6 +39,7 @@ async def test_returns_signed_policies_of_mapped_children(parent, agent):
             "weekend_quota_minutes": 120,
             "weekly_schedule": DEFAULT_SCHEDULE,
             "app_rules": [],
+            "app_groups": json.loads(APP_GROUPS),
             "web_allowlist": [],
             "web_blocklist": [],
             "blocked_categories": ["adult", "social"],

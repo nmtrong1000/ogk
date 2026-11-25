@@ -517,8 +517,17 @@ Tài liệu được dựng riêng cho từng thiết bị vì `accounts` chỉ 
     "weekend_quota_minutes": 180,
     "weekly_schedule": ["000000000000001111111111111111111111111111000000", "... đủ 7 chuỗi ..."],
     "app_rules": [
-      { "action": "block", "name": "game.exe", "sha256": null },
-      { "action": "block", "name": "notepad.exe", "sha256": "abab...ab (64 ký tự hex)" }
+      { "action": "block", "group_id": "games", "name": "game.exe", "sha256": null },
+      { "action": "block", "group_id": "education", "name": "notepad.exe", "sha256": "abab...ab (64 ký tự hex)" }
+    ],
+    "app_groups": [
+      { "id": "education", "name": "Học tập", "budget_minutes": null },
+      { "id": "entertainment", "name": "Giải trí", "budget_minutes": null },
+      { "id": "social", "name": "Mạng xã hội", "budget_minutes": null },
+      { "id": "games", "name": "Trò chơi", "budget_minutes": 45 },
+      { "id": "adult", "name": "Người lớn", "budget_minutes": null },
+      { "id": "unclassified", "name": "Chưa phân loại", "budget_minutes": null },
+      { "id": "custom_00000000-0000-0000-0000-000000000001", "name": "Vẽ", "budget_minutes": 60 }
     ],
     "web_allowlist": ["school.edu.vn"],
     "web_blocklist": ["example.com"],
@@ -539,7 +548,8 @@ Tài liệu được dựng riêng cho từng thiết bị vì `accounts` chỉ 
 | `rules.weekday_quota_minutes` | Số phút dùng máy mỗi ngày từ thứ Hai đến thứ Sáu, 0 đến 1440, mặc định 120 |
 | `rules.weekend_quota_minutes` | Số phút dùng máy mỗi ngày thứ Bảy và Chủ nhật, 0 đến 1440, mặc định 120 |
 | `rules.weekly_schedule` | Lịch tuần: mảng 7 chuỗi, chuỗi 0 là thứ Hai, chuỗi 6 là Chủ nhật. Mỗi chuỗi 48 ký tự; ký tự thứ k là ô 30 phút [k x 30 phút, (k + 1) x 30 phút) theo giờ địa phương của máy trẻ; `1` là được dùng, `0` là khóa. Mặc định 07:00 đến 21:00 mỗi ngày |
-| `rules.app_rules` | Luật ứng dụng: mảng tối đa 200 object, sắp theo `name`, rồi `sha256` (null trước), rồi `action`. `name` là tên tệp thực thi chữ thường, 1 đến 255 ký tự, không chứa `/` hay `\`; `sha256` là SHA-256 của tệp thực thi dạng 64 ký tự hex chữ thường, hoặc `null` nếu chỉ so theo tên; `action` là `block` hoặc `allow`. Mỗi cặp (`name`, `sha256`) có tối đa một luật. Mặc định `[]`. Cách áp xem [Kiểm soát ứng dụng](#kiểm-soát-ứng-dụng) |
+| `rules.app_rules` | Luật ứng dụng: tối đa 200 object, có `group_id` trỏ tới `app_groups`; luật cũ thiếu trường này được hiểu là `unclassified`. Các trường tên, SHA-256 và hành động giữ quy tắc hiện có. Mặc định `[]`. Cách áp xem [Kiểm soát ứng dụng](#kiểm-soát-ứng-dụng) |
+| `rules.app_groups` | Sáu nhóm mặc định bất biến (`education`, `entertainment`, `social`, `games`, `adult`, `unclassified`) và tối đa 24 nhóm tùy chỉnh có id `custom_<UUID>`. Mỗi nhóm có `name` và `budget_minutes` từ 0 đến 1440; `null` nghĩa là không giới hạn. Bộ đếm riêng đặt lại theo ngày địa phương tin cậy của agent. |
 | `rules.web_allowlist` | Danh sách tên miền miễn chặn của gia đình; khớp chính xác hoặc mọi tên miền con. Danh sách này luôn thắng luật chặn. Mặc định `[]`. |
 | `rules.web_blocklist` | Danh sách tên miền bị chặn của gia đình; khớp chính xác hoặc mọi tên miền con. Mặc định `[]`. |
 | `rules.blocked_categories` | Các nhóm bị chặn: `education`, `entertainment`, `social`, `games`, `adult`, `unclassified`. Mặc định cho trẻ 6 đến 11 tuổi là `adult` và `social`. |
@@ -630,7 +640,15 @@ Vai trò `parent`. Mọi trường đều tùy chọn; trường bỏ trống gi
   "weekday_quota_minutes": 90,
   "weekend_quota_minutes": 150,
   "weekly_schedule": ["000000000000001111111111111111111111111111000000", "... đủ 7 chuỗi ..."],
-  "app_rules": [{ "name": "Game.exe", "sha256": null, "action": "block" }],
+  "app_rules": [{ "name": "Game.exe", "sha256": null, "action": "block", "group_id": "games" }],
+  "app_groups": [
+    { "id": "education", "name": "Học tập", "budget_minutes": null },
+    { "id": "entertainment", "name": "Giải trí", "budget_minutes": null },
+    { "id": "social", "name": "Mạng xã hội", "budget_minutes": null },
+    { "id": "games", "name": "Trò chơi", "budget_minutes": 45 },
+    { "id": "adult", "name": "Người lớn", "budget_minutes": null },
+    { "id": "unclassified", "name": "Chưa phân loại", "budget_minutes": null }
+  ],
   "web_allowlist": ["school.edu.vn"],
   "web_blocklist": ["example.com"],
   "blocked_categories": ["adult", "social"]
@@ -639,13 +657,15 @@ Vai trò `parent`. Mọi trường đều tùy chọn; trường bỏ trống gi
 
 `app_rules` thay cả danh sách; gửi `[]` để xóa hết. Server bỏ khoảng trắng hai đầu, đổi `name` và `sha256` sang chữ thường rồi sắp xếp, nên danh sách chỉ khác thứ tự hoặc hoa thường không làm tăng version. `sha256` bỏ trống được coi là `null`.
 
+`app_groups` thay toàn bộ nhóm và ngân sách; sáu nhóm mặc định phải còn nguyên. Mỗi luật ứng dụng gán một `group_id`; một ứng dụng không thể được gán vào nhiều nhóm. Khi ngân sách nhóm hết, agent đóng ứng dụng được gán vào nhóm đó và Tray UI giải thích lý do. Nhóm tùy chỉnh đang được dùng không thể xóa trước khi ứng dụng được chuyển sang nhóm khác.
+
 `web_allowlist` và `web_blocklist` thay toàn bộ danh sách tương ứng. Tên miền được đổi về chữ thường, bỏ dấu chấm cuối và sắp xếp; tối đa 1000 tên miền hợp lệ. Luật khớp cả tên miền con. Luật miễn chặn luôn thắng luật chặn. `blocked_categories` thay toàn bộ nhóm bị chặn; tên miền trong nhóm bị chặn đều chịu luật này.
 
 | HTTP | Body |
 | :---- | :---- |
 | 200 | Policy sau khi sửa |
 | 404 | `not_found` |
-| 422 | `invalid_quota`, `invalid_schedule`, `invalid_app_rules`, `invalid_domain_rules`, `invalid_blocked_categories` |
+| 422 | `invalid_quota`, `invalid_schedule`, `invalid_app_rules`, `invalid_app_groups`, `invalid_domain_rules`, `invalid_blocked_categories` |
 | 401 | `not_authenticated` |
 | 403 | `forbidden`, `csrf_failed` |
 

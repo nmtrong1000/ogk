@@ -139,38 +139,53 @@ class AppControlModule:
         alive = {(p.pid, p.create_time) for p in processes}
         self._seen &= alive
         app_rules = policy.rules["app_rules"]
-        if not app_rules:
+        has_group_budgets = any(group.get("budget_minutes") is not None for group in policy.rules.get("app_groups", []))
+        if not app_rules and not has_group_budgets:
             self._seen = alive
             return
         dirs = self._platform.protected_dirs()
         for proc in processes:
             key = (proc.pid, proc.create_time)
-            if key in self._seen:
-                continue
+            is_new = key not in self._seen
             self._seen.add(key)
             if is_protected(proc, session_id, dirs):
                 continue
-            if await self._should_block(proc, app_rules):
-                await self._block(child, policy, proc, now)
+            blocked = await self._should_block(proc, app_rules) if is_new else None
+            if blocked is None:
+                blocked = self._group_budget_reason(proc.name, policy)
+            if blocked is not None:
+                await self._block(child, policy, proc, now, blocked)
 
-    async def _should_block(self, proc: ProcInfo, app_rules: list[dict]) -> bool:
+    async def _should_block(self, proc: ProcInfo, app_rules: list[dict]) -> str | None:
         if blocked_by_name(proc.name, app_rules):
-            return True
+            return "app_rule"
         if not has_hash_rules(app_rules):
-            return False
+            return None
         sha256 = await asyncio.to_thread(self._hashes.get, proc.exe)
         if sha256 is None and proc.exe:
             log.warning("cannot hash %s (%s); blocking it because the policy has hash rules", proc.name, proc.exe)
-            return True
-        return decide(proc.name, sha256, app_rules) == BLOCK
+            return "app_rule"
+        return "app_rule" if decide(proc.name, sha256, app_rules) == BLOCK else None
 
-    async def _block(self, child: int, policy: EffectivePolicy, proc: ProcInfo, now: float) -> None:
+    def _group_budget_reason(self, name: str, policy: EffectivePolicy) -> str | None:
+        if self._screen is None:
+            return None
+        rule = next((item for item in policy.rules["app_rules"] if item["name"] == name), None)
+        if rule is None:
+            return None
+        group_id = rule.get("group_id", "unclassified")
+        group = next((item for item in self._screen.group_remaining if item["group_id"] == group_id), None)
+        if group is None or group["remaining_seconds"] is None or group["remaining_seconds"] > 0:
+            return None
+        return f"group_budget:{group['name']}"
+
+    async def _block(self, child: int, policy: EffectivePolicy, proc: ProcInfo, now: float, reason: str) -> None:
         killed = await asyncio.to_thread(self._platform.terminate, proc.pid, proc.create_time)
         if not killed:
             log.warning("could not end blocked app %s (pid %s)", proc.name, proc.pid)
             return
         log.info("blocked %s (pid %s) for child %s", proc.name, proc.pid, child)
-        self._apps.blocked(proc.name, policy.set_by, policy.source)
+        self._apps.blocked(proc.name, policy.set_by, policy.source, reason)
         last = self._last_block_event.get(proc.name)
         if last is not None and now - last < BLOCK_EVENT_SECONDS:
             return

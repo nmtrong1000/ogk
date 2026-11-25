@@ -2,14 +2,20 @@
 windows, since a child relaunching a blocked game would otherwise bury the screen.
 """
 
+import logging
 import tkinter as tk
+from collections.abc import Callable
 
-from tray.features.appcontrol.logic import TITLE, BlockNotice
+from tray.features.appcontrol.logic import TITLE, BlockNotice, NotificationGate
+
+log = logging.getLogger("ogk.tray")
 
 
 class BlockView:
-    def __init__(self, root: tk.Tk) -> None:
+    def __init__(self, root: tk.Tk, notify: Callable[[str, str], None] | None = None) -> None:
         self._root = root
+        self._notify = notify
+        self._notification_gate = NotificationGate()
         self._window: tk.Toplevel | None = None
         self._label: tk.Label | None = None
 
@@ -25,3 +31,10 @@ class BlockView:
         self._label.config(text=notice.text)
         self._window.deiconify()
         self._window.lift()
+        self._window.attributes("-topmost", True)
+        self._window.focus_force()
+        if self._notify is not None and self._notification_gate.allow(notice):
+            try:
+                self._notify(TITLE, notice.text)
+            except Exception:
+                log.exception("could not show app block notification")

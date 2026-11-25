@@ -32,6 +32,7 @@ class ScreenTimeView:
         self._remaining: tuple[tk.Toplevel, tk.Label] | None = None
         self._grace: tuple[tk.Toplevel, tk.Label] | None = None
         self._notice: tuple[tk.Toplevel, tk.Label] | None = None
+        self._lock_order: LockOrder | None = None
         self.remaining = "Đang hỏi service..."
 
     def show_remaining(self) -> None:
@@ -68,14 +69,31 @@ class ScreenTimeView:
     def _start_lock(self, order: LockOrder) -> None:
         if self._notice is not None and self._notice[0].winfo_exists():
             return
-        self._show_grace(None)
-        self._notice = _topmost(self._root, "OGK - Khóa máy")
-        self._notice[1].config(text=order.text)
-        self._root.after(LOCK_DELAY_MS, self._finish_lock)
+        self._lock_order = order
+        log.info("received workstation lock order seq=%s", order.seq)
+        try:
+            self._show_grace(None)
+            self._notice = _topmost(self._root, "OGK - Khóa máy")
+            self._notice[1].config(text=order.text)
+        except Exception:
+            log.exception("failed to show workstation lock notice seq=%s", order.seq)
+        finally:
+            self._root.after(LOCK_DELAY_MS, self._finish_lock)
 
     def _finish_lock(self) -> None:
-        if not self._lock():
-            log.error("lock workstation failed")
+        order = self._lock_order
+        log.info("calling LockWorkStation for seq=%s", None if order is None else order.seq)
+        try:
+            locked = self._lock()
+        except Exception:
+            log.exception("LockWorkStation raised an exception")
+            locked = False
+        if locked:
+            log.info("LockWorkStation accepted seq=%s", None if order is None else order.seq)
+        else:
+            log.error("LockWorkStation failed seq=%s", None if order is None else order.seq)
+            self._notify("OGK - Không khóa được máy", "Windows chưa khóa được phiên. OGK sẽ thử lại.")
         if self._notice is not None and self._notice[0].winfo_exists():
             self._notice[0].destroy()
         self._notice = None
+        self._lock_order = None

@@ -9,7 +9,7 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 from app.core import signing
-from app.modules.policy.models import Policy
+from app.modules.policy.models import APP_GROUPS, Policy
 from app.modules.policy.service import document, dump_app_rules
 
 VECTORS = json.loads((Path(__file__).resolve().parents[3] / "docs" / "test_vectors.json").read_text(encoding="utf-8"))
@@ -50,9 +50,13 @@ def test_server_document_matches_vector_shape():
         **expected,
         "rules": {
             **expected["rules"],
+            "app_rules": [
+                {**rule, "group_id": rule.get("group_id", "unclassified")} for rule in expected["rules"]["app_rules"]
+            ],
             "web_allowlist": [],
             "web_blocklist": [],
             "blocked_categories": ["adult", "social"],
+            "app_groups": json.loads(APP_GROUPS),
             "category_domains": {},
         },
     }
