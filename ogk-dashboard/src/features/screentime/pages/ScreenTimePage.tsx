@@ -83,12 +83,17 @@ function ScreenTime({ id }: { id: number }) {
         </p>
         <h1 className="mt-2 text-2xl font-bold tracking-tight text-ink sm:text-3xl">Thời gian dùng máy</h1>
         <p className="mt-1 text-ink-muted">
-          Hết thời gian hoặc ngoài khung giờ, máy của {child.data?.name ?? 'con'} sẽ báo trước 10, 5 và 1 phút rồi khóa.
-          Đang áp phiên bản {data.policy_version}. <Link to={`/children/${id}/policy`}>Xem chính sách</Link>
+          Trẻ chỉ dùng được khi vừa còn thời gian trong giới hạn ngày, vừa đang trong khung giờ cho phép. Điều kiện nào
+          đến trước thì máy khóa. Ví dụ: lịch cả ngày và giới hạn 2 giờ vẫn chỉ cho dùng tối đa 2 giờ. Tray báo trước
+          10, 5 và 1 phút. Đang áp phiên bản {data.policy_version}.{' '}
+          <Link to={`/children/${id}/policy`}>Xem chính sách</Link>
         </p>
       </div>
 
-      <Card title="Thời gian mỗi ngày" description="Tổng thời gian được dùng máy trong một ngày.">
+      <Card
+        title="Giới hạn tổng thời gian mỗi ngày"
+        description="Hạn mức riêng cho ngày thường và cuối tuần; không tính khi máy khóa hoặc trẻ không thao tác quá 5 phút."
+      >
         <QuotaForm
           key={`quota-${data.policy_version}`}
           initial={data}
@@ -102,7 +107,10 @@ function ScreenTime({ id }: { id: number }) {
         />
       </Card>
 
-      <Card title="Lịch trong tuần" description="Chỉ được dùng máy trong các ô màu xanh, theo giờ trên máy của con.">
+      <Card
+        title="Lịch trong tuần"
+        description="Ô xanh là giờ được dùng theo giờ máy của con. Giờ xanh không làm tăng hạn mức ngày."
+      >
         <ScheduleGrid
           key={`schedule-${data.policy_version}`}
           initial={data.weekly_schedule}

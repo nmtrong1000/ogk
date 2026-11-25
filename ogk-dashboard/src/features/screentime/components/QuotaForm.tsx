@@ -80,7 +80,7 @@ export default function QuotaForm({ initial, pending, error, saved, onSubmit }: 
   return (
     <form className="flex flex-col gap-5" onSubmit={submit} noValidate>
       {error != null && <Alert tone="error">{screentimeErrorMessage(error)}</Alert>}
-      {saved && error == null && <Alert tone="success">Đã lưu thời gian dùng máy.</Alert>}
+      {saved && error == null && <Alert tone="success">Đã lưu giới hạn thời gian.</Alert>}
       <QuotaRow
         label="Ngày thường"
         hint="Thứ Hai đến thứ Sáu"
@@ -97,7 +97,7 @@ export default function QuotaForm({ initial, pending, error, saved, onSubmit }: 
       />
       <div className="flex justify-end">
         <Button type="submit" loading={pending}>
-          Lưu thời gian
+          Lưu giới hạn
         </Button>
       </div>
     </form>
