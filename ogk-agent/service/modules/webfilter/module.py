@@ -10,6 +10,7 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Any
 
+import certifi
 import tldextract
 from dnslib import QTYPE, RCODE, RR, DNSRecord
 from dnslib.server import BaseResolver, DNSServer
@@ -34,6 +35,7 @@ DOH_RESOLVERS = (
     ("cloudflare-dns.com", "1.1.1.1"),
     ("dns.google", "8.8.8.8"),
 )
+DOH_SSL_CONTEXT = ssl.create_default_context(cafile=certifi.where())
 PERMANENT_ALLOWLIST = {"localhost", "127.0.0.1", "::1"}
 DEFAULT_CATEGORY_DOMAINS = {
     "social": (
@@ -102,7 +104,7 @@ class TCPServerIPv6(socketserver.ThreadingTCPServer):
 
 class FixedIPHTTPSConnection(http.client.HTTPSConnection):
     def __init__(self, host: str, address: str, timeout: float) -> None:
-        super().__init__(host, timeout=timeout, context=ssl.create_default_context())
+        super().__init__(host, timeout=timeout, context=DOH_SSL_CONTEXT)
         self.address = address
 
     def connect(self) -> None:

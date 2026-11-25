@@ -10,6 +10,10 @@ export default function PolicySummary({ policy }: { policy: Policy }) {
       description={`Cập nhật ${formatDateTime(policy.updated_at)} bởi ${setterLabel(policy.set_by)}`}
       actions={<Badge tone="brand">Phiên bản {policy.policy_version}</Badge>}
     >
+      <p className="mb-4 text-sm text-ink-muted">
+        Lịch quy định giờ được dùng; hạn mức quy định tổng thời gian trong ngày. Máy cần thỏa mãn cả hai điều kiện, nên
+        lịch cả ngày vẫn không bỏ hạn mức.
+      </p>
       <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div>
           <dt className="text-sm text-ink-muted">Ngày thường (T2–T6)</dt>
@@ -24,7 +28,7 @@ export default function PolicySummary({ policy }: { policy: Policy }) {
           </dd>
         </div>
         <div>
-          <dt className="text-sm text-ink-muted">Khung giờ cho phép</dt>
+          <dt className="text-sm text-ink-muted">Tổng giờ mở theo lịch</dt>
           <dd className="mt-1 text-lg font-semibold text-ink">{openHours(policy.weekly_schedule)} giờ mỗi tuần</dd>
         </div>
         <div>
