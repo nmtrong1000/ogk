@@ -6,9 +6,10 @@ type Props = InputHTMLAttributes<HTMLInputElement> & {
   label: string
   hint?: string
   error?: string | null
+  errorMode?: 'toast' | 'inline'
 }
 
-export function TextField({ label, hint, error, id, className, required, ...rest }: Props) {
+export function TextField({ label, hint, error, errorMode = 'toast', id, className, required, ...rest }: Props) {
   const autoId = useId()
   const inputId = id ?? autoId
   const describedBy = !error && hint ? `${inputId}-hint` : undefined
@@ -34,7 +35,14 @@ export function TextField({ label, hint, error, id, className, required, ...rest
         )}
         {...rest}
       />
-      {error && <ToastMessage tone="error">{error}</ToastMessage>}
+      {error &&
+        (errorMode === 'inline' ? (
+          <p role="alert" className="text-xs text-rose-700">
+            {error}
+          </p>
+        ) : (
+          <ToastMessage tone="error">{error}</ToastMessage>
+        ))}
       {!error && hint && (
         <p id={`${inputId}-hint`} className="text-xs text-ink-subtle">
           {hint}

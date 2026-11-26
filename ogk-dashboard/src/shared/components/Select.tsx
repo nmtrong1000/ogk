@@ -10,9 +10,21 @@ type Props = SelectHTMLAttributes<HTMLSelectElement> & {
   placeholder?: string
   hint?: string
   error?: string | null
+  errorMode?: 'toast' | 'inline'
 }
 
-export function Select({ label, options, placeholder, hint, error, id, className, required, ...rest }: Props) {
+export function Select({
+  label,
+  options,
+  placeholder,
+  hint,
+  error,
+  errorMode = 'toast',
+  id,
+  className,
+  required,
+  ...rest
+}: Props) {
   const autoId = useId()
   const selectId = id ?? autoId
   const describedBy = !error && hint ? `${selectId}-hint` : undefined
@@ -61,7 +73,14 @@ export function Select({ label, options, placeholder, hint, error, id, className
           <path d="m5 8 5 5 5-5" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </div>
-      {error && <ToastMessage tone="error">{error}</ToastMessage>}
+      {error &&
+        (errorMode === 'inline' ? (
+          <p role="alert" className="text-xs text-rose-700">
+            {error}
+          </p>
+        ) : (
+          <ToastMessage tone="error">{error}</ToastMessage>
+        ))}
       {!error && hint && (
         <p id={`${selectId}-hint`} className="text-sm text-ink-muted">
           {hint}
