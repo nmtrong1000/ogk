@@ -35,7 +35,7 @@ function menuForRole(role: Role, pathname: string): MenuGroup[] {
     ]
   }
 
-  const childId = pathname.match(/^\/children\/(\d+)/)?.[1]
+  const childId = pathname.match(/^\/children\/(\d+)\/(?:policy|screentime|apps|webfilter|reports|data)$/)?.[1]
   const groups: MenuGroup[] = [
     {
       label: 'Gia đình',

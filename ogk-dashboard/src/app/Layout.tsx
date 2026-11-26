@@ -9,6 +9,7 @@ import { LogoutButton, useMe } from '@/features/auth/index.ts'
 import Breadcrumbs from '@/app/Breadcrumbs.tsx'
 import DashboardSidebar from '@/app/DashboardSidebar.tsx'
 import AppFooter from '@/shared/components/AppFooter.tsx'
+import ChildPageNavigation from '@/features/family/components/ChildPageNavigation.tsx'
 
 export default function Layout() {
   const { pathname } = useLocation()
@@ -86,6 +87,7 @@ function ParentLayout() {
         <main className="min-w-0 flex-1 px-1 py-3 sm:px-2 sm:py-4 lg:px-4">
           <div className="mx-auto w-full max-w-7xl">
             <Breadcrumbs />
+            <ChildPageNavigation />
             <Outlet />
           </div>
         </main>
