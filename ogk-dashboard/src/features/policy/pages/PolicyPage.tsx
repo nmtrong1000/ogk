@@ -60,7 +60,7 @@ function PolicyOverview({ id }: { id: number }) {
         <h1 className="text-2xl font-bold tracking-tight text-ink sm:text-3xl">Chính sách</h1>
         <p className="mt-1 text-ink-muted">
           Luật đang áp cho {child.data?.name ?? 'con'}. Máy của con nhận phiên bản mới ở lần đồng bộ tiếp theo, trong
-          khoảng một phút. <Link to={`/children/${id}/screentime`}>Sửa thời gian dùng máy</Link>
+          khoảng một phút.
         </p>
       </div>
       <PolicySummary policy={policy.data} />
