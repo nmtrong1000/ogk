@@ -5,6 +5,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { RouterProvider } from 'react-router-dom'
 import { ApiError, setUnauthorizedHandler } from '@/shared/api/client.ts'
+import { ToastProvider } from '@/shared/components/ToastProvider.tsx'
 import { switchSession } from '@/features/auth/index.ts'
 import { router } from '@/app/router.tsx'
 
@@ -26,8 +27,10 @@ setUnauthorizedHandler(() => {
 
 export default function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
-    </QueryClientProvider>
+    <ToastProvider>
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>
+    </ToastProvider>
   )
 }

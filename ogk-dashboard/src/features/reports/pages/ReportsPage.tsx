@@ -57,10 +57,7 @@ function Reports({ id }: { id: number }) {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <p className="text-sm">
-          <Link to={`/children/${id}`}>← {child.data?.name ?? 'Con'}</Link>
-        </p>
-        <h1 className="mt-2 text-2xl font-bold tracking-tight text-ink sm:text-3xl">Báo cáo sử dụng</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-ink sm:text-3xl">Báo cáo sử dụng</h1>
         <p className="mt-1 text-ink-muted">
           Thời gian dùng máy, ứng dụng và website {child.data ? `của ${child.data.name}` : ''}. Con xem được cùng số
           liệu này từ biểu tượng OGK trên máy.

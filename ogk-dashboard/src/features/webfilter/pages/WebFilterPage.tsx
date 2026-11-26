@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { ApiError } from '@/shared/api/client.ts'
 import {
   getPolicyChild,
@@ -54,10 +54,7 @@ export default function WebFilterPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <p className="text-sm">
-          <Link to={`/children/${id}`}>← {child.data?.name ?? 'Thông tin của con'}</Link>
-        </p>
-        <h1 className="mt-2 text-2xl font-bold text-ink">Lọc website</h1>
+        <h1 className="text-2xl font-bold text-ink">Lọc website</h1>
         <p className="mt-1 text-ink-muted">Luật miễn chặn luôn được ưu tiên hơn luật chặn.</p>
       </div>
       {save.error && <Alert tone="error">Không lưu được luật website.</Alert>}

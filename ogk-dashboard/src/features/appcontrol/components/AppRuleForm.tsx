@@ -1,15 +1,10 @@
 import { useState, type ChangeEvent, type FormEvent } from 'react'
-import { Alert, Button, Select, TextField } from '@/shared/components/index.ts'
+import { Button, Select, TextField } from '@/shared/components/index.ts'
+import { useToast } from '@/shared/components/ToastContext.ts'
 import type { AppGroup, AppRule, AppRuleAction } from '@/shared/types/policy.ts'
-import {
-  ACTION_LABELS,
-  DUPLICATE_ERROR,
-  LIMIT_ERROR,
-  MAX_APP_RULES,
-  NAME_ERROR,
-  SHA_ERROR,
-} from '@/features/appcontrol/utils/messages.ts'
+import { ACTION_LABELS } from '@/features/appcontrol/utils/messages.ts'
 import { canHash, sha256File } from '@/features/appcontrol/utils/sha256.ts'
+import { appRuleFormSchema } from '@/features/appcontrol/schemas.ts'
 
 type Props = {
   rules: AppRule[]
@@ -18,19 +13,12 @@ type Props = {
   onAdd: (rule: AppRule) => void
 }
 
-const SHA_PATTERN = /^[0-9a-f]{64}$/
-
-function normalizeName(value: string): string | null {
-  const name = value.trim().toLowerCase()
-  return name.length > 0 && name.length <= 255 && !/[\\/]/.test(name) ? name : null
-}
-
 export default function AppRuleForm({ rules, groups, pending, onAdd }: Props) {
+  const showToast = useToast()
   const [name, setName] = useState('')
   const [sha, setSha] = useState('')
   const [action, setAction] = useState<AppRuleAction>('block')
   const [groupId, setGroupId] = useState('unclassified')
-  const [errors, setErrors] = useState<{ name?: string; sha?: string; form?: string }>({})
   const [hashing, setHashing] = useState(false)
 
   async function pickFile(event: ChangeEvent<HTMLInputElement>) {
@@ -41,9 +29,8 @@ export default function AppRuleForm({ rules, groups, pending, onAdd }: Props) {
     try {
       setSha(await sha256File(file))
       if (!name.trim()) setName(file.name.toLowerCase())
-      setErrors({})
     } catch {
-      setErrors({ sha: 'Không đọc được tệp này để tính SHA-256.' })
+      showToast({ tone: 'error', message: 'Không đọc được tệp này để tính SHA-256.' })
     } finally {
       setHashing(false)
     }
@@ -51,33 +38,25 @@ export default function AppRuleForm({ rules, groups, pending, onAdd }: Props) {
 
   function submit(event: FormEvent) {
     event.preventDefault()
-    const normalized = normalizeName(name)
-    const digest = sha.trim().toLowerCase()
-    const next: typeof errors = {}
-    if (normalized === null) next.name = NAME_ERROR
-    if (digest && !SHA_PATTERN.test(digest)) next.sha = SHA_ERROR
-    const sha256 = digest || null
-    if (!next.name && !next.sha) {
-      if (rules.length >= MAX_APP_RULES) next.form = LIMIT_ERROR
-      else if (rules.some((r) => r.name === normalized && r.sha256 === sha256)) next.form = DUPLICATE_ERROR
+    const result = appRuleFormSchema(rules, groups).safeParse({ name, sha, action, groupId })
+    if (!result.success) {
+      showToast({ tone: 'error', message: result.error.issues[0].message })
+      return
     }
-    setErrors(next)
-    if (next.name || next.sha || next.form || normalized === null) return
-    onAdd({ name: normalized, sha256, action, group_id: groupId })
+    onAdd(result.data)
     setName('')
     setSha('')
   }
 
   return (
     <form className="flex flex-col gap-4" onSubmit={submit} noValidate>
-      {errors.form && <Alert tone="error">{errors.form}</Alert>}
       <div className="grid gap-4 sm:grid-cols-2">
         <TextField
           label="Tên tệp chạy"
           hint="Ví dụ: game.exe"
+          required
           value={name}
           maxLength={255}
-          error={errors.name}
           onChange={(e) => setName(e.target.value)}
         />
         <Select
@@ -97,6 +76,7 @@ export default function AppRuleForm({ rules, groups, pending, onAdd }: Props) {
       </div>
       <Select
         label="Nhóm ứng dụng"
+        required
         value={groupId}
         options={groups.map((group) => ({ value: group.id, label: group.name }))}
         hint="Thời gian ứng dụng được tính vào ngân sách của nhóm này."
@@ -108,7 +88,6 @@ export default function AppRuleForm({ rules, groups, pending, onAdd }: Props) {
         value={sha}
         maxLength={64}
         spellCheck={false}
-        error={errors.sha}
         onChange={(e) => setSha(e.target.value.trim())}
       />
       {canHash() && (

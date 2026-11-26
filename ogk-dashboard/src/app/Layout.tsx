@@ -2,16 +2,13 @@
  * Child-view pages get a header without parent navigation and never ask /api/auth/me, so a child's browser never
  * learns whether a parent is signed in on it.
  */
-import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
+import { useState } from 'react'
+import { Link, Outlet, useLocation } from 'react-router-dom'
+import { Menu, X } from 'lucide-react'
 import { LogoutButton, useMe } from '@/features/auth/index.ts'
-import { cn } from '@/shared/utils/cn.ts'
-
-function navClass({ isActive }: { isActive: boolean }) {
-  return cn(
-    'rounded-full px-3 py-1.5 text-sm font-medium no-underline transition',
-    isActive ? 'bg-white/80 text-brand-700 shadow-sm' : 'text-ink-muted hover:bg-white/50 hover:text-brand-700',
-  )
-}
+import Breadcrumbs from '@/app/Breadcrumbs.tsx'
+import DashboardSidebar from '@/app/DashboardSidebar.tsx'
+import AppFooter from '@/shared/components/AppFooter.tsx'
 
 export default function Layout() {
   const { pathname } = useLocation()
@@ -35,76 +32,88 @@ function Brand() {
 function ChildLayout() {
   return (
     <div className="flex min-h-dvh flex-col">
-      <header className="px-3 pt-3 sm:px-4">
-        <div className="glass mx-auto flex max-w-5xl items-center rounded-glass px-4 py-2.5">
-          <Brand />
-        </div>
+      <header className="glass flex w-full items-center px-4 py-3 sm:px-6">
+        <Brand />
       </header>
       <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 sm:py-10">
+        <Breadcrumbs />
         <Outlet />
       </main>
+      <AppFooter />
     </div>
   )
 }
 
 function ParentLayout() {
   const { data: me } = useMe()
+  const [mobileOpen, setMobileOpen] = useState(false)
   return (
     <div className="flex min-h-dvh flex-col">
-      <header className="sticky top-0 z-10 px-3 pt-3 sm:px-4">
-        <div className="glass mx-auto flex max-w-5xl flex-wrap items-center gap-x-4 gap-y-2 rounded-glass px-4 py-2.5">
-          <Link to="/" className="no-underline hover:text-ink">
-            <Brand />
-          </Link>
+      <header className="sticky top-0 z-20 w-full px-3 pt-3 sm:px-4">
+        <div className="glass flex min-h-16 w-full items-center justify-between gap-4 rounded-glass px-4 py-3 sm:px-6 lg:px-8">
+          <div className="flex min-w-0 items-center gap-3">
+            <button
+              type="button"
+              aria-label={mobileOpen ? 'Đóng menu' : 'Mở menu'}
+              aria-expanded={mobileOpen}
+              onClick={() => setMobileOpen((open) => !open)}
+              className="glass-input grid size-10 shrink-0 place-items-center rounded-control text-brand-700 lg:hidden"
+            >
+              {mobileOpen ? (
+                <X aria-hidden="true" className="size-5" />
+              ) : (
+                <Menu aria-hidden="true" className="size-5" />
+              )}
+            </button>
+            <Link to="/" className="no-underline hover:text-ink">
+              <Brand />
+            </Link>
+          </div>
           {me && (
-            <>
-              <nav className="flex items-center gap-1">
-                <NavLink to="/" end className={navClass}>
-                  Tổng quan
-                </NavLink>
-                {me.role === 'parent' && (
-                  <>
-                    <NavLink to="/children" className={navClass}>
-                      Các con
-                    </NavLink>
-                    <NavLink to="/devices" className={navClass}>
-                      Thiết bị
-                    </NavLink>
-                    <NavLink to="/alerts" className={navClass}>
-                      Cảnh báo
-                    </NavLink>
-                    <NavLink to="/requests" className={navClass}>
-                      Yêu cầu
-                    </NavLink>
-                  </>
-                )}
-                {me.role === 'admin' && (
-                  <>
-                    <NavLink to="/admin/accounts" className={navClass}>
-                      Tài khoản
-                    </NavLink>
-                    <NavLink to="/admin/webfilter" className={navClass}>
-                      Phân loại web
-                    </NavLink>
-                  </>
-                )}
-                <NavLink to="/audit" className={navClass}>
-                  Nhật ký
-                </NavLink>
-              </nav>
-              <div className="ml-auto flex min-w-0 items-center gap-2">
-                <span className="hidden truncate text-sm text-ink-muted sm:inline" title={me.email}>
-                  {me.email}
-                </span>
-                <LogoutButton />
-              </div>
-            </>
+            <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+              <span className="hidden max-w-64 truncate text-sm text-ink-muted sm:inline" title={me.email}>
+                {me.email}
+              </span>
+              <LogoutButton />
+            </div>
           )}
         </div>
       </header>
-      <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 sm:py-10">
-        <Outlet />
-      </main>
+      <div className="flex flex-1 gap-3 px-3 pb-3 pt-3 sm:gap-4 sm:px-4 sm:pb-4">
+        <aside className="glass sticky top-20 hidden h-[calc(100dvh-9rem)] w-[270px] shrink-0 self-start overflow-y-auto overscroll-contain rounded-glass p-3 lg:block">
+          <DashboardSidebar role={me?.role} />
+        </aside>
+        <main className="min-w-0 flex-1 px-1 py-3 sm:px-2 sm:py-4 lg:px-4">
+          <div className="mx-auto w-full max-w-7xl">
+            <Breadcrumbs />
+            <Outlet />
+          </div>
+        </main>
+      </div>
+      <AppFooter />
+      {mobileOpen && (
+        <div className="fixed inset-0 z-30 lg:hidden">
+          <button
+            type="button"
+            aria-label="Đóng menu"
+            onClick={() => setMobileOpen(false)}
+            className="absolute inset-0 bg-ink/25"
+          />
+          <aside className="glass-strong absolute left-3 top-3 bottom-3 w-[calc(100vw-1.5rem)] max-w-96 overflow-y-auto overscroll-contain rounded-glass p-3 pt-5">
+            <div className="mb-2 flex justify-end">
+              <button
+                type="button"
+                aria-label="Đóng menu"
+                onClick={() => setMobileOpen(false)}
+                className="glass-input grid size-9 place-items-center rounded-control text-brand-700"
+              >
+                <X aria-hidden="true" className="size-5" />
+              </button>
+            </div>
+            <DashboardSidebar role={me?.role} onNavigate={() => setMobileOpen(false)} />
+          </aside>
+        </div>
+      )}
     </div>
   )
 }

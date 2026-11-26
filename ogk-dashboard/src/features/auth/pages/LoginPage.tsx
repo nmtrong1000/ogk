@@ -1,12 +1,14 @@
 import { Link, Navigate } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import { login } from '@/features/auth/api.ts'
 import AuthForm from '@/features/auth/components/AuthForm.tsx'
 import AuthShell from '@/features/auth/components/AuthShell.tsx'
-import { useMe } from '@/features/auth/hooks/useMe.ts'
+import { ME_KEY } from '@/features/auth/hooks/useMe.ts'
+import type { Account } from '@/shared/types/auth.ts'
 
 export default function LoginPage() {
-  const me = useMe()
-  if (me.data) return <Navigate to="/" replace />
+  const me = useQueryClient().getQueryData<Account | null>(ME_KEY)
+  if (me) return <Navigate to="/" replace />
   return (
     <AuthShell
       title="Đăng nhập"

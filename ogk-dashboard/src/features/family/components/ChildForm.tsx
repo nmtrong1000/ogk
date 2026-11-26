@@ -1,15 +1,10 @@
 import { useState, type FormEvent, type ReactNode } from 'react'
 import { Alert, Button, Select, TextField } from '@/shared/components/index.ts'
+import { useToast } from '@/shared/components/ToastContext.ts'
 import type { ChildInput } from '@/shared/types/family.ts'
-import {
-  BIRTH_YEAR_ERROR,
-  MAX_NAME_LENGTH,
-  MIN_BIRTH_YEAR,
-  NAME_ERROR,
-  errorMessage,
-  fieldError,
-} from '@/features/family/utils/messages.ts'
+import { MAX_NAME_LENGTH, MIN_BIRTH_YEAR, errorMessage, fieldError } from '@/features/family/utils/messages.ts'
 import { currentYear } from '@/features/family/utils/year.ts'
+import { childFormSchema } from '@/features/family/schemas.ts'
 
 type Props = {
   initial?: ChildInput
@@ -37,23 +32,22 @@ export default function ChildForm({
   onCancel,
   secondaryAction,
 }: Props) {
+  const showToast = useToast()
   const [name, setName] = useState(initial?.name ?? '')
   const [birthYear, setBirthYear] = useState(initial ? String(initial.birth_year) : '')
-  const [local, setLocal] = useState<{ name?: string; birthYear?: string }>({})
 
   function submit(event: FormEvent) {
     event.preventDefault()
-    const trimmed = name.trim()
-    const errors: typeof local = {}
-    if (!trimmed || trimmed.length > MAX_NAME_LENGTH) errors.name = NAME_ERROR
-    if (!birthYear) errors.birthYear = BIRTH_YEAR_ERROR
-    setLocal(errors)
-    if (errors.name || errors.birthYear) return
-    onSubmit({ name: trimmed, birth_year: Number(birthYear) })
+    const result = childFormSchema.safeParse({ name, birthYear })
+    if (!result.success) {
+      showToast({ tone: 'error', message: result.error.issues[0].message })
+      return
+    }
+    onSubmit(result.data)
   }
 
   const server = fieldError(error)
-  const showAlert = error != null && !server.name && !server.birthYear && !local.name && !local.birthYear
+  const showAlert = error != null && !server.name && !server.birthYear
 
   return (
     <form className="flex flex-col gap-4" onSubmit={submit} noValidate>
@@ -65,7 +59,7 @@ export default function ChildForm({
           maxLength={MAX_NAME_LENGTH}
           required
           value={name}
-          error={local.name ?? server.name}
+          error={server.name}
           onChange={(e) => setName(e.target.value)}
         />
         <Select
@@ -74,7 +68,7 @@ export default function ChildForm({
           placeholder="Chọn năm"
           options={yearOptions()}
           value={birthYear}
-          error={local.birthYear ?? server.birthYear}
+          error={server.birthYear}
           onChange={(e) => setBirthYear(e.target.value)}
         />
       </div>

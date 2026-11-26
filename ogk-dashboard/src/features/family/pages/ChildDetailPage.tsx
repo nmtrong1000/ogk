@@ -73,10 +73,7 @@ function ChildDetail({ id }: { id: number }) {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <p className="text-sm">
-          <Link to="/children">← Các con</Link>
-        </p>
-        <h1 className="mt-2 text-2xl font-bold tracking-tight text-ink sm:text-3xl">{data.name}</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-ink sm:text-3xl">{data.name}</h1>
         <p className="mt-1 text-ink-muted">
           Sinh năm {data.birth_year} ({ageFrom(data.birth_year)} tuổi)
         </p>

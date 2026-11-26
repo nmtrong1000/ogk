@@ -62,10 +62,7 @@ function Retention({ id }: { id: number }) {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <p className="text-sm">
-          <Link to={`/children/${id}`}>← {child.data?.name ?? 'Con'}</Link>
-        </p>
-        <h1 className="mt-2 text-2xl font-bold tracking-tight text-ink sm:text-3xl">Dữ liệu của con</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-ink sm:text-3xl">Dữ liệu của con</h1>
         <p className="mt-1 text-ink-muted">
           Lịch sử dùng máy, ứng dụng, website, yêu cầu và lệnh được tự động xóa sau {RETENTION_DAYS} ngày trên máy chủ
           và trên máy tính của con.

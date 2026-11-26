@@ -76,10 +76,7 @@ function AppControl({ id }: { id: number }) {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <p className="text-sm">
-          <Link to={`/children/${id}`}>← {child.data?.name ?? 'Thông tin của con'}</Link>
-        </p>
-        <h1 className="mt-2 text-2xl font-bold tracking-tight text-ink sm:text-3xl">Ứng dụng</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-ink sm:text-3xl">Ứng dụng</h1>
         <p className="mt-1 text-ink-muted">
           Ứng dụng bị chặn sẽ bị đóng ngay khi mở trên máy của {child.data?.name ?? 'con'}, kèm thông báo lý do và người
           đặt luật. Đang áp phiên bản {data.policy_version}. <Link to={`/children/${id}/policy`}>Xem chính sách</Link>

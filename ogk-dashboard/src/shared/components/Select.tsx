@@ -1,5 +1,6 @@
 import { useId, type SelectHTMLAttributes } from 'react'
 import { cn } from '@/shared/utils/cn.ts'
+import { ToastMessage } from '@/shared/components/ToastProvider.tsx'
 
 type Option = { value: string; label: string }
 
@@ -11,15 +12,20 @@ type Props = SelectHTMLAttributes<HTMLSelectElement> & {
   error?: string | null
 }
 
-export function Select({ label, options, placeholder, hint, error, id, className, ...rest }: Props) {
+export function Select({ label, options, placeholder, hint, error, id, className, required, ...rest }: Props) {
   const autoId = useId()
   const selectId = id ?? autoId
-  const describedBy = error ? `${selectId}-error` : hint ? `${selectId}-hint` : undefined
+  const describedBy = !error && hint ? `${selectId}-hint` : undefined
 
   return (
     <div className={cn('flex flex-col gap-1.5', className)}>
       <label htmlFor={selectId} className="text-sm font-medium text-ink">
         {label}
+        {required && (
+          <span aria-hidden="true" className="ml-0.5 text-rose-600">
+            *
+          </span>
+        )}
       </label>
       <div className="relative">
         <select
@@ -55,16 +61,11 @@ export function Select({ label, options, placeholder, hint, error, id, className
           <path d="m5 8 5 5 5-5" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </div>
-      {error ? (
-        <p id={`${selectId}-error`} className="text-sm text-rose-600">
-          {error}
+      {error && <ToastMessage tone="error">{error}</ToastMessage>}
+      {!error && hint && (
+        <p id={`${selectId}-hint`} className="text-sm text-ink-muted">
+          {hint}
         </p>
-      ) : (
-        hint && (
-          <p id={`${selectId}-hint`} className="text-sm text-ink-muted">
-            {hint}
-          </p>
-        )
       )}
     </div>
   )

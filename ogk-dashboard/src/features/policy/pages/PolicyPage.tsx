@@ -57,10 +57,7 @@ function PolicyOverview({ id }: { id: number }) {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <p className="text-sm">
-          <Link to={`/children/${id}`}>← {child.data?.name ?? 'Thông tin của con'}</Link>
-        </p>
-        <h1 className="mt-2 text-2xl font-bold tracking-tight text-ink sm:text-3xl">Chính sách</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-ink sm:text-3xl">Chính sách</h1>
         <p className="mt-1 text-ink-muted">
           Luật đang áp cho {child.data?.name ?? 'con'}. Máy của con nhận phiên bản mới ở lần đồng bộ tiếp theo, trong
           khoảng một phút. <Link to={`/children/${id}/screentime`}>Sửa thời gian dùng máy</Link>

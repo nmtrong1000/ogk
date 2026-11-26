@@ -4,7 +4,6 @@
  */
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
 import { Alert, Button, Card, Checkbox } from '@/shared/components/index.ts'
 import type { PairingCode } from '@/shared/types/enrollment.ts'
 import { createPairingCode, getPairingCodeStatus, pairingCodeKey } from '@/features/enrollment/api.ts'
@@ -39,10 +38,7 @@ export default function AddDevicePage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <p className="text-sm">
-          <Link to="/devices">← Thiết bị</Link>
-        </p>
-        <h1 className="mt-2 text-2xl font-bold tracking-tight text-ink sm:text-3xl">Thêm thiết bị</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-ink sm:text-3xl">Thêm thiết bị</h1>
         <p className="mt-1 text-ink-muted">Ghép đôi máy tính Windows của con với tài khoản của bạn.</p>
       </div>
 

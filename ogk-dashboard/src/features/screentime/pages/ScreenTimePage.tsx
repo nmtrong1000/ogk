@@ -78,10 +78,7 @@ function ScreenTime({ id }: { id: number }) {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <p className="text-sm">
-          <Link to={`/children/${id}`}>← {child.data?.name ?? 'Thông tin của con'}</Link>
-        </p>
-        <h1 className="mt-2 text-2xl font-bold tracking-tight text-ink sm:text-3xl">Thời gian dùng máy</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-ink sm:text-3xl">Thời gian dùng máy</h1>
         <p className="mt-1 text-ink-muted">
           Trẻ chỉ dùng được khi vừa còn thời gian trong giới hạn ngày, vừa đang trong khung giờ cho phép. Điều kiện nào
           đến trước thì máy khóa. Ví dụ: lịch cả ngày và giới hạn 2 giờ vẫn chỉ cho dùng tối đa 2 giờ. Tray báo trước

@@ -206,7 +206,7 @@ Server đọc vị trí bản build dashboard từ biến cấu hình `DASHBOARD
 
 ## 4. Các phase
 
-P1 đến P4 dựng khung cho 4 app, chưa có chức năng nào. P5 đến P18, mỗi phase là một module chức năng của đề bài. P19 là phase tùy chọn cho mục NÊN CÓ. P1 đến P11 chạy và kiểm tra trên Mac. Máy ảo Windows được dựng trong P12. Từ P13, mỗi phase có ogk-agent chạy pytest trên Mac rồi build, cập nhật agent và chạy các mục nghiệm thu liên quan máy trẻ trên máy ảo Windows. P20 kiểm thử hồi quy toàn bộ trên bản clone sạch của máy ảo. P21 đóng gói, nghiệm thu, viết báo cáo và chuẩn bị vấn đáp.
+P1 đến P4 dựng khung cho 4 app, chưa có chức năng nào. P5 đến P18, mỗi phase là một module chức năng của đề bài. P19 là phase tùy chọn cho mục NÊN CÓ. P1 đến P11 chạy và kiểm tra trên Mac. Máy ảo Windows được dựng trong P12. Từ P13, mỗi phase có ogk-agent chạy pytest trên Mac rồi build, cập nhật agent và chạy các mục nghiệm thu liên quan máy trẻ trên máy ảo Windows. P20 kiểm thử hồi quy toàn bộ trên bản clone sạch của máy ảo. P21 đến P23 lần lượt refactor dashboard, server và agent mà không đổi hành vi nghiệp vụ. P24 đóng gói, nghiệm thu, viết báo cáo và chuẩn bị vấn đáp.
 
 Mỗi phase nằm trong một file riêng ở thư mục `plan/`, gồm mục tiêu, kiểm tra nghiệm thu, kết quả, phase con và task.
 
@@ -238,7 +238,10 @@ Mỗi phase nằm trong một file riêng ở thư mục `plan/`, gồm mục ti
 | P18 | [Lưu trữ và xóa dữ liệu](plan/P18.md) | P17 | server, dashboard, service | Xóa toàn bộ dữ liệu của con thì sạch cả server và agent trên máy ảo |
 | P19 | [Ngân sách theo nhóm ứng dụng](plan/P19.md) | P12, P13 | server, dashboard, service, tray | Hai bộ đếm theo nhóm chạy độc lập trên máy ảo |
 | P20 | [Kiểm thử hồi quy trên máy ảo Windows](plan/P20.md) | P18 | service, tray | Cài mới trên bản clone sạch, mọi mục nghiệm thu máy trẻ của P12 đến P19 qua; gỡ cài đặt hoàn trả máy |
-| P21 | [Nghiệm thu, báo cáo và vấn đáp](plan/P21.md) | P20 | server, dashboard, service, tray | Mỗi tiêu chí có bằng chứng; cài và gỡ agent sạch |
+| P21 | [Refactor ogk-dashboard](plan/P21.md) | P20 | dashboard | Cấu trúc, UI và client API nhất quán; các luồng hiện có giữ nguyên |
+| P22 | [Refactor ogk-server](plan/P22.md) | P21 | server | Cấu trúc module và quy ước API nhất quán; dashboard và agent tương thích |
+| P23 | [Refactor ogk-agent](plan/P23.md) | P22 | service, tray | Cấu trúc và hợp đồng IPC/API nhất quán; nghiệm thu Windows qua |
+| P24 | [Nghiệm thu, báo cáo và vấn đáp](plan/P24.md) | P23 | server, dashboard, service, tray | Mỗi tiêu chí có bằng chứng; cài và gỡ agent sạch |
 
 ## 5. Rủi ro và cách xử lý
 
