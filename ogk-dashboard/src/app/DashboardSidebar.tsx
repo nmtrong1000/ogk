@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import {
-  Bell,
   ChevronDown,
   ClipboardList,
   FileClock,
@@ -29,7 +28,6 @@ function menuForRole(role: Role, pathname: string): MenuGroup[] {
         items: [
           { label: 'Tài khoản', to: '/admin/accounts', icon: UsersRound },
           { label: 'Phân loại web', to: '/admin/webfilter', icon: Globe },
-          { label: 'Nhật ký', to: '/audit', icon: FileClock },
         ],
       },
     ]
@@ -40,7 +38,10 @@ function menuForRole(role: Role, pathname: string): MenuGroup[] {
     {
       label: 'Gia đình',
       icon: UsersRound,
-      items: [{ label: 'Các con', to: '/children', icon: UsersRound }],
+      items: [
+        { label: 'Các con', to: '/children', icon: UsersRound, end: true },
+        { label: 'Yêu cầu của con', to: '/children/requests', icon: ClipboardList },
+      ],
     },
     {
       label: 'Thiết bị',
@@ -48,15 +49,6 @@ function menuForRole(role: Role, pathname: string): MenuGroup[] {
       items: [
         { label: 'Danh sách thiết bị', to: '/devices', icon: Laptop, end: true },
         { label: 'Thêm thiết bị', to: '/devices/add', icon: MonitorCog },
-      ],
-    },
-    {
-      label: 'Hoạt động',
-      icon: Bell,
-      items: [
-        { label: 'Cảnh báo', to: '/alerts', icon: Bell },
-        { label: 'Yêu cầu', to: '/requests', icon: ClipboardList },
-        { label: 'Nhật ký', to: '/audit', icon: FileClock },
       ],
     },
   ]
@@ -84,7 +76,12 @@ type Props = { role?: Role; onNavigate?: () => void }
 export default function DashboardSidebar({ role = 'parent', onNavigate }: Props) {
   const { pathname } = useLocation()
   const groups = menuForRole(role, pathname)
-  const activeGroup = groups.find((group) => group.items.some((item) => pathname === item.to))?.label
+  const activeGroup = groups.find(
+    (group) =>
+      group.items.some(
+        (item) => pathname === item.to || (!item.end && pathname.startsWith(`${item.to}/`)),
+      ) || (group.label === 'Thiết bị' && pathname.startsWith('/devices/')),
+  )?.label
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({})
 
   function itemClass(isActive: boolean) {
@@ -99,6 +96,10 @@ export default function DashboardSidebar({ role = 'parent', onNavigate }: Props)
       <NavLink to="/" end onClick={onNavigate} className={({ isActive }) => itemClass(isActive)}>
         <House aria-hidden="true" className="size-5 shrink-0" />
         <span>Tổng quan</span>
+      </NavLink>
+      <NavLink to="/audit" end onClick={onNavigate} className={({ isActive }) => itemClass(isActive)}>
+        <FileClock aria-hidden="true" className="size-5 shrink-0" />
+        <span>Nhật ký</span>
       </NavLink>
       {groups.map((group) => {
         const expanded = openGroups[group.label] ?? activeGroup === group.label

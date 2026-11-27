@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { ArrowRight, Bell, FileClock, Globe, Laptop, UserRoundCog, UsersRound } from 'lucide-react'
+import { ArrowRight, ClipboardList, FileClock, Globe, Laptop, UserRoundCog, UsersRound } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { apiFetch } from '@/shared/api/client.ts'
 import { Badge, Card, Spinner } from '@/shared/components/index.ts'
@@ -9,7 +9,7 @@ import type { Health } from '@/shared/types/health.ts'
 const PARENT_QUICK_LINKS = [
   { label: 'Các con', description: 'Quản lý hồ sơ và thiết lập cho trẻ.', to: '/children', icon: UsersRound },
   { label: 'Thiết bị', description: 'Xem thiết bị đã kết nối với gia đình.', to: '/devices', icon: Laptop },
-  { label: 'Cảnh báo', description: 'Theo dõi các cảnh báo gần đây.', to: '/alerts', icon: Bell },
+  { label: 'Yêu cầu của con', description: 'Xem và xử lý yêu cầu từ các con.', to: '/children/requests', icon: ClipboardList },
 ]
 
 const ADMIN_QUICK_LINKS = [

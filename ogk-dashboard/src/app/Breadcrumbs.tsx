@@ -17,6 +17,12 @@ function breadcrumbs(pathname: string): Crumb[] {
   if (pathname === '/') return [{ label: 'Trang chủ' }]
 
   const home: Crumb = { label: 'Tổng quan', to: '/' }
+  if (pathname === '/children/requests') {
+    return [home, { label: 'Các con', to: '/children' }, { label: 'Yêu cầu của con' }]
+  }
+  if (/^\/devices\/[^/]+\/alerts$/.test(pathname)) {
+    return [home, { label: 'Thiết bị', to: '/devices' }, { label: 'Cảnh báo' }]
+  }
   const child = pathname.match(/^\/children\/([^/]+)(?:\/([^/]+))?$/)
   if (child) {
     const [, id, page] = child
@@ -33,9 +39,7 @@ function breadcrumbs(pathname: string): Crumb[] {
   if (pathname === '/children') return [home, { label: 'Các con' }]
   if (pathname === '/devices') return [home, { label: 'Thiết bị' }]
   if (pathname === '/devices/add') return [home, { label: 'Thiết bị', to: '/devices' }, { label: 'Thêm thiết bị' }]
-  if (pathname === '/alerts') return [home, { label: 'Hoạt động' }, { label: 'Cảnh báo' }]
-  if (pathname === '/requests') return [home, { label: 'Hoạt động' }, { label: 'Yêu cầu' }]
-  if (pathname === '/audit') return [home, { label: 'Hoạt động' }, { label: 'Nhật ký' }]
+  if (pathname === '/audit') return [home, { label: 'Nhật ký' }]
   if (pathname === '/admin/accounts') return [home, { label: 'Quản trị' }, { label: 'Tài khoản phụ huynh' }]
   if (pathname === '/admin/webfilter') return [home, { label: 'Quản trị' }, { label: 'Phân loại web' }]
   if (pathname === '/child-view/start') return [{ label: 'Chế độ xem trẻ', to: '/child-view' }, { label: 'Bắt đầu' }]

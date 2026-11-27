@@ -58,8 +58,8 @@ export const router = createBrowserRouter([
           },
           { path: '/devices', element: <DevicesPage /> },
           { path: '/devices/add', element: <AddDevicePage /> },
-          { path: '/alerts', element: <AlertsPage /> },
-          { path: '/requests', element: <RequestsPage /> },
+          { path: '/devices/:id/alerts', element: <AlertsPage /> },
+          { path: '/children/requests', element: <RequestsPage /> },
         ],
       },
       {
