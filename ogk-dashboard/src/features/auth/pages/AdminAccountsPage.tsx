@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
+import { CircleCheck, LockKeyhole, Mail, UnlockKeyhole, UsersRound } from 'lucide-react'
 import { formatDateTime } from '@/shared/utils/dateTime.ts'
 import {
   Alert,
@@ -38,13 +39,23 @@ export default function AdminAccountsPage() {
         <p className="mt-1 text-ink-muted">Mở khóa tài khoản bị khóa do nhập sai mật khẩu nhiều lần.</p>
       </div>
       <Card
-        title="Danh sách"
+        strong
+        title="Danh sách tài khoản"
+        description="Theo dõi trạng thái đăng nhập và mở khóa tài khoản phụ huynh."
         actions={
-          <Checkbox
-            label="Chỉ tài khoản đang khóa"
-            checked={lockedOnly}
-            onChange={(e) => setLockedOnly(e.target.checked)}
-          />
+          <div className="flex flex-wrap items-center gap-3">
+            {accounts.data && (
+              <Badge tone={lockedOnly ? 'warning' : 'brand'}>
+                <UsersRound aria-hidden="true" className="size-3.5" />
+                {accounts.data.length} {lockedOnly ? 'đang khóa' : 'tài khoản'}
+              </Badge>
+            )}
+            <Checkbox
+              label="Chỉ tài khoản đang khóa"
+              checked={lockedOnly}
+              onChange={(e) => setLockedOnly(e.target.checked)}
+            />
+          </div>
         }
       >
         <div className="flex flex-col gap-4">
@@ -56,7 +67,11 @@ export default function AdminAccountsPage() {
           )}
           {accounts.isError && <Alert tone="error">{errorMessage(accounts.error)}</Alert>}
           {accounts.data?.length === 0 && (
-            <EmptyState message={lockedOnly ? 'Không có tài khoản nào đang bị khóa.' : 'Chưa có tài khoản phụ huynh nào.'} />
+            <EmptyState
+              icon={lockedOnly ? CircleCheck : UsersRound}
+              message={lockedOnly ? 'Không có tài khoản nào đang bị khóa.' : 'Chưa có tài khoản phụ huynh nào.'}
+              description={lockedOnly ? 'Các tài khoản hiện có vẫn có thể đăng nhập bình thường.' : undefined}
+            />
           )}
           {accounts.data && accounts.data.length > 0 && (
             <Table>
@@ -75,15 +90,28 @@ export default function AdminAccountsPage() {
                   const locked = lockedUntil !== null && new Date(lockedUntil) > new Date()
                   return (
                     <TableRow key={account.id}>
-                      <Td className="font-medium">{account.email}</Td>
+                      <Td>
+                        <span className="inline-flex min-w-0 items-center gap-2.5 font-medium text-ink">
+                          <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-brand-100/80 text-brand-700">
+                            <Mail aria-hidden="true" className="size-4" />
+                          </span>
+                          <span className="break-all">{account.email}</span>
+                        </span>
+                      </Td>
                       <Td>
                         {locked ? (
-                          <div className="flex flex-col items-start gap-1">
-                            <Badge tone="danger">Đang khóa</Badge>
-                            <span className="text-xs text-ink-muted">đến {formatDateTime(lockedUntil)}</span>
+                          <div className="flex flex-col items-start gap-1.5">
+                            <Badge tone="danger">
+                              <LockKeyhole aria-hidden="true" className="size-3.5" />
+                              Đang khóa
+                            </Badge>
+                            <span className="text-sm text-ink-muted">Đến {formatDateTime(lockedUntil)}</span>
                           </div>
                         ) : (
-                          <Badge tone="success">Hoạt động</Badge>
+                          <Badge tone="success">
+                            <CircleCheck aria-hidden="true" className="size-3.5" />
+                            Hoạt động
+                          </Badge>
                         )}
                       </Td>
                       <Td className="text-right">
@@ -95,6 +123,7 @@ export default function AdminAccountsPage() {
                             disabled={unlock.isPending}
                             onClick={() => unlock.mutate(account.id)}
                           >
+                            <UnlockKeyhole aria-hidden="true" className="size-4" />
                             Mở khóa
                           </Button>
                         )}
