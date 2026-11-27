@@ -30,9 +30,7 @@ export default function ChildNotice({ title, message, compact = false }: Props) 
         <h2 className={cn('font-bold tracking-tight text-ink', compact ? 'text-base' : 'text-xl sm:text-2xl')}>
           {title}
         </h2>
-        <p className={cn('leading-6 text-ink-muted', compact ? 'mt-1 text-sm' : 'mx-auto mt-2 max-w-sm')}>
-          {message}
-        </p>
+        <p className={cn('leading-6 text-ink-muted', compact ? 'mt-1 text-sm' : 'mx-auto mt-2 max-w-sm')}>{message}</p>
       </div>
     </div>
   )

@@ -33,7 +33,10 @@ export default function ChildDevices({ childId }: { childId: number }) {
       {devices.data && devices.data.length > 0 && (
         <ul className="grid gap-4">
           {devices.data.map((device) => (
-            <li key={device.id} className="glass-strong grid gap-4 rounded-glass p-4 sm:grid-cols-[auto_1fr] sm:gap-5 sm:p-5">
+            <li
+              key={device.id}
+              className="glass-strong grid gap-4 rounded-glass p-4 sm:grid-cols-[auto_1fr] sm:gap-5 sm:p-5"
+            >
               <div className="grid size-20 place-items-center self-start rounded-3xl bg-linear-to-br from-sky-100/90 to-indigo-100/80 text-brand-700 shadow-control sm:size-24">
                 <Laptop aria-hidden="true" className="size-14 sm:size-16" strokeWidth={1.6} />
               </div>
@@ -53,13 +56,13 @@ export default function ChildDevices({ childId }: { childId: number }) {
                   {device.accounts
                     .filter((account) => account.child_id === childId)
                     .map((account) => (
-                    <span
-                      key={account.id}
-                      className="inline-flex items-center gap-1.5 rounded-full bg-white/65 px-3 py-1.5 text-sm text-ink-muted"
-                    >
-                      <UserRound aria-hidden="true" className="size-4 text-brand-600" />
-                      {account.username}
-                    </span>
+                      <span
+                        key={account.id}
+                        className="inline-flex items-center gap-1.5 rounded-full bg-white/65 px-3 py-1.5 text-sm text-ink-muted"
+                      >
+                        <UserRound aria-hidden="true" className="size-4 text-brand-600" />
+                        {account.username}
+                      </span>
                     ))}
                 </div>
                 <div className="mt-5 flex justify-end">

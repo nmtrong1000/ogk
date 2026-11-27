@@ -24,15 +24,15 @@ function AlertRow({ alert }: { alert: DeviceAlert }) {
         </div>
         <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink-muted sm:flex-nowrap">
           {detail && (
-            <span className="w-full whitespace-normal break-words text-sm sm:min-w-0 sm:flex-1">
-              {detail}
-            </span>
+            <span className="w-full whitespace-normal break-words text-sm sm:min-w-0 sm:flex-1">{detail}</span>
           )}
           <span className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap">
             <Clock3 aria-hidden="true" className="size-3.5" />
             Bắt đầu {formatDateTime(alert.first_seen_at)}
           </span>
-          <span aria-hidden="true" className="shrink-0 text-ink-subtle">·</span>
+          <span aria-hidden="true" className="shrink-0 text-ink-subtle">
+            ·
+          </span>
           <span className="shrink-0 whitespace-nowrap">
             {open
               ? `Ghi nhận gần nhất ${formatDateTime(alert.last_seen_at)}`

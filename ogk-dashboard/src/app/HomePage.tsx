@@ -9,7 +9,12 @@ import type { Health } from '@/shared/types/health.ts'
 const PARENT_QUICK_LINKS = [
   { label: 'Các con', description: 'Quản lý hồ sơ và thiết lập cho trẻ.', to: '/children', icon: UsersRound },
   { label: 'Thiết bị', description: 'Xem thiết bị đã kết nối với gia đình.', to: '/devices', icon: Laptop },
-  { label: 'Yêu cầu của con', description: 'Xem và xử lý yêu cầu từ các con.', to: '/children/requests', icon: ClipboardList },
+  {
+    label: 'Yêu cầu của con',
+    description: 'Xem và xử lý yêu cầu từ các con.',
+    to: '/children/requests',
+    icon: ClipboardList,
+  },
 ]
 
 const ADMIN_QUICK_LINKS = [

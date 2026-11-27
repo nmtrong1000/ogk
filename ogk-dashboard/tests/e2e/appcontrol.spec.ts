@@ -54,10 +54,7 @@ test('app rules can be created and removed after confirming', async ({ page }) =
 
   await expect(page.getByRole('heading', { name: 'Thông tin ứng dụng' })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Cách áp dụng' })).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Tạo nhóm ứng dụng' })).toHaveAttribute(
-    'href',
-    '/children/7/screentime',
-  )
+  await expect(page.getByRole('link', { name: 'Tạo nhóm ứng dụng' })).toHaveAttribute('href', '/children/7/screentime')
 
   await page.getByLabel('Tên tệp chạy').fill('demo.exe')
   await page.getByLabel('Nhóm ứng dụng').selectOption('education')

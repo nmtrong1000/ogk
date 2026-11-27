@@ -73,7 +73,10 @@ export default function AppGroupForm({ groups, rules, pending, onSave }: Props) 
       return
     }
 
-    setDraft([...draft, { id: `custom_${crypto.randomUUID()}`, name: nameResult.data, budget_minutes: budgetResult.data }])
+    setDraft([
+      ...draft,
+      { id: `custom_${crypto.randomUUID()}`, name: nameResult.data, budget_minutes: budgetResult.data },
+    ])
     setName('')
     setBudget('')
     setCreating(false)
@@ -136,15 +139,16 @@ export default function AppGroupForm({ groups, rules, pending, onSave }: Props) 
                     {group.id.startsWith('custom_') && (
                       <Button
                         type="button"
-                        size="md"
+                        size="sm"
                         variant="ghost"
-                        className="min-h-10 min-w-10 shrink-0 rounded-xl bg-rose-100/90 !px-0 text-rose-700 hover:bg-rose-200/90"
+                        className="shrink-0 text-rose-700 hover:bg-rose-50/80"
                         disabled={pending || assignedCount > 0}
                         title={assignedCount > 0 ? 'Hãy chuyển ứng dụng khác trước khi xóa nhóm.' : 'Xóa nhóm'}
                         aria-label={`Xóa nhóm ${group.name}`}
                         onClick={() => setConfirming(group)}
                       >
-                        <Trash2 aria-hidden="true" className="size-5" strokeWidth={2.3} />
+                        <Trash2 aria-hidden="true" className="size-4" />
+                        Xóa
                       </Button>
                     )}
                   </header>

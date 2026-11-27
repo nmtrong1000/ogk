@@ -39,7 +39,10 @@ export default function AssignAccounts({ deviceId }: { deviceId: number }) {
           message="Chưa có con nào."
           description="Thêm thông tin con trước khi gán tài khoản Windows."
           action={
-            <Link to="/children" className="font-semibold text-brand-700 underline underline-offset-4 hover:text-brand-800">
+            <Link
+              to="/children"
+              className="font-semibold text-brand-700 underline underline-offset-4 hover:text-brand-800"
+            >
               Thêm con
             </Link>
           }

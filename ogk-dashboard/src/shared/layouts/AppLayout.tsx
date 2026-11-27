@@ -6,12 +6,12 @@ import { useState } from 'react'
 import { Link, Outlet, useLocation } from 'react-router-dom'
 import { Menu, X } from 'lucide-react'
 import { LogoutButton, useMe } from '@/features/auth/index.ts'
-import Breadcrumbs from '@/app/Breadcrumbs.tsx'
-import DashboardSidebar from '@/app/DashboardSidebar.tsx'
-import AppFooter from '@/shared/components/AppFooter.tsx'
-import ChildPageNavigation from '@/features/family/components/ChildPageNavigation.tsx'
+import AppFooter from '@/shared/layouts/AppFooter.tsx'
+import Breadcrumbs from '@/shared/layouts/Breadcrumbs.tsx'
+import ChildPageNavigation from '@/shared/layouts/ChildPageNavigation.tsx'
+import DashboardSidebar from '@/shared/layouts/DashboardSidebar.tsx'
 
-export default function Layout() {
+export default function AppLayout() {
   const { pathname } = useLocation()
   return pathname === '/child-view' || pathname.startsWith('/child-view/') ? <ChildLayout /> : <ParentLayout />
 }

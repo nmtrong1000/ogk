@@ -1,5 +1,5 @@
 import { Outlet } from 'react-router-dom'
-import AppFooter from '@/shared/components/AppFooter.tsx'
+import AppFooter from '@/shared/layouts/AppFooter.tsx'
 
 export default function AuthLayout() {
   return (

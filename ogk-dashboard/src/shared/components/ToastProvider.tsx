@@ -1,5 +1,5 @@
 import { CircleAlert, CircleCheck, Info, TriangleAlert, X } from 'lucide-react'
-import { isValidElement, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { isValidElement, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { ToastContext, type ToastInput, type ToastTone, useToast } from '@/shared/components/ToastContext.ts'
 import { cn } from '@/shared/utils/cn.ts'
 
@@ -74,9 +74,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const dismissToast = useCallback((id: number) => {
     setToasts((current) => current.filter((toast) => toast.id !== id))
   }, [])
+  const contextValue = useMemo(() => ({ showToast }), [showToast])
 
   return (
-    <ToastContext.Provider value={{ showToast }}>
+    <ToastContext.Provider value={contextValue}>
       {children}
       <div
         aria-label="Thông báo"

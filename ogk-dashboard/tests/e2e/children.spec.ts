@@ -6,6 +6,7 @@ test('children page validates, creates and deletes children', async ({ page }) =
     { id: 2, name: 'Bình', birth_year: 2018, created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z' },
   ]
   let createBody: unknown
+  let patchBody: unknown
 
   await page.route('**/api/auth/me', async (route) => {
     await route.fulfill({ status: 200, json: { id: 1, email: 'parent@example.com', role: 'parent' } })
@@ -45,6 +46,22 @@ test('children page validates, creates and deletes children', async ({ page }) =
       await route.fulfill({ status: 204 })
       return
     }
+    if (route.request().method() === 'PATCH') {
+      patchBody = route.request().postDataJSON()
+      const child = children.find((item) => item.id === id)
+      if (!child) {
+        await route.fulfill({ status: 404, json: { detail: 'Not found' } })
+        return
+      }
+      const updated = {
+        ...child,
+        ...(patchBody as { name: string; birth_year: number }),
+        updated_at: '2026-01-02T00:00:00Z',
+      }
+      children = children.map((item) => (item.id === id ? updated : item))
+      await route.fulfill({ status: 200, json: updated })
+      return
+    }
     await route.continue()
   })
 
@@ -55,7 +72,8 @@ test('children page validates, creates and deletes children', async ({ page }) =
   const binhRow = page.getByRole('row', { name: 'Mở chi tiết Bình' })
   await expect(anRow).toBeVisible()
   await expect(binhRow).toBeVisible()
-  await expect(anRow.getByRole('button')).toHaveCount(1)
+  await expect(anRow.getByRole('button')).toHaveCount(2)
+  await expect(anRow.getByRole('button', { name: 'Sửa' })).toBeVisible()
   await expect(anRow.getByRole('button', { name: 'Xóa' })).toBeVisible()
 
   await expect(page.getByRole('dialog')).toHaveCount(0)
@@ -81,16 +99,28 @@ test('children page validates, creates and deletes children', async ({ page }) =
   expect(createBody).toEqual({ name: 'Mai', birth_year: 2017 })
   await expect(page.getByRole('row', { name: 'Mở chi tiết Mai' })).toBeVisible()
 
-  await anRow.getByRole('button', { name: 'Xóa' }).click()
-  const confirmation = page.getByRole('dialog', { name: 'Xóa An?' })
+  await anRow.getByRole('button', { name: 'Sửa' }).click()
+  const editDialog = page.getByRole('dialog', { name: 'Sửa An' })
+  await expect(editDialog.getByLabel('Tên con')).toHaveValue('An')
+  await expect(editDialog.getByLabel('Năm sinh')).toHaveValue('2015')
+  await editDialog.getByLabel('Tên con').fill('An Nhi')
+  await editDialog.getByLabel('Năm sinh').selectOption('2016')
+  await editDialog.getByRole('button', { name: 'Lưu thay đổi' }).click()
+  await expect(page.getByText('Đã cập nhật An Nhi.')).toBeVisible()
+  await expect(editDialog).toHaveCount(0)
+  expect(patchBody).toEqual({ name: 'An Nhi', birth_year: 2016 })
+  const editedRow = page.getByRole('row', { name: 'Mở chi tiết An Nhi' })
+
+  await editedRow.getByRole('button', { name: 'Xóa' }).click()
+  const confirmation = page.getByRole('dialog', { name: 'Xóa An Nhi?' })
   await expect(confirmation).toBeVisible()
   await expect(page).toHaveURL(/\/children$/)
   await confirmation.getByRole('button', { name: 'Hủy' }).click()
   await expect(confirmation).toHaveCount(0)
 
-  await anRow.getByRole('button', { name: 'Xóa' }).click()
-  await page.getByRole('dialog', { name: 'Xóa An?' }).getByRole('button', { name: 'Xóa' }).click()
-  await expect(page.getByRole('row', { name: 'Mở chi tiết An' })).toHaveCount(0)
+  await editedRow.getByRole('button', { name: 'Xóa' }).click()
+  await page.getByRole('dialog', { name: 'Xóa An Nhi?' }).getByRole('button', { name: 'Xóa' }).click()
+  await expect(editedRow).toHaveCount(0)
 
   await binhRow.click()
   await expect(page).toHaveURL(/\/children\/2$/)

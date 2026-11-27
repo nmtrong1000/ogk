@@ -6,7 +6,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { Laptop, Plus, UsersRound, Wifi } from 'lucide-react'
 import { assignAccount, devicesKey, listDevices, removeDevice } from '@/shared/api/devices.ts'
-import { Alert, Button, Card, EmptyState, Spinner } from '@/shared/components/index.ts'
+import { Alert, Card, EmptyState, Spinner } from '@/shared/components/index.ts'
 import { childrenKey, listChildren } from '@/features/family/api.ts'
 import DeviceCard from '@/features/family/components/DeviceCard.tsx'
 import { deviceErrorMessage } from '@/features/family/utils/messages.ts'
@@ -57,7 +57,10 @@ export default function DevicesPage() {
             message="Chưa có thiết bị nào."
             description="Ghép đôi máy đầu tiên để bắt đầu quản lý."
             action={
-              <Link to="/devices/add" className="font-semibold text-brand-700 underline underline-offset-4 hover:text-brand-800">
+              <Link
+                to="/devices/add"
+                className="font-semibold text-brand-700 underline underline-offset-4 hover:text-brand-800"
+              >
                 Thêm thiết bị
               </Link>
             }

@@ -7,7 +7,6 @@ import {
   Globe,
   House,
   Laptop,
-  LockKeyhole,
   MonitorCog,
   UsersRound,
   UserRoundCog,
@@ -19,7 +18,7 @@ import { cn } from '@/shared/utils/cn.ts'
 type MenuItem = { label: string; to: string; icon: LucideIcon; end?: boolean }
 type MenuGroup = { label: string; icon: LucideIcon; items: MenuItem[] }
 
-function menuForRole(role: Role, pathname: string): MenuGroup[] {
+function menuForRole(role: Role): MenuGroup[] {
   if (role === 'admin') {
     return [
       {
@@ -33,7 +32,6 @@ function menuForRole(role: Role, pathname: string): MenuGroup[] {
     ]
   }
 
-  const childId = pathname.match(/^\/children\/(\d+)\/(?:policy|screentime|apps|webfilter|reports|data)$/)?.[1]
   const groups: MenuGroup[] = [
     {
       label: 'Gia đình',
@@ -53,21 +51,6 @@ function menuForRole(role: Role, pathname: string): MenuGroup[] {
     },
   ]
 
-  if (childId) {
-    groups.splice(1, 0, {
-      label: 'Cấu hình trẻ',
-      icon: LockKeyhole,
-      items: [
-        { label: 'Chính sách', to: `/children/${childId}/policy`, icon: LockKeyhole },
-        { label: 'Thời gian sử dụng', to: `/children/${childId}/screentime`, icon: FileClock },
-        { label: 'Ứng dụng', to: `/children/${childId}/apps`, icon: MonitorCog },
-        { label: 'Lọc web', to: `/children/${childId}/webfilter`, icon: Globe },
-        { label: 'Báo cáo', to: `/children/${childId}/reports`, icon: ClipboardList },
-        { label: 'Dữ liệu', to: `/children/${childId}/data`, icon: FileClock },
-      ],
-    })
-  }
-
   return groups
 }
 
@@ -75,12 +58,11 @@ type Props = { role?: Role; onNavigate?: () => void }
 
 export default function DashboardSidebar({ role = 'parent', onNavigate }: Props) {
   const { pathname } = useLocation()
-  const groups = menuForRole(role, pathname)
+  const groups = menuForRole(role)
   const activeGroup = groups.find(
     (group) =>
-      group.items.some(
-        (item) => pathname === item.to || (!item.end && pathname.startsWith(`${item.to}/`)),
-      ) || (group.label === 'Thiết bị' && pathname.startsWith('/devices/')),
+      group.items.some((item) => pathname === item.to || (!item.end && pathname.startsWith(`${item.to}/`))) ||
+      (group.label === 'Thiết bị' && pathname.startsWith('/devices/')),
   )?.label
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({})
 

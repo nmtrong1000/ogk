@@ -119,7 +119,8 @@ export default function AppRuleTable({ rules, groups, pending, onRemove, onAssig
           </>
         }
       >
-        Bạn có chắc muốn xóa luật chặn/cho phép cho <strong className="font-semibold text-ink">{confirming?.name}</strong>?
+        Bạn có chắc muốn xóa luật chặn/cho phép cho{' '}
+        <strong className="font-semibold text-ink">{confirming?.name}</strong>?
       </Dialog>
     </div>
   )

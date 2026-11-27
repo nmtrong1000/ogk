@@ -8,7 +8,13 @@ const domainSchema = z
   .trim()
   .toLowerCase()
   .transform((domain) => domain.replace(/\.$/, ''))
-  .pipe(z.string().min(1, 'Nhập tên miền.').max(253, 'Tên miền không được dài quá 253 ký tự.').regex(DOMAIN_PATTERN, 'Tên miền không hợp lệ.'))
+  .pipe(
+    z
+      .string()
+      .min(1, 'Nhập tên miền.')
+      .max(253, 'Tên miền không được dài quá 253 ký tự.')
+      .regex(DOMAIN_PATTERN, 'Tên miền không hợp lệ.'),
+  )
 
 export const catalogFormSchema = z.object({
   domain: domainSchema,

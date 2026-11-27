@@ -47,7 +47,10 @@ const domainSchema = z
   .string()
   .trim()
   .toLowerCase()
-  .regex(/^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/, 'Nhập tên miền hợp lệ, ví dụ example.com.')
+  .regex(
+    /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/,
+    'Nhập tên miền hợp lệ, ví dụ example.com.',
+  )
 
 function DomainColumn({
   list,
@@ -82,7 +85,10 @@ function DomainColumn({
 }) {
   const blocking = list === 'web_blocklist'
   const renderEditor = (key: string) => (
-    <li key={key} className="flex min-w-0 items-center gap-1.5 rounded-control bg-white/70 p-1.5 ring-1 ring-inset ring-brand-200/70">
+    <li
+      key={key}
+      className="flex min-w-0 items-center gap-1.5 rounded-control bg-white/70 p-1.5 ring-1 ring-inset ring-brand-200/70"
+    >
       <Globe aria-hidden="true" className="ml-2 size-4 shrink-0 text-brand-600" />
       <input
         aria-label="Tên miền"
@@ -100,10 +106,26 @@ function DomainColumn({
           if (event.key === 'Escape') onCancel()
         }}
       />
-      <Button type="button" size="sm" variant="ghost" aria-label="Lưu tên miền" title="Lưu" disabled={disabled} onClick={onSave}>
+      <Button
+        type="button"
+        size="sm"
+        variant="ghost"
+        aria-label="Lưu tên miền"
+        title="Lưu"
+        disabled={disabled}
+        onClick={onSave}
+      >
         <Check aria-hidden="true" className="size-4" />
       </Button>
-      <Button type="button" size="sm" variant="ghost" aria-label="Hủy chỉnh sửa" title="Hủy" disabled={disabled} onClick={onCancel}>
+      <Button
+        type="button"
+        size="sm"
+        variant="ghost"
+        aria-label="Hủy chỉnh sửa"
+        title="Hủy"
+        disabled={disabled}
+        onClick={onCancel}
+      >
         <X aria-hidden="true" className="size-4" />
       </Button>
     </li>
@@ -186,7 +208,9 @@ function DomainColumn({
           )
         })}
         {domains.length === 0 && !(editor?.list === list && editor.domain === null) && (
-          <li><EmptyState message="Chưa có tên miền" compact /></li>
+          <li>
+            <EmptyState message="Chưa có tên miền" compact />
+          </li>
         )}
       </ul>
     </section>
@@ -255,7 +279,9 @@ export default function WebFilterPage() {
       ? current[list].map((domain) => (domain === originalDomain ? result.data : domain))
       : [...current[list], result.data]
     try {
-      await save.mutateAsync(list === 'web_blocklist' ? { web_blocklist: updatedDomains } : { web_allowlist: updatedDomains })
+      await save.mutateAsync(
+        list === 'web_blocklist' ? { web_blocklist: updatedDomains } : { web_allowlist: updatedDomains },
+      )
       if (selected?.list === list && selected.domain === originalDomain) setSelected(null)
       setDomainEditor(null)
     } catch {}
@@ -297,7 +323,10 @@ export default function WebFilterPage() {
         icon={Globe}
       />
       {save.error && <Alert tone="error">Không lưu được luật website.</Alert>}
-      <Card title="Nhóm bị chặn" description="Chọn loại nội dung không phù hợp với trẻ. Các lựa chọn được áp dụng cho mọi website thuộc nhóm.">
+      <Card
+        title="Nhóm bị chặn"
+        description="Chọn loại nội dung không phù hợp với trẻ. Các lựa chọn được áp dụng cho mọi website thuộc nhóm."
+      >
         <div className="mb-4 flex flex-wrap items-center gap-2">
           <Badge tone={current.blocked_categories.length ? 'danger' : 'neutral'}>
             {current.blocked_categories.length} nhóm đang chặn
@@ -337,7 +366,10 @@ export default function WebFilterPage() {
         </div>
       </Card>
 
-      <Card title="Tên miền riêng" description="Tên miền và tên miền con cùng chịu luật. Ví dụ example.com áp dụng cả a.example.com.">
+      <Card
+        title="Tên miền riêng"
+        description="Tên miền và tên miền con cùng chịu luật. Ví dụ example.com áp dụng cả a.example.com."
+      >
         <div className="web-domain-grid">
           <DomainColumn
             list="web_blocklist"
@@ -360,7 +392,13 @@ export default function WebFilterPage() {
               type="button"
               variant="secondary"
               disabled={!selected || save.isPending}
-              title={selected ? (blockSelected ? 'Chuyển sang danh sách cho phép' : 'Chuyển sang danh sách chặn') : 'Chọn một tên miền để chuyển'}
+              title={
+                selected
+                  ? blockSelected
+                    ? 'Chuyển sang danh sách cho phép'
+                    : 'Chuyển sang danh sách chặn'
+                  : 'Chọn một tên miền để chuyển'
+              }
               onClick={transferSelected}
             >
               <ArrowLeftRight aria-hidden="true" className="size-4" />

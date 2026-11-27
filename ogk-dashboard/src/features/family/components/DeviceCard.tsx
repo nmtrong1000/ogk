@@ -78,7 +78,11 @@ export default function DeviceCard({
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="break-words text-lg font-semibold tracking-tight text-ink sm:text-xl">{device.name}</h2>
               <Badge tone={device.last_seen_at ? 'success' : 'neutral'}>
-                {device.last_seen_at ? <Wifi aria-hidden="true" className="size-3.5" /> : <WifiOff aria-hidden="true" className="size-3.5" />}
+                {device.last_seen_at ? (
+                  <Wifi aria-hidden="true" className="size-3.5" />
+                ) : (
+                  <WifiOff aria-hidden="true" className="size-3.5" />
+                )}
                 {device.last_seen_at ? 'Đã từng kết nối' : 'Chưa kết nối'}
               </Badge>
             </div>

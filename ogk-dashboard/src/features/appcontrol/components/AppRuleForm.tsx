@@ -1,5 +1,5 @@
 import { useId, useState, type ChangeEvent, type FormEvent } from 'react'
-import { AppWindow, ArrowUpRight, Ban, CircleCheck, Fingerprint, FolderOpen, Plus, Upload } from 'lucide-react'
+import { AppWindow, ArrowUpRight, Ban, CircleCheck, FolderOpen, Plus, Upload } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Button, Select, TextField } from '@/shared/components/index.ts'
 import { useToast } from '@/shared/components/ToastContext.ts'

@@ -62,8 +62,8 @@ function PolicyOverview({ id }: { id: number }) {
         icon={ShieldCheck}
         description={
           <>
-          Luật đang áp cho {child.data?.name ?? 'con'}. Máy của con nhận phiên bản mới ở lần đồng bộ tiếp theo, trong
-          khoảng một phút.
+            Luật đang áp cho {child.data?.name ?? 'con'}. Máy của con nhận phiên bản mới ở lần đồng bộ tiếp theo, trong
+            khoảng một phút.
           </>
         }
       />

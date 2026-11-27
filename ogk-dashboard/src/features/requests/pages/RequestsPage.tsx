@@ -140,7 +140,9 @@ export default function RequestsPage() {
                         ) : (
                           <span className="inline-flex flex-wrap items-baseline gap-x-1.5">
                             <span>Báo chặn nhầm tên miền</span>
-                            {item.domain && <span className="font-mono text-sm font-medium text-brand-700">{item.domain}</span>}
+                            {item.domain && (
+                              <span className="font-mono text-sm font-medium text-brand-700">{item.domain}</span>
+                            )}
                           </span>
                         )}
                       </p>
@@ -152,13 +154,17 @@ export default function RequestsPage() {
                       <label htmlFor={`request-message-${item.id}`} className="flex flex-col gap-1.5">
                         <span className="flex items-center justify-between gap-3 text-sm font-medium text-ink">
                           Lời nhắn cho con
-                          <span className="text-xs font-normal text-ink-muted">{(messages[item.id] ?? '').length}/500</span>
+                          <span className="text-xs font-normal text-ink-muted">
+                            {(messages[item.id] ?? '').length}/500
+                          </span>
                         </span>
                         <textarea
                           id={`request-message-${item.id}`}
                           maxLength={500}
                           value={messages[item.id] ?? ''}
-                          onChange={(event) => setMessages((current) => ({ ...current, [item.id]: event.target.value }))}
+                          onChange={(event) =>
+                            setMessages((current) => ({ ...current, [item.id]: event.target.value }))
+                          }
                           placeholder="Viết lời nhắn kèm theo quyết định…"
                           className="glass-input min-h-24 resize-y rounded-control px-3.5 py-2.5 text-base text-ink outline-none transition placeholder:text-ink-muted focus:ring-4 focus:ring-brand-200/60"
                         />

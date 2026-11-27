@@ -3,7 +3,6 @@ import { AlertsPage } from '@/features/alerts/index.ts'
 import { AuditPage } from '@/features/audit/index.ts'
 import { ChildViewPage, ChildViewStartPage } from '@/features/child-view/index.ts'
 import { AdminAccountsPage, LoginPage, RegisterPage, RequireAuth } from '@/features/auth/index.ts'
-import AuthLayout from '@/features/auth/components/AuthLayout.tsx'
 import { AddDevicePage } from '@/features/enrollment/index.ts'
 import { ChildDetailPage, ChildrenPage, DevicesPage } from '@/features/family/index.ts'
 import { PolicyPage } from '@/features/policy/index.ts'
@@ -13,7 +12,7 @@ import { AppControlPage } from '@/features/appcontrol/index.ts'
 import { AdminCatalogPage, WebFilterPage } from '@/features/webfilter/index.ts'
 import ErrorPage from '@/app/ErrorPage.tsx'
 import HomePage from '@/app/HomePage.tsx'
-import Layout from '@/app/Layout.tsx'
+import { AppLayout, AuthLayout } from '@/shared/layouts/index.ts'
 import NotFoundPage from '@/app/NotFoundPage.tsx'
 
 const devRoutes: RouteObject[] = import.meta.env.DEV
@@ -31,7 +30,7 @@ export const router = createBrowserRouter([
     ],
   },
   {
-    element: <Layout />,
+    element: <AppLayout />,
     errorElement: <ErrorPage />,
     children: [
       { path: '/child-view/start', element: <ChildViewStartPage /> },

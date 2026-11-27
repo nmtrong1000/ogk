@@ -64,11 +64,7 @@ export default function AddDevicePage() {
       </div>
 
       {used ? (
-        <Card
-          strong
-          title="Thiết bị đã ghép đôi"
-          description="Chọn trẻ dùng từng tài khoản Windows trên máy này."
-        >
+        <Card strong title="Thiết bị đã ghép đôi" description="Chọn trẻ dùng từng tài khoản Windows trên máy này.">
           <AssignAccounts deviceId={status.data!.device_id!} />
         </Card>
       ) : (
@@ -99,7 +95,9 @@ export default function AddDevicePage() {
                       {index === 1 ? (
                         <>
                           {description.split('ogk_service enroll')[0]}
-                          <code className="rounded bg-white/70 px-1.5 py-0.5 font-medium text-ink">ogk_service enroll</code>
+                          <code className="rounded bg-white/70 px-1.5 py-0.5 font-medium text-ink">
+                            ogk_service enroll
+                          </code>
                           .
                         </>
                       ) : (
@@ -115,12 +113,19 @@ export default function AddDevicePage() {
           <Card
             strong
             title={issued && !expired ? 'Mã ghép đôi' : 'Tạo mã ghép đôi'}
-            description={issued && !expired ? 'Nhập mã này trên máy tính Windows của con.' : 'Mã có hiệu lực trong 10 phút và chỉ dùng được một lần.'}
+            description={
+              issued && !expired
+                ? 'Nhập mã này trên máy tính Windows của con.'
+                : 'Mã có hiệu lực trong 10 phút và chỉ dùng được một lần.'
+            }
           >
             <div className="flex flex-col gap-5">
               {issued && !expired ? (
                 <>
-                  <div className="glass-strong flex min-h-40 flex-col items-center justify-center gap-3 rounded-glass px-3 py-6" aria-live="polite">
+                  <div
+                    className="glass-strong flex min-h-40 flex-col items-center justify-center gap-3 rounded-glass px-3 py-6"
+                    aria-live="polite"
+                  >
                     <span className="grid size-12 place-items-center rounded-2xl bg-brand-100/80 text-brand-700">
                       <Laptop aria-hidden="true" className="size-6" />
                     </span>

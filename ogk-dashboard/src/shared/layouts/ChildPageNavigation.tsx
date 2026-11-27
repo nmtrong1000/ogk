@@ -25,7 +25,9 @@ export default function ChildPageNavigation() {
           className={({ isActive }) =>
             cn(
               'rounded-control px-2.5 py-1.5 transition-colors',
-              isActive ? 'bg-white/75 text-brand-700 shadow-control' : 'text-ink-muted hover:bg-white/60 hover:text-ink',
+              isActive
+                ? 'bg-white/75 text-brand-700 shadow-control'
+                : 'text-ink-muted hover:bg-white/60 hover:text-ink',
             )
           }
           aria-current={page === path ? 'page' : undefined}

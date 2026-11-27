@@ -1,4 +1,4 @@
-import { Plus } from 'lucide-react'
+import { Pencil, Plus } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState, type KeyboardEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -6,8 +6,8 @@ import {
   Button,
   Card,
   Dialog,
-  Spinner,
   EmptyState,
+  Spinner,
   Table,
   TableBody,
   TableHead,
@@ -17,8 +17,8 @@ import {
 } from '@/shared/components/index.ts'
 import { useToast } from '@/shared/components/ToastContext.ts'
 import { ToastMessage } from '@/shared/components/ToastProvider.tsx'
-import type { Child } from '@/shared/types/family.ts'
-import { childrenKey, createChild, deleteChild, listChildren } from '@/features/family/api.ts'
+import type { Child, ChildInput } from '@/shared/types/family.ts'
+import { childKey, childrenKey, createChild, deleteChild, listChildren, updateChild } from '@/features/family/api.ts'
 import ChildForm from '@/features/family/components/ChildForm.tsx'
 import { errorMessage } from '@/features/family/utils/messages.ts'
 import { ageFrom } from '@/features/family/utils/year.ts'
@@ -29,6 +29,7 @@ export default function ChildrenPage() {
   const showToast = useToast()
   const [formKey, setFormKey] = useState(0)
   const [adding, setAdding] = useState(false)
+  const [editing, setEditing] = useState<Child | null>(null)
   const [confirming, setConfirming] = useState<Child | null>(null)
   const children = useQuery({ queryKey: childrenKey, queryFn: listChildren })
 
@@ -41,6 +42,15 @@ export default function ChildrenPage() {
       queryClient.invalidateQueries({ queryKey: childrenKey })
     },
   })
+  const update = useMutation({
+    mutationFn: ({ id, body }: { id: number; body: ChildInput }) => updateChild(id, body),
+    onSuccess: (child) => {
+      setEditing(null)
+      showToast({ tone: 'success', message: `Đã cập nhật ${child.name}.` })
+      queryClient.setQueryData(childKey(child.id), child)
+      queryClient.invalidateQueries({ queryKey: childrenKey })
+    },
+  })
   const remove = useMutation({
     mutationFn: deleteChild,
     onSuccess: (_data, id) => {
@@ -48,7 +58,6 @@ export default function ChildrenPage() {
       queryClient.invalidateQueries({ queryKey: childrenKey })
       setConfirming(null)
     },
-    onError: (error) => showToast({ tone: 'error', message: errorMessage(error) }),
   })
 
   function openChild(event: KeyboardEvent<HTMLTableRowElement>, childId: number) {
@@ -67,7 +76,12 @@ export default function ChildrenPage() {
       <Card
         title="Danh sách trẻ"
         actions={
-          <Button onClick={() => setAdding(true)}>
+          <Button
+            onClick={() => {
+              create.reset()
+              setAdding(true)
+            }}
+          >
             <Plus aria-hidden="true" className="size-4" />
             Thêm trẻ
           </Button>
@@ -109,17 +123,32 @@ export default function ChildrenPage() {
                       {child.birth_year} <span className="text-ink-muted">({ageFrom(child.birth_year)} tuổi)</span>
                     </Td>
                     <Td className="text-right">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="text-rose-600 hover:bg-rose-50/60"
-                        onClick={(event) => {
-                          event.stopPropagation()
-                          setConfirming(child)
-                        }}
-                      >
-                        Xóa
-                      </Button>
+                      <div className="flex flex-wrap justify-end gap-1">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            update.reset()
+                            setEditing(child)
+                          }}
+                        >
+                          <Pencil aria-hidden="true" className="size-3.5" />
+                          Sửa
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-rose-600 hover:bg-rose-50/60"
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            remove.reset()
+                            setConfirming(child)
+                          }}
+                        >
+                          Xóa
+                        </Button>
+                      </div>
                     </Td>
                   </TableRow>
                 ))}
@@ -145,6 +174,31 @@ export default function ChildrenPage() {
       </Dialog>
 
       <Dialog
+        open={editing !== null}
+        title={`Sửa ${editing?.name ?? 'trẻ'}`}
+        onClose={() => !update.isPending && setEditing(null)}
+        className="max-w-lg"
+      >
+        {editing && (
+          <>
+            <p className="text-sm text-ink-muted">Tên và năm sinh được mã hóa khi lưu trên server.</p>
+            <div className="mt-5">
+              <ChildForm
+                key={`${editing.id}-${editing.updated_at}`}
+                initial={{ name: editing.name, birth_year: editing.birth_year }}
+                submitLabel="Lưu thay đổi"
+                pending={update.isPending}
+                error={update.error}
+                inlineErrors
+                onCancel={() => setEditing(null)}
+                onSubmit={(body) => update.mutate({ id: editing.id, body })}
+              />
+            </div>
+          </>
+        )}
+      </Dialog>
+
+      <Dialog
         open={confirming !== null}
         title={`Xóa ${confirming?.name ?? 'trẻ'}?`}
         onClose={() => !remove.isPending && setConfirming(null)}
@@ -164,6 +218,11 @@ export default function ChildrenPage() {
         }
       >
         <p>Thông tin của {confirming?.name ?? 'trẻ'} sẽ bị xóa khỏi tài khoản và không thể khôi phục.</p>
+        {remove.isError && (
+          <p role="alert" className="mt-4 text-sm text-rose-700">
+            {errorMessage(remove.error)}
+          </p>
+        )}
       </Dialog>
     </div>
   )

@@ -34,7 +34,11 @@ export default function CommandControls({ deviceId, childId }: { deviceId: numbe
               size="sm"
               variant={type === 'lock' ? 'danger' : 'secondary'}
               loading={send.isPending}
-              className={type === 'unlock' ? 'bg-emerald-500 text-white shadow-sm hover:bg-emerald-600 hover:border-emerald-600' : ''}
+              className={
+                type === 'unlock'
+                  ? 'bg-emerald-500 text-white shadow-sm hover:bg-emerald-600 hover:border-emerald-600'
+                  : ''
+              }
               onClick={() => send.mutate(type)}
             >
               <Icon aria-hidden="true" className="size-4" />

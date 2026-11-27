@@ -22,7 +22,13 @@ import {
 } from '@/shared/components/index.ts'
 import { useToast } from '@/shared/components/ToastContext.ts'
 import { formatDateTime } from '@/shared/utils/dateTime.ts'
-import { getCatalog, updateCatalog, WEB_CATEGORIES, type CatalogEntry, type WebCategory } from '@/features/webfilter/api.ts'
+import {
+  getCatalog,
+  updateCatalog,
+  WEB_CATEGORIES,
+  type CatalogEntry,
+  type WebCategory,
+} from '@/features/webfilter/api.ts'
 import { catalogFormSchema } from '@/features/webfilter/schemas.ts'
 
 const CATEGORY_LABELS: Record<WebCategory, string> = {
@@ -59,7 +65,17 @@ function saveErrorMessage(error: unknown): string {
   return 'Không lưu được thay đổi. Vui lòng thử lại.'
 }
 
-function Metric({ label, value, icon: Icon, tone }: { label: string; value: number; icon: typeof Globe2; tone: string }) {
+function Metric({
+  label,
+  value,
+  icon: Icon,
+  tone,
+}: {
+  label: string
+  value: number
+  icon: typeof Globe2
+  tone: string
+}) {
   return (
     <div className="glass-strong flex min-w-0 items-center gap-3 rounded-glass p-4 ring-1 ring-inset ring-white/70">
       <span className={`grid size-11 shrink-0 place-items-center rounded-2xl ${tone}`}>
@@ -145,9 +161,19 @@ export default function AdminCatalogPage() {
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3">
-        <Metric label="Tên miền trong danh mục" value={catalog.data.length} icon={Globe2} tone="bg-sky-100/80 text-sky-700" />
+        <Metric
+          label="Tên miền trong danh mục"
+          value={catalog.data.length}
+          icon={Globe2}
+          tone="bg-sky-100/80 text-sky-700"
+        />
         <Metric label="Nhóm đang sử dụng" value={categoryCount} icon={Tags} tone="bg-violet-100/80 text-violet-700" />
-        <Metric label="Chưa phân loại" value={unclassifiedCount} icon={CircleHelp} tone="bg-amber-100/80 text-amber-700" />
+        <Metric
+          label="Chưa phân loại"
+          value={unclassifiedCount}
+          icon={CircleHelp}
+          tone="bg-amber-100/80 text-amber-700"
+        />
       </div>
 
       <Card strong title="Thêm tên miền" description="Tên miền mới sẽ được thêm vào danh mục dùng chung.">
@@ -169,8 +195,8 @@ export default function AdminCatalogPage() {
           </div>
           <div className="flex justify-end">
             <Button type="submit" loading={save.isPending} disabled={save.isPending}>
-            <Plus aria-hidden="true" className="size-4" />
-            Thêm vào danh mục
+              <Plus aria-hidden="true" className="size-4" />
+              Thêm vào danh mục
             </Button>
           </div>
         </form>
@@ -275,7 +301,9 @@ export default function AdminCatalogPage() {
             <Button
               loading={save.isPending && save.variables?.action === 'update'}
               disabled={save.isPending || editing === null}
-              onClick={() => editing && save.mutate({ domain: editing.domain, category: editCategory, action: 'update' })}
+              onClick={() =>
+                editing && save.mutate({ domain: editing.domain, category: editCategory, action: 'update' })
+              }
             >
               Lưu thay đổi
             </Button>
