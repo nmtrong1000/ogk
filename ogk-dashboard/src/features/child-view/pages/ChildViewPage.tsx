@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { Alert, Button, Card, Spinner } from '@/shared/components/index.ts'
+import { Button, Card, Spinner } from '@/shared/components/index.ts'
 import {
   childViewMeKey,
   childViewTodayKey,
@@ -9,6 +9,7 @@ import {
 } from '@/features/child-view/api.ts'
 import RuleLog from '@/features/child-view/components/RuleLog.tsx'
 import TodaySummary from '@/features/child-view/components/TodaySummary.tsx'
+import ChildNotice from '@/features/child-view/components/ChildNotice.tsx'
 import { childViewErrorMessage } from '@/features/child-view/utils/messages.ts'
 
 export default function ChildViewPage() {
@@ -32,9 +33,9 @@ export default function ChildViewPage() {
   }
   if (me.isError) {
     return (
-      <Card strong className="mx-auto max-w-md text-center">
-        <Alert tone="warning">{childViewErrorMessage(me.error)}</Alert>
-      </Card>
+      <div className="grid min-h-[min(62dvh,38rem)] place-items-center py-8">
+        <ChildNotice title="Không thể mở báo cáo" message={childViewErrorMessage(me.error)} />
+      </div>
     )
   }
 
@@ -49,7 +50,9 @@ export default function ChildViewPage() {
           Đóng báo cáo
         </Button>
       </div>
-      {today.isError && <Alert tone="error">{childViewErrorMessage(today.error)}</Alert>}
+      {today.isError && (
+        <ChildNotice compact title="Chưa tải được báo cáo hôm nay" message={childViewErrorMessage(today.error)} />
+      )}
       {today.isPending && (
         <div className="grid place-items-center py-12">
           <Spinner size="lg" />

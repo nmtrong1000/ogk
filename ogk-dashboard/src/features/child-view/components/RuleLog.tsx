@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Alert, Card, Pagination, Spinner } from '@/shared/components/index.ts'
+import { Card, Pagination, Spinner } from '@/shared/components/index.ts'
 import { formatDateTime } from '@/shared/utils/dateTime.ts'
 import { childViewRuleLogKey, getChildViewRuleLog } from '@/features/child-view/api.ts'
 import { describeChanges } from '@/features/child-view/utils/describe.ts'
 import { childViewErrorMessage } from '@/features/child-view/utils/messages.ts'
+import ChildNotice from '@/features/child-view/components/ChildNotice.tsx'
 
 const PAGE_SIZE = 10
 
@@ -18,7 +19,9 @@ export default function RuleLog() {
   return (
     <Card title="Bố mẹ đã thay đổi gì" description="Những lần bố mẹ đổi luật dùng máy của em.">
       {query.isPending && <Spinner />}
-      {query.isError && <Alert tone="error">{childViewErrorMessage(query.error)}</Alert>}
+      {query.isError && (
+        <ChildNotice compact title="Chưa tải được nhật ký" message={childViewErrorMessage(query.error)} />
+      )}
       {query.data && query.data.total === 0 && (
         <p className="text-base text-ink-muted">Bố mẹ chưa thay đổi luật nào.</p>
       )}

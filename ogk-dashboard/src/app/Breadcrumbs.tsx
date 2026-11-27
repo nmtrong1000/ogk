@@ -50,7 +50,8 @@ function breadcrumbs(pathname: string): Crumb[] {
 
 export default function Breadcrumbs() {
   const { pathname } = useLocation()
-  const items = breadcrumbs(pathname)
+  const normalizedPath = pathname.replace(/\/+$/, '') || '/'
+  const items = breadcrumbs(normalizedPath)
 
   return (
     <nav aria-label="Đường dẫn" className="mb-4 sm:mb-5">
