@@ -4,6 +4,19 @@
 @import 'tailwindcss';
 @import '@/shared/styles/tokens.css';
 
+.web-domain-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.75rem;
+}
+
+@media (width >= 48rem) {
+  .web-domain-grid {
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+  }
+}
+
 @keyframes toast-in {
   from {
     opacity: 0;
