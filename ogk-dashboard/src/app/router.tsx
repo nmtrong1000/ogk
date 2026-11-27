@@ -27,6 +27,7 @@ export const router = createBrowserRouter([
     children: [
       { path: '/login', element: <LoginPage /> },
       { path: '/register', element: <RegisterPage /> },
+      { path: '*', element: <NotFoundPage /> },
     ],
   },
   {
@@ -74,7 +75,6 @@ export const router = createBrowserRouter([
         children: [{ path: '/audit', element: <AuditPage /> }],
       },
       ...devRoutes,
-      { path: '*', element: <NotFoundPage /> },
     ],
   },
 ])
