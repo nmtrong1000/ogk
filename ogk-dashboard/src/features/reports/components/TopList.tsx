@@ -1,7 +1,10 @@
+import { AppWindow } from 'lucide-react'
+import { EmptyState } from '@/shared/components/index.ts'
+
 type Item = { key: string; label: string; value: string; ratio: number }
 
 export default function TopList({ items, empty }: { items: Item[]; empty: string }) {
-  if (items.length === 0) return <p className="py-4 text-sm text-ink-muted">{empty}</p>
+  if (items.length === 0) return <EmptyState message={empty} icon={AppWindow} compact />
   return (
     <ol className="flex flex-col gap-3">
       {items.map((item, index) => (

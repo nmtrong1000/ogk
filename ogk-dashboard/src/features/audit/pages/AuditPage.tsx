@@ -4,8 +4,9 @@ import { commonErrorMessage } from '@/shared/api/errors.ts'
 import {
   Alert,
   Badge,
-  Button,
   Card,
+  EmptyState,
+  Pagination,
   Spinner,
   Table,
   TableBody,
@@ -56,7 +57,7 @@ export default function AuditPage() {
             </div>
           )}
           {audit.isError && <Alert tone="error">{commonErrorMessage(audit.error)}</Alert>}
-          {data?.items.length === 0 && <p className="py-8 text-center text-sm text-ink-muted">Chưa có thay đổi nào.</p>}
+          {data?.items.length === 0 && <EmptyState message="Chưa có thay đổi nào." />}
 
           {data && data.items.length > 0 && (
             <>
@@ -116,22 +117,7 @@ export default function AuditPage() {
           )}
 
           {data && data.total > PAGE_SIZE && (
-            <nav aria-label="Phân trang" className="flex items-center justify-between gap-2">
-              <Button variant="secondary" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
-                Trước
-              </Button>
-              <span className="text-sm text-ink-muted">
-                Trang {page}/{pages}
-              </span>
-              <Button
-                variant="secondary"
-                size="sm"
-                disabled={page >= pages || audit.isPlaceholderData}
-                onClick={() => setPage((p) => p + 1)}
-              >
-                Sau
-              </Button>
-            </nav>
+            <Pagination page={page} totalPages={pages} onPageChange={setPage} disabled={audit.isPlaceholderData} />
           )}
         </div>
       </Card>

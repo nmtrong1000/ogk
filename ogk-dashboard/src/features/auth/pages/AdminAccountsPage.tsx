@@ -6,6 +6,7 @@ import {
   Button,
   Card,
   Checkbox,
+  EmptyState,
   Spinner,
   Table,
   TableBody,
@@ -58,9 +59,7 @@ export default function AdminAccountsPage() {
           )}
           {accounts.isError && <Alert tone="error">{errorMessage(accounts.error)}</Alert>}
           {accounts.data?.length === 0 && (
-            <p className="py-8 text-center text-sm text-ink-muted">
-              {lockedOnly ? 'Không có tài khoản nào đang bị khóa.' : 'Chưa có tài khoản phụ huynh nào.'}
-            </p>
+            <EmptyState message={lockedOnly ? 'Không có tài khoản nào đang bị khóa.' : 'Chưa có tài khoản phụ huynh nào.'} />
           )}
           {accounts.data && accounts.data.length > 0 && (
             <Table>

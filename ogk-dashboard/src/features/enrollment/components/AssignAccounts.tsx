@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { assignAccount, devicesKey, listDevices } from '@/shared/api/devices.ts'
-import { AccountAssignments, Alert, Spinner } from '@/shared/components/index.ts'
+import { AccountAssignments, Alert, EmptyState, Spinner } from '@/shared/components/index.ts'
 import { childrenKey, listChildren } from '@/features/enrollment/api.ts'
 import { errorMessage } from '@/features/enrollment/utils/messages.ts'
 
@@ -35,9 +35,16 @@ export default function AssignAccounts({ deviceId }: { deviceId: number }) {
         Đã ghép đôi <strong>{device.name}</strong>. Chọn con dùng từng tài khoản Windows trên máy này.
       </p>
       {children.data.length === 0 && (
-        <Alert tone="info">
-          Chưa có con nào. <Link to="/children">Thêm con</Link> trước rồi quay lại gán.
-        </Alert>
+        <EmptyState
+          message="Chưa có con nào."
+          description="Thêm thông tin con trước khi gán tài khoản Windows."
+          action={
+            <Link to="/children" className="font-semibold text-brand-700 underline underline-offset-4 hover:text-brand-800">
+              Thêm con
+            </Link>
+          }
+          compact
+        />
       )}
       {assign.isError && <Alert tone="error">{errorMessage(assign.error)}</Alert>}
       <AccountAssignments

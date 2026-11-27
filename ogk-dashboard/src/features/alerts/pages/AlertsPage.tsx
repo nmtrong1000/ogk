@@ -4,7 +4,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
 import { devicesKey, listDevices } from '@/shared/api/devices.ts'
-import { Alert, Card, Select, Spinner } from '@/shared/components/index.ts'
+import { Alert, Card, EmptyState, Select, Spinner } from '@/shared/components/index.ts'
 import type { DeviceAlert } from '@/shared/types/alerts.ts'
 import { alertsKey, listAlerts } from '@/features/alerts/api.ts'
 import DeviceAlertList from '@/features/alerts/components/DeviceAlertList.tsx'
@@ -70,7 +70,7 @@ export default function AlertsPage() {
       )}
       {alerts.data?.length === 0 && (
         <Card>
-          <p className="py-6 text-center text-sm text-ink-muted">Chưa có cảnh báo nào.</p>
+          <EmptyState message="Chưa có cảnh báo nào." />
         </Card>
       )}
       {groups.map((group) => (

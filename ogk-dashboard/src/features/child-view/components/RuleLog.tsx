@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Alert, Button, Card, Spinner } from '@/shared/components/index.ts'
+import { Alert, Card, Pagination, Spinner } from '@/shared/components/index.ts'
 import { childViewRuleLogKey, getChildViewRuleLog } from '@/features/child-view/api.ts'
 import { describeChanges } from '@/features/child-view/utils/describe.ts'
 import { childViewErrorMessage } from '@/features/child-view/utils/messages.ts'
@@ -35,24 +35,14 @@ export default function RuleLog() {
               </li>
             ))}
           </ol>
-          {query.data.total > PAGE_SIZE && (
-            <div className="flex items-center justify-between gap-2 text-sm text-ink-muted">
-              <Button size="sm" variant="secondary" disabled={page <= 1} onClick={() => setPage(page - 1)}>
-                Mới hơn
-              </Button>
-              <span>
-                Trang {page}/{Math.ceil(query.data.total / PAGE_SIZE)}
-              </span>
-              <Button
-                size="sm"
-                variant="secondary"
-                disabled={page * PAGE_SIZE >= query.data.total}
-                onClick={() => setPage(page + 1)}
-              >
-                Cũ hơn
-              </Button>
-            </div>
-          )}
+          <Pagination
+            page={page}
+            totalPages={Math.ceil(query.data.total / PAGE_SIZE)}
+            onPageChange={setPage}
+            disabled={query.isFetching}
+            previousLabel="Mới hơn"
+            nextLabel="Cũ hơn"
+          />
         </div>
       )}
     </Card>

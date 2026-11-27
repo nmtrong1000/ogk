@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { AppWindow, Ban, CircleCheck, Fingerprint, Trash2 } from 'lucide-react'
-import { Badge, Button, Dialog, Select } from '@/shared/components/index.ts'
+import { Badge, Button, Dialog, EmptyState, Select } from '@/shared/components/index.ts'
 import type { AppGroup, AppRule } from '@/shared/types/policy.ts'
 import { ACTION_LABELS } from '@/features/appcontrol/utils/messages.ts'
 
@@ -27,15 +27,11 @@ export default function AppRuleTable({ rules, groups, pending, onRemove, onAssig
 
   if (rules.length === 0) {
     return (
-      <div className="glass-input flex flex-col items-center gap-3 rounded-glass px-5 py-10 text-center">
-        <span className="grid size-14 place-items-center rounded-2xl bg-brand-100/80 text-brand-700">
-          <AppWindow aria-hidden="true" className="size-7" />
-        </span>
-        <div>
-          <p className="font-semibold text-ink">Chưa có luật ứng dụng</p>
-          <p className="mt-1 text-sm text-ink-muted">Mọi ứng dụng đều được chạy. Thêm luật nếu muốn chặn hoặc phân nhóm.</p>
-        </div>
-      </div>
+      <EmptyState
+        message="Chưa có luật ứng dụng"
+        description="Mọi ứng dụng đều được chạy. Thêm luật nếu muốn chặn hoặc phân nhóm."
+        icon={AppWindow}
+      />
     )
   }
   return (

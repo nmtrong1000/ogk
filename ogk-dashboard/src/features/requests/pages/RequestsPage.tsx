@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Alert, Button, Card, Spinner } from '@/shared/components/index.ts'
+import { Alert, Button, Card, EmptyState, Spinner } from '@/shared/components/index.ts'
 import { ApiError } from '@/shared/api/client.ts'
 import { decideRequest, listRequests, requestsKey, type ChildRequest } from '@/features/requests/api.ts'
 
@@ -37,7 +37,7 @@ export default function RequestsPage() {
       )}
       {query.data?.length === 0 && (
         <Card>
-          <p className="py-6 text-center text-sm text-ink-muted">Chưa có yêu cầu nào.</p>
+          <EmptyState message="Chưa có yêu cầu nào." />
         </Card>
       )}
       {query.data?.map((item) => (

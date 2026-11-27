@@ -1,4 +1,5 @@
-import { Card } from '@/shared/components/index.ts'
+import { AppWindow, Globe } from 'lucide-react'
+import { Card, EmptyState } from '@/shared/components/index.ts'
 import type { Report } from '@/shared/types/reports.ts'
 import { formatDuration } from '@/shared/utils/duration.ts'
 import Illustration from '@/features/child-view/components/Illustration.tsx'
@@ -51,7 +52,7 @@ export default function TodaySummary({ report }: { report: Report }) {
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
         <Card title="Ứng dụng em dùng nhiều nhất">
           {topApps.length === 0 ? (
-            <p className="text-base text-ink-muted">Hôm nay em chưa dùng ứng dụng nào.</p>
+            <EmptyState message="Hôm nay em chưa dùng ứng dụng nào." icon={AppWindow} compact />
           ) : (
             <ul className="flex flex-col gap-2 text-base text-ink">
               {topApps.map((app) => (
@@ -65,7 +66,7 @@ export default function TodaySummary({ report }: { report: Report }) {
         </Card>
         <Card title="Trang web em vào nhiều nhất">
           {topSites.length === 0 ? (
-            <p className="text-base text-ink-muted">Hôm nay em chưa vào trang web nào.</p>
+            <EmptyState message="Hôm nay em chưa vào trang web nào." icon={Globe} compact />
           ) : (
             <ul className="flex flex-col gap-2 text-base text-ink">
               {topSites.map((site) => (

@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { Laptop, Settings2, UserRound } from 'lucide-react'
 import { childDevicesKey, listChildDevices } from '@/shared/api/devices.ts'
-import { Alert, Spinner } from '@/shared/components/index.ts'
+import { Alert, EmptyState, Spinner } from '@/shared/components/index.ts'
 import { deviceErrorMessage } from '@/features/family/utils/messages.ts'
 import CommandControls from '@/features/commands/components/CommandControls.tsx'
 
@@ -27,12 +27,7 @@ export default function ChildDevices({ childId }: { childId: number }) {
       )}
       {devices.isError && <Alert tone="error">{deviceErrorMessage(devices.error)}</Alert>}
       {devices.data?.length === 0 && (
-        <div className="glass-input flex items-center gap-4 rounded-glass p-5">
-          <span className="grid size-14 shrink-0 place-items-center rounded-2xl bg-white/65 text-brand-600 shadow-control">
-            <Laptop aria-hidden="true" className="size-8" />
-          </span>
-          <p className="text-sm text-ink-muted">Chưa có tài khoản Windows nào được gán cho con.</p>
-        </div>
+        <EmptyState message="Chưa có tài khoản Windows nào được gán cho con." icon={Laptop} compact />
       )}
       {devices.data && devices.data.length > 0 && (
         <ul className="grid gap-4">

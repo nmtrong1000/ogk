@@ -7,6 +7,7 @@ import {
   Card,
   Dialog,
   Spinner,
+  EmptyState,
   Table,
   TableBody,
   TableHead,
@@ -80,7 +81,7 @@ export default function ChildrenPage() {
           )}
           {children.isError && <ToastMessage tone="error">{errorMessage(children.error)}</ToastMessage>}
           {children.data?.length === 0 && (
-            <p className="py-8 text-center text-sm text-ink-muted">Chưa có trẻ nào. Nhấn “Thêm trẻ” để bắt đầu.</p>
+            <EmptyState message="Chưa có trẻ nào." description="Nhấn “Thêm trẻ” để bắt đầu." />
           )}
           {children.data && children.data.length > 0 && (
             <Table>

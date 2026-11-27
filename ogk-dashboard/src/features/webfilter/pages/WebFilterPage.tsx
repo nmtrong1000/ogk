@@ -26,7 +26,7 @@ import {
   getPolicy,
   updatePolicy,
 } from '@/shared/api/policy.ts'
-import { Alert, Badge, Button, Card, ChildPageHeader, Spinner } from '@/shared/components/index.ts'
+import { Alert, Badge, Button, Card, ChildPageHeader, EmptyState, Spinner } from '@/shared/components/index.ts'
 import { useToast } from '@/shared/components/ToastContext.ts'
 import type { Policy } from '@/shared/types/policy.ts'
 import { WEB_CATEGORIES, type WebCategory } from '@/features/webfilter/api.ts'
@@ -186,9 +186,7 @@ function DomainColumn({
           )
         })}
         {domains.length === 0 && !(editor?.list === list && editor.domain === null) && (
-          <li className="grid flex-1 place-items-center rounded-control bg-white/45 px-4 py-5 text-center text-sm text-ink-muted">
-            Chưa có tên miền
-          </li>
+          <li><EmptyState message="Chưa có tên miền" compact /></li>
         )}
       </ul>
     </section>
