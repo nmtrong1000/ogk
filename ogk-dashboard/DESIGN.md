@@ -57,3 +57,6 @@ Trình duyệt không hỗ trợ `backdrop-filter`, hoặc người dùng bật 
 - Trang gồm tiêu đề `h1` (`text-2xl font-bold tracking-tight text-ink sm:text-3xl`), mô tả `text-ink-muted`, rồi các `Card`.
 - Chữ trên kính dùng `ink` hoặc `ink-muted`; không dùng chữ nhạt hơn `ink-subtle`.
 - Bố cục phải dùng được ở chiều rộng 375px.
+- Dùng `Dialog` cho form modal và xác nhận; lỗi kiểm tra form hiển thị ngay dưới trường liên quan, toast dành cho thông báo kết quả ở cấp trang.
+- Các nút chỉ có icon phải có accessible name; điều khiển tương tác cần trạng thái focus nhìn thấy được.
+- Tôn trọng thiết lập giảm chuyển động và không dùng màu sắc làm tín hiệu duy nhất.

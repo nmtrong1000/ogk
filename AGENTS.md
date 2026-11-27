@@ -6,6 +6,7 @@
 
 - Check the current branch, git status, and recent history before changing files. Identify the active phase from the plan and current user request; do not rely on stale chat context.
 - Read the applicable phase plan and the relevant parts of `WORKFLOW.md`, `PLAN.md`, `docs/protocol.md`, and the app's `migrations/DB_SCHEMA.md` before implementation.
+- For `ogk-dashboard` work, also read `ogk-dashboard/DESIGN.md`, `ogk-dashboard/docs/CODE_CONVENTIONS.md`, and `ogk-dashboard/docs/PROJECT_STRUCTURE.md`; apply `ogk-dashboard/docs/REVIEW_CHECKLIST.md` during REVIEW.
 - Preserve existing user changes. Do not include secrets, databases, certificates, or generated build artifacts in commits.
 
 ## Working through a phase

@@ -2,6 +2,8 @@
 
 @WORKFLOW.md
 
+For `ogk-dashboard` work, read `ogk-dashboard/DESIGN.md`, `ogk-dashboard/docs/CODE_CONVENTIONS.md`, and `ogk-dashboard/docs/PROJECT_STRUCTURE.md`; apply `ogk-dashboard/docs/REVIEW_CHECKLIST.md` during REVIEW.
+
 WORKFLOW.md above is the source of truth for phases, branches and commits, the DB schema contract, comments and language, imports and lint. The rules below only cover how Claude works inside that process. Topic rules that apply to part of the repo live in `.claude/rules/`.
 
 ## Working through a phase
