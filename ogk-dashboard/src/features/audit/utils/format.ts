@@ -58,10 +58,6 @@ export function formatValue(value: AuditValue[string] | undefined): string {
   return String(value)
 }
 
-export function formatDateTime(iso: string): string {
-  return new Date(iso).toLocaleString('vi-VN')
-}
-
 export type FieldChange = { field: string; label: string; before?: string; after?: string }
 
 export function changes(entry: AuditEntry): FieldChange[] {

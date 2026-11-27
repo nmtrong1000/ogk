@@ -1,6 +1,7 @@
 import { Card, Table, TableBody, TableHead, TableRow, Td, Th } from '@/shared/components/index.ts'
+import { formatDateTime } from '@/shared/utils/dateTime.ts'
 import type { PolicyVersion } from '@/shared/types/policy.ts'
-import { formatDateTime, formatMinutes, openHours } from '@/shared/utils/schedule.ts'
+import { formatMinutes, openHours } from '@/shared/utils/schedule.ts'
 import { setterLabel } from '@/features/policy/utils/messages.ts'
 
 export default function VersionHistory({ versions }: { versions: PolicyVersion[] }) {

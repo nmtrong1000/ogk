@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
+import { formatDateTime } from '@/shared/utils/dateTime.ts'
 import {
   Alert,
   Badge,
@@ -17,10 +18,6 @@ import {
 } from '@/shared/components/index.ts'
 import { listAccounts, unlockAccount } from '@/features/auth/api.ts'
 import { errorMessage } from '@/features/auth/utils/messages.ts'
-
-function formatDateTime(iso: string): string {
-  return new Date(iso).toLocaleString('vi-VN')
-}
 
 export default function AdminAccountsPage() {
   const queryClient = useQueryClient()

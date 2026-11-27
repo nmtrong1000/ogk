@@ -1,7 +1,8 @@
 import { Clock3, ShieldAlert } from 'lucide-react'
 import { Badge, Card } from '@/shared/components/index.ts'
+import { formatDateTime } from '@/shared/utils/dateTime.ts'
 import type { DeviceAlert } from '@/shared/types/alerts.ts'
-import { alertDetail, alertTypeLabel, formatDateTime } from '@/features/alerts/utils/messages.ts'
+import { alertDetail, alertTypeLabel } from '@/features/alerts/utils/messages.ts'
 
 type Props = { deviceName: string; alerts: DeviceAlert[] }
 

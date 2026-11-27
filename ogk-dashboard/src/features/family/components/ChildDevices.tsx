@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { Laptop, Settings2, UserRound } from 'lucide-react'
 import { childDevicesKey, listChildDevices } from '@/shared/api/devices.ts'
 import { Alert, EmptyState, Spinner } from '@/shared/components/index.ts'
+import { formatDateTime } from '@/shared/utils/dateTime.ts'
 import { deviceErrorMessage } from '@/features/family/utils/messages.ts'
 import CommandControls from '@/features/commands/components/CommandControls.tsx'
 
@@ -44,7 +45,7 @@ export default function ChildDevices({ childId }: { childId: number }) {
                   </div>
                   <span className="rounded-full bg-white/60 px-3 py-1 text-xs font-medium text-ink-muted">
                     {device.last_seen_at
-                      ? `Hoạt động ${new Date(device.last_seen_at).toLocaleString('vi-VN')}`
+                      ? `Hoạt động ${formatDateTime(device.last_seen_at)}`
                       : 'Chưa ghi nhận hoạt động'}
                   </span>
                 </div>

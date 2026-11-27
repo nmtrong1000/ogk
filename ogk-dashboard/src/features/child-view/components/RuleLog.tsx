@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Alert, Card, Pagination, Spinner } from '@/shared/components/index.ts'
+import { formatDateTime } from '@/shared/utils/dateTime.ts'
 import { childViewRuleLogKey, getChildViewRuleLog } from '@/features/child-view/api.ts'
 import { describeChanges } from '@/features/child-view/utils/describe.ts'
 import { childViewErrorMessage } from '@/features/child-view/utils/messages.ts'
@@ -26,7 +27,7 @@ export default function RuleLog() {
           <ol className="flex flex-col gap-4">
             {query.data.items.map((entry) => (
               <li key={entry.id} className="border-l-4 border-brand-300 pl-3">
-                <p className="text-sm text-ink-muted">{new Date(entry.at).toLocaleString('vi-VN')}</p>
+                <p className="text-sm text-ink-muted">{formatDateTime(entry.at)}</p>
                 <ul className="mt-1 flex flex-col gap-1 text-base text-ink">
                   {describeChanges(entry.changes).map((line) => (
                     <li key={line}>{line}</li>

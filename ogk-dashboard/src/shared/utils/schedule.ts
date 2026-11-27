@@ -2,6 +2,8 @@
  * weekly_schedule is 7 strings of 48 '0'/'1' slots, index 0 = Monday, slot k = [k*30 min, (k+1)*30 min) on the
  * child's PC clock. This must match docs/protocol.md.
  */
+import { formatClock } from '@/shared/utils/dateTime.ts'
+
 export const DAYS = 7
 export const SLOTS = 48
 export const DAY_LABELS = ['Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy', 'Chủ nhật']
@@ -11,8 +13,7 @@ export const OPEN_DAY = '1'.repeat(SLOTS)
 export const CLOSED_DAY = '0'.repeat(SLOTS)
 
 export function slotTime(slot: number): string {
-  const minutes = slot * 30
-  return `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`
+  return formatClock(slot * 30)
 }
 
 export function dayRanges(day: string): string[] {
@@ -45,8 +46,4 @@ export function formatMinutes(minutes: number): string {
   const rest = minutes % 60
   if (hours === 0) return `${rest} phút`
   return rest === 0 ? `${hours} giờ` : `${hours} giờ ${rest} phút`
-}
-
-export function formatDateTime(iso: string): string {
-  return new Date(iso).toLocaleString('vi-VN')
 }

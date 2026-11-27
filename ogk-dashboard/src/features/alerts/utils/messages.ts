@@ -22,10 +22,6 @@ export function alertDetail(alert: Pick<DeviceAlert, 'detail'>): string | null {
   return DETAIL_LABELS[alert.detail] ?? alert.detail
 }
 
-export function formatDateTime(iso: string): string {
-  return new Date(iso).toLocaleString('vi-VN')
-}
-
 export function alertErrorMessage(error: unknown): string {
   if (error instanceof ApiError && error.code === 'not_found') return 'Không tìm thấy thiết bị. Có thể đã bị gỡ.'
   return commonErrorMessage(error)

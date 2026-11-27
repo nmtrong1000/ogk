@@ -12,6 +12,7 @@ Xem toàn bộ component: `npm run dev` rồi mở `/design`. Trang này không 
 | `src/app/index.css` | Nạp Tailwind, nền gradient, style gốc |
 | `src/shared/components/` | Component dùng chung, import qua `index.ts` |
 | `src/shared/utils/cn.ts` | Ghép class có điều kiện |
+| `src/shared/utils/dateTime.ts` | Format ngày giờ chung qua `DATE_FORMATS`, `formatDateTime`, `formatDate` và `formatTime` |
 
 ## Token
 

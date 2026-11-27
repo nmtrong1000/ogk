@@ -26,8 +26,8 @@ import {
   Td,
   Th,
 } from '@/shared/components/index.ts'
+import { formatDateTime } from '@/shared/utils/dateTime.ts'
 import type { Child, Device } from '@/shared/types/family.ts'
-import { formatDateTime } from '@/features/family/utils/time.ts'
 
 type Props = {
   device: Device

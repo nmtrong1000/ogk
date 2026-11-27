@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { Button } from '@/shared/components/index.ts'
+import { formatDate } from '@/shared/utils/dateTime.ts'
 import type { DayUsage, WeekUsage } from '@/shared/types/reports.ts'
-import { formatDay, formatDuration } from '@/shared/utils/duration.ts'
+import { formatDuration } from '@/shared/utils/duration.ts'
 
 type Mode = 'day' | 'week'
 
@@ -10,11 +11,11 @@ type Point = { label: string; hours: number; seconds: number; weekStart?: string
 
 function points(mode: Mode, daily: DayUsage[], weekly: WeekUsage[]): Point[] {
   if (mode === 'day') {
-    return daily.map((d) => ({ label: formatDay(d.date), hours: d.seconds / 3600, seconds: d.seconds }))
+    return daily.map((d) => ({ label: formatDate(d.date), hours: d.seconds / 3600, seconds: d.seconds }))
   }
   return weekly.map((w, index) => ({
     label: `Tuần ${index + 1}`,
-    weekStart: formatDay(w.week_start),
+    weekStart: formatDate(w.week_start),
     hours: w.seconds / 3600,
     seconds: w.seconds,
   }))

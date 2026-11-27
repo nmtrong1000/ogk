@@ -10,8 +10,3 @@ export function formatDuration(seconds: number): string {
 export function formatHours(seconds: number): string {
   return `${(seconds / 3600).toLocaleString('vi-VN', { maximumFractionDigits: 1 })} giờ`
 }
-
-export function formatDay(isoDate: string): string {
-  const [year, month, day] = isoDate.split('-').map(Number)
-  return new Date(year, month - 1, day).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })
-}

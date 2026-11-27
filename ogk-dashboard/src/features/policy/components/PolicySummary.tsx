@@ -1,8 +1,9 @@
 import { Badge, Button, Card } from '@/shared/components/index.ts'
 import { AppWindow, ArrowRight, CalendarDays, CalendarRange, Clock3 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import { formatDateTime } from '@/shared/utils/dateTime.ts'
 import type { Policy } from '@/shared/types/policy.ts'
-import { DAY_LABELS, describeDay, formatDateTime, formatMinutes, openHours } from '@/shared/utils/schedule.ts'
+import { DAY_LABELS, describeDay, formatMinutes, openHours } from '@/shared/utils/schedule.ts'
 import { setterLabel } from '@/features/policy/utils/messages.ts'
 
 export default function PolicySummary({ policy }: { policy: Policy }) {

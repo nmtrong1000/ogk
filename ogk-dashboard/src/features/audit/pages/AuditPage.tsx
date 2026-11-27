@@ -16,9 +16,10 @@ import {
   Th,
 } from '@/shared/components/index.ts'
 import type { AuditEntry } from '@/shared/types/audit.ts'
+import { formatDateTime } from '@/shared/utils/dateTime.ts'
 import { auditKey, listAudit, PAGE_SIZE } from '@/features/audit/api.ts'
 import ChangeSummary from '@/features/audit/components/ChangeSummary.tsx'
-import { ACTION_TONES, actionLabel, formatDateTime } from '@/features/audit/utils/format.ts'
+import { ACTION_TONES, actionLabel } from '@/features/audit/utils/format.ts'
 
 function ActionBadge({ entry }: { entry: AuditEntry }) {
   return <Badge tone={ACTION_TONES[entry.action] ?? 'neutral'}>{actionLabel(entry)}</Badge>

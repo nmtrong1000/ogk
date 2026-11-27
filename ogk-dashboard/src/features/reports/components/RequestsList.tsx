@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Alert, Badge, EmptyState, Pagination, Spinner } from '@/shared/components/index.ts'
+import { formatDateTime } from '@/shared/utils/dateTime.ts'
 import type { ReportRequest } from '@/shared/types/reports.ts'
 import { getReportRequests, reportRequestsKey } from '@/features/reports/api.ts'
 
@@ -33,7 +34,7 @@ export default function RequestsList({ childId }: { childId: number }) {
               <p className="truncate text-sm text-ink">
                 {item.type === 'add_time' ? 'Xin thêm giờ' : `Báo chặn nhầm: ${item.domain}`}
               </p>
-              <p className="text-xs text-ink-muted">{new Date(item.created_at).toLocaleString('vi-VN')}</p>
+              <p className="text-xs text-ink-muted">{formatDateTime(item.created_at)}</p>
             </div>
             {status(item)}
           </li>
