@@ -100,12 +100,13 @@ function AppControl({ id }: { id: number }) {
           key={`app-form-${data.policy_version}`}
           rules={rules}
           groups={data.app_groups}
+          childId={id}
           pending={save.isPending}
           onAdd={(rule) => submit([...rules, rule], `Đã thêm luật cho ${rule.name}.`)}
         />
       </Card>
 
-      <Card title="Danh sách ứng dụng" description={`${rules.length} luật`}>
+      <Card title="Danh sách ứng dụng" description="Xem và điều chỉnh cách từng ứng dụng được kiểm soát.">
         <AppRuleTable
           rules={rules}
           groups={data.app_groups}
