@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { CircleCheck, LockKeyhole, Mail, UnlockKeyhole, UsersRound } from 'lucide-react'
 import { formatDateTime } from '@/shared/utils/dateTime.ts'
+import { useToast } from '@/shared/components/ToastContext.ts'
 import {
   Alert,
   Badge,
@@ -22,21 +23,29 @@ import { errorMessage } from '@/features/auth/utils/messages.ts'
 
 export default function AdminAccountsPage() {
   const queryClient = useQueryClient()
-  const [lockedOnly, setLockedOnly] = useState(true)
+  const showToast = useToast()
+  const [lockedOnly, setLockedOnly] = useState(false)
   const accounts = useQuery({
     queryKey: ['admin', 'accounts', { lockedOnly }],
     queryFn: () => listAccounts(lockedOnly),
   })
   const unlock = useMutation({
     mutationFn: unlockAccount,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin', 'accounts'] }),
+    onSuccess: (account) => {
+      if (lockedOnly) setLockedOnly(false)
+      showToast({ tone: 'success', message: `Đã mở khóa ${account.email}. Đang hiển thị tất cả tài khoản.` })
+      return queryClient.invalidateQueries({ queryKey: ['admin', 'accounts'] })
+    },
+    onError: (error) => showToast({ tone: 'error', message: errorMessage(error) }),
   })
 
   return (
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-ink sm:text-3xl">Tài khoản phụ huynh</h1>
-        <p className="mt-1 text-ink-muted">Mở khóa tài khoản bị khóa do nhập sai mật khẩu nhiều lần.</p>
+        <p className="mt-1 text-ink-muted">
+          Tài khoản tự khóa sau 5 lần nhập sai mật khẩu. Admin có thể mở khóa tại đây.
+        </p>
       </div>
       <Card
         strong
@@ -59,7 +68,6 @@ export default function AdminAccountsPage() {
         }
       >
         <div className="flex flex-col gap-4">
-          {unlock.isError && <Alert tone="error">{errorMessage(unlock.error)}</Alert>}
           {accounts.isPending && (
             <div className="grid place-items-center py-8">
               <Spinner />
