@@ -61,60 +61,36 @@ export default function AuditPage() {
           {data?.items.length === 0 && <EmptyState message="Chưa có thay đổi nào." />}
 
           {data && data.items.length > 0 && (
-            <>
-              <ul className="flex flex-col gap-3 sm:hidden">
+            <Table className="min-w-[900px]">
+              <TableHead>
+                <tr>
+                  <Th>Thời điểm</Th>
+                  <Th>Thao tác</Th>
+                  <Th>Thay đổi</Th>
+                  <Th>Người thực hiện</Th>
+                  <Th>IP</Th>
+                </tr>
+              </TableHead>
+              <TableBody>
                 {data.items.map((entry) => (
-                  <li key={entry.id} className="rounded-control bg-white/50 p-3 text-sm ring-1 ring-brand-100/80">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
+                  <TableRow key={entry.id}>
+                    <Td className="whitespace-nowrap">
+                      <time dateTime={entry.at}>{formatDateTime(entry.at)}</time>
+                    </Td>
+                    <Td>
                       <ActionBadge entry={entry} />
-                      <time dateTime={entry.at} className="text-xs text-ink-muted">
-                        {formatDateTime(entry.at)}
-                      </time>
-                    </div>
-                    <div className="mt-2">
+                    </Td>
+                    <Td>
                       <ChangeSummary entry={entry} />
-                    </div>
-                    <div className="mt-2 flex flex-col gap-0.5 text-xs text-ink-muted">
+                    </Td>
+                    <Td>
                       <Actor entry={entry} />
-                      <span>IP: {entry.ip}</span>
-                    </div>
-                  </li>
+                    </Td>
+                    <Td className="whitespace-nowrap font-mono text-xs">{entry.ip}</Td>
+                  </TableRow>
                 ))}
-              </ul>
-
-              <div className="hidden sm:block">
-                <Table>
-                  <TableHead>
-                    <tr>
-                      <Th>Thời điểm</Th>
-                      <Th>Thao tác</Th>
-                      <Th>Thay đổi</Th>
-                      <Th>Người thực hiện</Th>
-                      <Th>IP</Th>
-                    </tr>
-                  </TableHead>
-                  <TableBody>
-                    {data.items.map((entry) => (
-                      <TableRow key={entry.id}>
-                        <Td className="whitespace-nowrap">
-                          <time dateTime={entry.at}>{formatDateTime(entry.at)}</time>
-                        </Td>
-                        <Td>
-                          <ActionBadge entry={entry} />
-                        </Td>
-                        <Td>
-                          <ChangeSummary entry={entry} />
-                        </Td>
-                        <Td>
-                          <Actor entry={entry} />
-                        </Td>
-                        <Td className="font-mono text-xs">{entry.ip}</Td>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </>
+              </TableBody>
+            </Table>
           )}
 
           {data && data.total > PAGE_SIZE && (
