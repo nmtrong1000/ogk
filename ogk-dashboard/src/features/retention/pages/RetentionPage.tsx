@@ -5,9 +5,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { Database } from 'lucide-react'
 import { ApiError } from '@/shared/api/client.ts'
 import { getPolicyChild, policyChildKey, policyVersionsKey } from '@/shared/api/policy.ts'
-import { Alert, Button, Card, Dialog } from '@/shared/components/index.ts'
+import { Alert, Button, Card, ChildPageHeader, Dialog } from '@/shared/components/index.ts'
 import type { WipeResult } from '@/shared/types/retention.ts'
 import { wipeChildData } from '@/features/retention/api.ts'
 import { errorMessage } from '@/features/retention/utils/messages.ts'
@@ -61,13 +62,11 @@ function Retention({ id }: { id: number }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-ink sm:text-3xl">Dữ liệu của con</h1>
-        <p className="mt-1 text-ink-muted">
-          Lịch sử dùng máy, ứng dụng, website, yêu cầu và lệnh được tự động xóa sau {RETENTION_DAYS} ngày trên máy chủ
-          và trên máy tính của con.
-        </p>
-      </div>
+      <ChildPageHeader
+        title="Dữ liệu của con"
+        description={`Lịch sử dùng máy, ứng dụng, website, yêu cầu và lệnh được tự động xóa sau ${RETENTION_DAYS} ngày trên máy chủ và trên máy tính của con.`}
+        icon={Database}
+      />
 
       {wipe.isSuccess && <Alert tone="success">{doneMessage(wipe.data)}</Alert>}
 

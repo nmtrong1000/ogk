@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router-dom'
+import { ChartLine } from 'lucide-react'
 import { ApiError } from '@/shared/api/client.ts'
 import { commonErrorMessage } from '@/shared/api/errors.ts'
 import { getPolicyChild, policyChildKey } from '@/shared/api/policy.ts'
-import { Alert, Card, Select, Spinner } from '@/shared/components/index.ts'
+import { Alert, Card, ChildPageHeader, Select, Spinner } from '@/shared/components/index.ts'
 import { formatDuration } from '@/shared/utils/duration.ts'
 import { getReport, reportKey } from '@/features/reports/api.ts'
 import BlockedStats from '@/features/reports/components/BlockedStats.tsx'
@@ -56,13 +57,11 @@ function Reports({ id }: { id: number }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-ink sm:text-3xl">Báo cáo sử dụng</h1>
-        <p className="mt-1 text-ink-muted">
-          Thời gian dùng máy, ứng dụng và website {child.data ? `của ${child.data.name}` : ''}. Con xem được cùng số
-          liệu này từ biểu tượng OGK trên máy.
-        </p>
-      </div>
+      <ChildPageHeader
+        title="Báo cáo sử dụng"
+        description={`Thời gian dùng máy, ứng dụng và website ${child.data ? `của ${child.data.name}` : ''}. Con xem được cùng số liệu này từ biểu tượng OGK trên máy.`}
+        icon={ChartLine}
+      />
 
       <Select
         label="Khoảng thời gian"

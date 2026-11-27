@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import { CalendarDays, CalendarRange } from 'lucide-react'
 import { Alert, Button, TextField } from '@/shared/components/index.ts'
 import { useToast } from '@/shared/components/ToastContext.ts'
 import { screentimeErrorMessage } from '@/features/screentime/utils/messages.ts'
@@ -25,17 +26,33 @@ function QuotaRow({
   hint,
   parts,
   onChange,
+  icon: Icon,
+  tint,
 }: {
   label: string
   hint: string
   parts: Parts
   onChange: (parts: Parts) => void
+  icon: typeof CalendarDays
+  tint: 'sky' | 'violet'
 }) {
   return (
-    <fieldset className="flex flex-col gap-2">
-      <legend className="text-sm font-semibold text-ink">{label}</legend>
-      <p className="text-sm text-ink-muted">{hint}</p>
-      <div className="grid grid-cols-2 gap-3 sm:max-w-sm">
+    <fieldset
+      className={`glass-strong min-w-0 rounded-glass p-4 ring-1 ring-inset ${tint === 'sky' ? 'ring-sky-200/70' : 'ring-violet-200/70'}`}
+    >
+      <legend className="sr-only">{label}</legend>
+      <div className="mb-4 flex items-center gap-3">
+        <span
+          className={`grid size-10 shrink-0 place-items-center rounded-xl ${tint === 'sky' ? 'bg-sky-100/80 text-sky-700' : 'bg-violet-100/80 text-violet-700'}`}
+        >
+          <Icon aria-hidden="true" className="size-5" />
+        </span>
+        <div>
+          <p className="font-semibold text-ink">{label}</p>
+          <p className="text-sm text-ink-muted">{hint}</p>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
         <TextField
           label="Giờ"
           required
@@ -76,8 +93,24 @@ export default function QuotaForm({ initial, pending, error, saved, onSubmit }: 
     <form className="flex flex-col gap-5" onSubmit={submit} noValidate>
       {error != null && <Alert tone="error">{screentimeErrorMessage(error)}</Alert>}
       {saved && error == null && <Alert tone="success">Đã lưu giới hạn thời gian.</Alert>}
-      <QuotaRow label="Ngày thường" hint="Thứ Hai đến thứ Sáu" parts={weekday} onChange={setWeekday} />
-      <QuotaRow label="Cuối tuần" hint="Thứ Bảy và Chủ nhật" parts={weekend} onChange={setWeekend} />
+      <div className="grid gap-3 sm:grid-cols-2">
+        <QuotaRow
+          label="Ngày thường"
+          hint="Thứ Hai đến thứ Sáu"
+          parts={weekday}
+          onChange={setWeekday}
+          icon={CalendarDays}
+          tint="sky"
+        />
+        <QuotaRow
+          label="Cuối tuần"
+          hint="Thứ Bảy và Chủ nhật"
+          parts={weekend}
+          onChange={setWeekend}
+          icon={CalendarRange}
+          tint="violet"
+        />
+      </div>
       <div className="flex justify-end">
         <Button type="submit" loading={pending}>
           Lưu giới hạn

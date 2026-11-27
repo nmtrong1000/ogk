@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
+import { Globe } from 'lucide-react'
 import { ApiError } from '@/shared/api/client.ts'
 import {
   getPolicyChild,
@@ -10,7 +11,7 @@ import {
   getPolicy,
   updatePolicy,
 } from '@/shared/api/policy.ts'
-import { Alert, Button, Card, Spinner, TextField } from '@/shared/components/index.ts'
+import { Alert, Button, Card, ChildPageHeader, Spinner, TextField } from '@/shared/components/index.ts'
 import type { Policy } from '@/shared/types/policy.ts'
 import { WEB_CATEGORIES } from '@/features/webfilter/api.ts'
 
@@ -53,10 +54,11 @@ export default function WebFilterPage() {
   }
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-bold text-ink">Lọc website</h1>
-        <p className="mt-1 text-ink-muted">Luật miễn chặn luôn được ưu tiên hơn luật chặn.</p>
-      </div>
+      <ChildPageHeader
+        title="Lọc website"
+        description="Luật miễn chặn luôn được ưu tiên hơn luật chặn."
+        icon={Globe}
+      />
       {save.error && <Alert tone="error">Không lưu được luật website.</Alert>}
       <Card title="Nhóm bị chặn" description="Chọn nhóm áp dụng cho tài khoản trẻ này.">
         <div className="grid gap-3 sm:grid-cols-2">
