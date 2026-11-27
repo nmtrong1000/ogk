@@ -11,7 +11,14 @@ import { getMe } from '@/features/auth/api.ts'
 export const ME_KEY = ['me'] as const
 
 export function useMe() {
-  return useQuery({ queryKey: ME_KEY, queryFn: getMe, staleTime: 60_000 })
+  // A failed auth bootstrap should not fan out into repeated /api/auth/me requests.
+  // In particular, the global retry policy would retry a 502 twice on every fresh visit.
+  return useQuery({
+    queryKey: ME_KEY,
+    queryFn: getMe,
+    staleTime: 60_000,
+    retry: false,
+  })
 }
 
 export function switchSession(queryClient: QueryClient, account: Account | null) {

@@ -4,7 +4,8 @@
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import { AppWindow, ArrowUpRight } from 'lucide-react'
 import { ApiError } from '@/shared/api/client.ts'
 import {
   getPolicy,
@@ -14,7 +15,7 @@ import {
   policyVersionsKey,
   updatePolicy,
 } from '@/shared/api/policy.ts'
-import { Alert, Card, Spinner } from '@/shared/components/index.ts'
+import { Alert, Badge, Button, Card, ChildPageHeader, Spinner } from '@/shared/components/index.ts'
 import type { AppRule, Policy } from '@/shared/types/policy.ts'
 import AppRuleForm from '@/features/appcontrol/components/AppRuleForm.tsx'
 import AppRuleTable from '@/features/appcontrol/components/AppRuleTable.tsx'
@@ -43,6 +44,7 @@ export default function AppControlPage() {
 }
 
 function AppControl({ id }: { id: number }) {
+  const navigate = useNavigate()
   const queryClient = useQueryClient()
   const child = useQuery({ queryKey: policyChildKey(id), queryFn: () => getPolicyChild(id) })
   const policy = useQuery({ queryKey: policyKey(id), queryFn: () => getPolicy(id) })
@@ -75,16 +77,20 @@ function AppControl({ id }: { id: number }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <p className="text-sm">
-          <Link to={`/children/${id}`}>← {child.data?.name ?? 'Thông tin của con'}</Link>
-        </p>
-        <h1 className="mt-2 text-2xl font-bold tracking-tight text-ink sm:text-3xl">Ứng dụng</h1>
-        <p className="mt-1 text-ink-muted">
-          Ứng dụng bị chặn sẽ bị đóng ngay khi mở trên máy của {child.data?.name ?? 'con'}, kèm thông báo lý do và người
-          đặt luật. Đang áp phiên bản {data.policy_version}. <Link to={`/children/${id}/policy`}>Xem chính sách</Link>
-        </p>
-      </div>
+      <ChildPageHeader
+        title="Ứng dụng"
+        icon={AppWindow}
+        description={`Ứng dụng bị chặn sẽ bị đóng ngay khi mở trên máy của ${child.data?.name ?? 'con'}, kèm thông báo lý do và người đặt luật.`}
+        actions={
+          <>
+            <Badge tone="brand">Phiên bản {data.policy_version}</Badge>
+            <Button variant="secondary" onClick={() => navigate(`/children/${id}/policy`)}>
+              Xem chính sách
+              <ArrowUpRight aria-hidden="true" className="size-4" />
+            </Button>
+          </>
+        }
+      />
 
       {save.error != null && <Alert tone="error">{appcontrolErrorMessage(save.error)}</Alert>}
       {saved && save.error == null && <Alert tone="success">{saved}</Alert>}
@@ -94,12 +100,13 @@ function AppControl({ id }: { id: number }) {
           key={`app-form-${data.policy_version}`}
           rules={rules}
           groups={data.app_groups}
+          childId={id}
           pending={save.isPending}
           onAdd={(rule) => submit([...rules, rule], `Đã thêm luật cho ${rule.name}.`)}
         />
       </Card>
 
-      <Card title="Danh sách ứng dụng" description={`${rules.length} luật`}>
+      <Card title="Danh sách ứng dụng" description="Xem và điều chỉnh cách từng ứng dụng được kiểm soát.">
         <AppRuleTable
           rules={rules}
           groups={data.app_groups}

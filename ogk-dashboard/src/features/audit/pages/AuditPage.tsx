@@ -4,8 +4,9 @@ import { commonErrorMessage } from '@/shared/api/errors.ts'
 import {
   Alert,
   Badge,
-  Button,
   Card,
+  EmptyState,
+  Pagination,
   Spinner,
   Table,
   TableBody,
@@ -15,9 +16,10 @@ import {
   Th,
 } from '@/shared/components/index.ts'
 import type { AuditEntry } from '@/shared/types/audit.ts'
+import { formatDateTime } from '@/shared/utils/dateTime.ts'
 import { auditKey, listAudit, PAGE_SIZE } from '@/features/audit/api.ts'
 import ChangeSummary from '@/features/audit/components/ChangeSummary.tsx'
-import { ACTION_TONES, actionLabel, formatDateTime } from '@/features/audit/utils/format.ts'
+import { ACTION_TONES, actionLabel } from '@/features/audit/utils/format.ts'
 
 function ActionBadge({ entry }: { entry: AuditEntry }) {
   return <Badge tone={ACTION_TONES[entry.action] ?? 'neutral'}>{actionLabel(entry)}</Badge>
@@ -56,82 +58,43 @@ export default function AuditPage() {
             </div>
           )}
           {audit.isError && <Alert tone="error">{commonErrorMessage(audit.error)}</Alert>}
-          {data?.items.length === 0 && <p className="py-8 text-center text-sm text-ink-muted">Chưa có thay đổi nào.</p>}
+          {data?.items.length === 0 && <EmptyState message="Chưa có thay đổi nào." />}
 
           {data && data.items.length > 0 && (
-            <>
-              <ul className="flex flex-col gap-3 sm:hidden">
+            <Table className="min-w-[900px]">
+              <TableHead>
+                <tr>
+                  <Th>Thời điểm</Th>
+                  <Th>Thao tác</Th>
+                  <Th>Thay đổi</Th>
+                  <Th>Người thực hiện</Th>
+                  <Th>IP</Th>
+                </tr>
+              </TableHead>
+              <TableBody>
                 {data.items.map((entry) => (
-                  <li key={entry.id} className="rounded-control bg-white/50 p-3 text-sm ring-1 ring-brand-100/80">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
+                  <TableRow key={entry.id}>
+                    <Td className="whitespace-nowrap">
+                      <time dateTime={entry.at}>{formatDateTime(entry.at)}</time>
+                    </Td>
+                    <Td>
                       <ActionBadge entry={entry} />
-                      <time dateTime={entry.at} className="text-xs text-ink-muted">
-                        {formatDateTime(entry.at)}
-                      </time>
-                    </div>
-                    <div className="mt-2">
+                    </Td>
+                    <Td>
                       <ChangeSummary entry={entry} />
-                    </div>
-                    <div className="mt-2 flex flex-col gap-0.5 text-xs text-ink-muted">
+                    </Td>
+                    <Td>
                       <Actor entry={entry} />
-                      <span>IP: {entry.ip}</span>
-                    </div>
-                  </li>
+                    </Td>
+                    <Td className="whitespace-nowrap font-mono text-xs">{entry.ip}</Td>
+                  </TableRow>
                 ))}
-              </ul>
-
-              <div className="hidden sm:block">
-                <Table>
-                  <TableHead>
-                    <tr>
-                      <Th>Thời điểm</Th>
-                      <Th>Thao tác</Th>
-                      <Th>Thay đổi</Th>
-                      <Th>Người thực hiện</Th>
-                      <Th>IP</Th>
-                    </tr>
-                  </TableHead>
-                  <TableBody>
-                    {data.items.map((entry) => (
-                      <TableRow key={entry.id}>
-                        <Td className="whitespace-nowrap">
-                          <time dateTime={entry.at}>{formatDateTime(entry.at)}</time>
-                        </Td>
-                        <Td>
-                          <ActionBadge entry={entry} />
-                        </Td>
-                        <Td>
-                          <ChangeSummary entry={entry} />
-                        </Td>
-                        <Td>
-                          <Actor entry={entry} />
-                        </Td>
-                        <Td className="font-mono text-xs">{entry.ip}</Td>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </>
+              </TableBody>
+            </Table>
           )}
 
           {data && data.total > PAGE_SIZE && (
-            <nav aria-label="Phân trang" className="flex items-center justify-between gap-2">
-              <Button variant="secondary" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
-                Trước
-              </Button>
-              <span className="text-sm text-ink-muted">
-                Trang {page}/{pages}
-              </span>
-              <Button
-                variant="secondary"
-                size="sm"
-                disabled={page >= pages || audit.isPlaceholderData}
-                onClick={() => setPage((p) => p + 1)}
-              >
-                Sau
-              </Button>
-            </nav>
+            <Pagination page={page} totalPages={pages} onPageChange={setPage} disabled={audit.isPlaceholderData} />
           )}
         </div>
       </Card>

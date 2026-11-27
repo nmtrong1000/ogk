@@ -1,0 +1,6 @@
+export { default as AppFooter } from '@/shared/layouts/AppFooter.tsx'
+export { default as AppLayout } from '@/shared/layouts/AppLayout.tsx'
+export { default as AuthLayout } from '@/shared/layouts/AuthLayout.tsx'
+export { default as Breadcrumbs } from '@/shared/layouts/Breadcrumbs.tsx'
+export { default as ChildPageNavigation } from '@/shared/layouts/ChildPageNavigation.tsx'
+export { default as DashboardSidebar } from '@/shared/layouts/DashboardSidebar.tsx'

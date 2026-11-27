@@ -12,7 +12,7 @@ import { AppControlPage } from '@/features/appcontrol/index.ts'
 import { AdminCatalogPage, WebFilterPage } from '@/features/webfilter/index.ts'
 import ErrorPage from '@/app/ErrorPage.tsx'
 import HomePage from '@/app/HomePage.tsx'
-import Layout from '@/app/Layout.tsx'
+import { AppLayout, AuthLayout } from '@/shared/layouts/index.ts'
 import NotFoundPage from '@/app/NotFoundPage.tsx'
 
 const devRoutes: RouteObject[] = import.meta.env.DEV
@@ -21,11 +21,18 @@ const devRoutes: RouteObject[] = import.meta.env.DEV
 
 export const router = createBrowserRouter([
   {
-    element: <Layout />,
+    element: <AuthLayout />,
     errorElement: <ErrorPage />,
     children: [
       { path: '/login', element: <LoginPage /> },
       { path: '/register', element: <RegisterPage /> },
+      { path: '*', element: <NotFoundPage /> },
+    ],
+  },
+  {
+    element: <AppLayout />,
+    errorElement: <ErrorPage />,
+    children: [
       { path: '/child-view/start', element: <ChildViewStartPage /> },
       { path: '/child-view', element: <ChildViewPage /> },
       {
@@ -51,8 +58,8 @@ export const router = createBrowserRouter([
           },
           { path: '/devices', element: <DevicesPage /> },
           { path: '/devices/add', element: <AddDevicePage /> },
-          { path: '/alerts', element: <AlertsPage /> },
-          { path: '/requests', element: <RequestsPage /> },
+          { path: '/devices/:id/alerts', element: <AlertsPage /> },
+          { path: '/children/requests', element: <RequestsPage /> },
         ],
       },
       {
@@ -67,7 +74,6 @@ export const router = createBrowserRouter([
         children: [{ path: '/audit', element: <AuditPage /> }],
       },
       ...devRoutes,
-      { path: '*', element: <NotFoundPage /> },
     ],
   },
 ])

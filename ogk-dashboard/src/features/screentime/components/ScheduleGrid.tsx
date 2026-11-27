@@ -5,6 +5,7 @@
  */
 import { useRef, useState, type PointerEvent } from 'react'
 import { Alert, Button, Select } from '@/shared/components/index.ts'
+import { useToast } from '@/shared/components/ToastContext.ts'
 import {
   CLOSED_DAY,
   DAY_LABELS,
@@ -18,6 +19,7 @@ import {
 } from '@/shared/utils/schedule.ts'
 import { cn } from '@/shared/utils/cn.ts'
 import { screentimeErrorMessage } from '@/features/screentime/utils/messages.ts'
+import { weeklyScheduleSchema } from '@/features/screentime/schemas.ts'
 
 type Props = {
   initial: string[]
@@ -143,6 +145,7 @@ function PhoneDay({ day, index, onChange }: { day: string; index: number; onChan
 }
 
 export default function ScheduleGrid({ initial, pending, error, saved, onSubmit }: Props) {
+  const showToast = useToast()
   const [days, setDays] = useState(initial)
   const [selected, setSelected] = useState(0)
   const dirty = days.some((day, i) => day !== initial[i])
@@ -153,6 +156,15 @@ export default function ScheduleGrid({ initial, pending, error, saved, onSubmit 
 
   function copyTo(targets: number[]) {
     setDays(days.map((day, i) => (targets.includes(i) ? days[selected] : day)))
+  }
+
+  function submit() {
+    const result = weeklyScheduleSchema.safeParse(days)
+    if (!result.success) {
+      showToast({ tone: 'error', message: result.error.issues[0].message })
+      return
+    }
+    onSubmit(result.data)
   }
 
   return (
@@ -207,7 +219,7 @@ export default function ScheduleGrid({ initial, pending, error, saved, onSubmit 
         <Button variant="ghost" disabled={!dirty || pending} onClick={() => setDays(initial)}>
           Hoàn tác
         </Button>
-        <Button loading={pending} disabled={!dirty} onClick={() => onSubmit(days)}>
+        <Button loading={pending} disabled={!dirty} onClick={submit}>
           Lưu lịch
         </Button>
       </div>

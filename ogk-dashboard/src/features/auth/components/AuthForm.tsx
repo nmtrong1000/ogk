@@ -4,13 +4,13 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState, type FormEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Alert, Button, TextField } from '@/shared/components/index.ts'
+import { Button, TextField } from '@/shared/components/index.ts'
+import { useToast } from '@/shared/components/ToastContext.ts'
 import type { Account } from '@/shared/types/auth.ts'
 import type { Credentials } from '@/features/auth/api.ts'
 import { errorMessage } from '@/features/auth/utils/messages.ts'
 import { switchSession } from '@/features/auth/hooks/useMe.ts'
-
-export const MIN_PASSWORD_LENGTH = 10
+import { loginFormSchema, MIN_PASSWORD_LENGTH, registerFormSchema } from '@/features/auth/schemas.ts'
 
 function safeNext(next: string | null, account: Account): string {
   if (next && next.startsWith('/') && !next.startsWith('//')) return next
@@ -24,15 +24,15 @@ type Props = {
 
 export default function AuthForm({ mode, submit }: Props) {
   const queryClient = useQueryClient()
+  const showToast = useToast()
   const navigate = useNavigate()
   const [params] = useSearchParams()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
-  const [localError, setLocalError] = useState<string | null>(null)
-
   const mutation = useMutation({
     mutationFn: submit,
+    onError: (error) => showToast({ tone: 'error', message: errorMessage(error) }),
     onSuccess: (account) => {
       switchSession(queryClient, account)
       navigate(safeNext(params.get('next'), account), { replace: true })
@@ -41,15 +41,16 @@ export default function AuthForm({ mode, submit }: Props) {
 
   function onSubmit(event: FormEvent) {
     event.preventDefault()
-    setLocalError(null)
-    if (mode === 'register') {
-      if (password.length < MIN_PASSWORD_LENGTH) return setLocalError('Mật khẩu phải có ít nhất 10 ký tự')
-      if (password !== confirm) return setLocalError('Hai lần nhập mật khẩu không khớp')
+    const result =
+      mode === 'register'
+        ? registerFormSchema.safeParse({ email, password, confirmPassword: confirm })
+        : loginFormSchema.safeParse({ email, password })
+    if (!result.success) {
+      showToast({ tone: 'error', message: result.error.issues[0].message })
+      return
     }
-    mutation.mutate({ email, password })
+    mutation.mutate({ email: result.data.email, password: result.data.password })
   }
-
-  const error = localError ?? (mutation.isError ? errorMessage(mutation.error) : null)
 
   return (
     <form className="flex flex-col gap-4" onSubmit={onSubmit} noValidate>
@@ -81,7 +82,6 @@ export default function AuthForm({ mode, submit }: Props) {
           onChange={(e) => setConfirm(e.target.value)}
         />
       )}
-      {error && <Alert tone="error">{error}</Alert>}
       <Button type="submit" size="lg" block loading={mutation.isPending} className="mt-1">
         {mode === 'login' ? 'Đăng nhập' : 'Tạo tài khoản'}
       </Button>

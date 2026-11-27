@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router-dom'
+import { CalendarDays, ChartLine } from 'lucide-react'
 import { ApiError } from '@/shared/api/client.ts'
 import { commonErrorMessage } from '@/shared/api/errors.ts'
 import { getPolicyChild, policyChildKey } from '@/shared/api/policy.ts'
-import { Alert, Card, Select, Spinner } from '@/shared/components/index.ts'
+import { Alert, Card, ChildPageHeader, Select, Spinner } from '@/shared/components/index.ts'
 import { formatDuration } from '@/shared/utils/duration.ts'
 import { getReport, reportKey } from '@/features/reports/api.ts'
 import BlockedStats from '@/features/reports/components/BlockedStats.tsx'
@@ -56,24 +57,30 @@ function Reports({ id }: { id: number }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <p className="text-sm">
-          <Link to={`/children/${id}`}>← {child.data?.name ?? 'Con'}</Link>
-        </p>
-        <h1 className="mt-2 text-2xl font-bold tracking-tight text-ink sm:text-3xl">Báo cáo sử dụng</h1>
-        <p className="mt-1 text-ink-muted">
-          Thời gian dùng máy, ứng dụng và website {child.data ? `của ${child.data.name}` : ''}. Con xem được cùng số
-          liệu này từ biểu tượng OGK trên máy.
-        </p>
-      </div>
-
-      <Select
-        label="Khoảng thời gian"
-        options={RANGES}
-        value={String(days)}
-        onChange={(event) => setDays(Number(event.target.value))}
-        className="sm:max-w-xs"
+      <ChildPageHeader
+        title="Báo cáo sử dụng"
+        description={`Thời gian dùng máy, ứng dụng và website ${child.data ? `của ${child.data.name}` : ''}. Con xem được cùng số liệu này từ biểu tượng OGK trên máy.`}
+        icon={ChartLine}
       />
+
+      <div className="glass-strong flex flex-col gap-4 rounded-glass p-4 ring-1 ring-inset ring-brand-100/70 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+        <div className="flex items-center gap-3">
+          <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-brand-100/80 text-brand-700">
+            <CalendarDays aria-hidden="true" className="size-5" />
+          </span>
+          <div>
+            <p className="font-semibold text-ink">Khoảng thời gian gần nhất</p>
+            <p className="mt-0.5 text-sm text-ink-muted">Chọn phạm vi dữ liệu cho báo cáo.</p>
+          </div>
+        </div>
+        <Select
+          label="Khoảng thời gian"
+          options={RANGES}
+          value={String(days)}
+          onChange={(event) => setDays(Number(event.target.value))}
+          className="w-full sm:max-w-xs"
+        />
+      </div>
 
       {report.isError && <Alert tone="error">{commonErrorMessage(report.error)}</Alert>}
       {report.isPending && (

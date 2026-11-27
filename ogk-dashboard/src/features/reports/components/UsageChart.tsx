@@ -1,18 +1,24 @@
 import { useState } from 'react'
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { Button } from '@/shared/components/index.ts'
+import { formatDate } from '@/shared/utils/dateTime.ts'
 import type { DayUsage, WeekUsage } from '@/shared/types/reports.ts'
-import { formatDay, formatDuration } from '@/shared/utils/duration.ts'
+import { formatDuration } from '@/shared/utils/duration.ts'
 
 type Mode = 'day' | 'week'
 
-type Point = { label: string; hours: number; seconds: number }
+type Point = { label: string; hours: number; seconds: number; weekStart?: string }
 
 function points(mode: Mode, daily: DayUsage[], weekly: WeekUsage[]): Point[] {
   if (mode === 'day') {
-    return daily.map((d) => ({ label: formatDay(d.date), hours: d.seconds / 3600, seconds: d.seconds }))
+    return daily.map((d) => ({ label: formatDate(d.date), hours: d.seconds / 3600, seconds: d.seconds }))
   }
-  return weekly.map((w) => ({ label: `Tuần ${formatDay(w.week_start)}`, hours: w.seconds / 3600, seconds: w.seconds }))
+  return weekly.map((w, index) => ({
+    label: `Tuần ${index + 1}`,
+    weekStart: formatDate(w.week_start),
+    hours: w.seconds / 3600,
+    seconds: w.seconds,
+  }))
 }
 
 export default function UsageChart({ daily, weekly }: { daily: DayUsage[]; weekly: WeekUsage[] }) {
@@ -35,6 +41,10 @@ export default function UsageChart({ daily, weekly }: { daily: DayUsage[]; weekl
             <XAxis dataKey="label" tick={{ fontSize: 12 }} interval="preserveStartEnd" minTickGap={8} />
             <YAxis tick={{ fontSize: 12 }} allowDecimals={false} unit="h" />
             <Tooltip
+              labelFormatter={(label, payload) => {
+                const point = payload[0]?.payload as Point | undefined
+                return point?.weekStart ? `${point.label} · bắt đầu ${point.weekStart}` : String(label)
+              }}
               formatter={(_value, _name, item) => [formatDuration((item.payload as Point).seconds), 'Thời gian']}
               cursor={{ fill: 'var(--color-brand-50)' }}
             />

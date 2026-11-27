@@ -3,6 +3,7 @@
  */
 import { useQuery } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router-dom'
+import { ShieldCheck } from 'lucide-react'
 import { ApiError } from '@/shared/api/client.ts'
 import {
   getPolicy,
@@ -12,7 +13,7 @@ import {
   policyKey,
   policyVersionsKey,
 } from '@/shared/api/policy.ts'
-import { Alert, Card, Spinner } from '@/shared/components/index.ts'
+import { Alert, Card, ChildPageHeader, Spinner } from '@/shared/components/index.ts'
 import PolicySummary from '@/features/policy/components/PolicySummary.tsx'
 import VersionHistory from '@/features/policy/components/VersionHistory.tsx'
 import { policyErrorMessage } from '@/features/policy/utils/messages.ts'
@@ -56,16 +57,16 @@ function PolicyOverview({ id }: { id: number }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <p className="text-sm">
-          <Link to={`/children/${id}`}>← {child.data?.name ?? 'Thông tin của con'}</Link>
-        </p>
-        <h1 className="mt-2 text-2xl font-bold tracking-tight text-ink sm:text-3xl">Chính sách</h1>
-        <p className="mt-1 text-ink-muted">
-          Luật đang áp cho {child.data?.name ?? 'con'}. Máy của con nhận phiên bản mới ở lần đồng bộ tiếp theo, trong
-          khoảng một phút. <Link to={`/children/${id}/screentime`}>Sửa thời gian dùng máy</Link>
-        </p>
-      </div>
+      <ChildPageHeader
+        title="Chính sách"
+        icon={ShieldCheck}
+        description={
+          <>
+            Luật đang áp cho {child.data?.name ?? 'con'}. Máy của con nhận phiên bản mới ở lần đồng bộ tiếp theo, trong
+            khoảng một phút.
+          </>
+        }
+      />
       <PolicySummary policy={policy.data} />
       {versions.isError && <Alert tone="error">{policyErrorMessage(versions.error)}</Alert>}
       {versions.isPending && <Spinner />}

@@ -1,21 +1,28 @@
 import { useId, type InputHTMLAttributes } from 'react'
 import { cn } from '@/shared/utils/cn.ts'
+import { ToastMessage } from '@/shared/components/ToastProvider.tsx'
 
 type Props = InputHTMLAttributes<HTMLInputElement> & {
   label: string
   hint?: string
   error?: string | null
+  errorMode?: 'toast' | 'inline'
 }
 
-export function TextField({ label, hint, error, id, className, ...rest }: Props) {
+export function TextField({ label, hint, error, errorMode = 'toast', id, className, required, ...rest }: Props) {
   const autoId = useId()
   const inputId = id ?? autoId
-  const describedBy = error ? `${inputId}-error` : hint ? `${inputId}-hint` : undefined
+  const describedBy = !error && hint ? `${inputId}-hint` : undefined
 
   return (
     <div className={cn('flex flex-col gap-1.5', className)}>
       <label htmlFor={inputId} className="text-sm font-medium text-ink">
         {label}
+        {required && (
+          <span aria-hidden="true" className="ml-0.5 text-rose-600">
+            *
+          </span>
+        )}
       </label>
       <input
         id={inputId}
@@ -28,16 +35,18 @@ export function TextField({ label, hint, error, id, className, ...rest }: Props)
         )}
         {...rest}
       />
-      {error ? (
-        <p id={`${inputId}-error`} className="text-sm text-rose-600">
-          {error}
-        </p>
-      ) : (
-        hint && (
-          <p id={`${inputId}-hint`} className="text-sm text-ink-muted">
-            {hint}
+      {error &&
+        (errorMode === 'inline' ? (
+          <p role="alert" className="text-xs text-rose-700">
+            {error}
           </p>
-        )
+        ) : (
+          <ToastMessage tone="error">{error}</ToastMessage>
+        ))}
+      {!error && hint && (
+        <p id={`${inputId}-hint`} className="text-xs text-ink-subtle">
+          {hint}
+        </p>
       )}
     </div>
   )

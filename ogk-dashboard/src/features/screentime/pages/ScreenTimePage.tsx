@@ -4,7 +4,8 @@
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import { ArrowUpRight, Clock3 } from 'lucide-react'
 import { ApiError } from '@/shared/api/client.ts'
 import {
   getPolicy,
@@ -14,7 +15,7 @@ import {
   policyVersionsKey,
   updatePolicy,
 } from '@/shared/api/policy.ts'
-import { Alert, Card, Spinner } from '@/shared/components/index.ts'
+import { Alert, Badge, Button, Card, ChildPageHeader, Spinner } from '@/shared/components/index.ts'
 import type { Policy, PolicyUpdate } from '@/shared/types/policy.ts'
 import QuotaForm from '@/features/screentime/components/QuotaForm.tsx'
 import ScheduleGrid from '@/features/screentime/components/ScheduleGrid.tsx'
@@ -55,6 +56,7 @@ function usePolicyMutation(id: number) {
 }
 
 function ScreenTime({ id }: { id: number }) {
+  const navigate = useNavigate()
   const child = useQuery({ queryKey: policyChildKey(id), queryFn: () => getPolicyChild(id) })
   const policy = useQuery({ queryKey: policyKey(id), queryFn: () => getPolicy(id) })
   const quotas = usePolicyMutation(id)
@@ -76,19 +78,21 @@ function ScreenTime({ id }: { id: number }) {
 
   const data = policy.data
   return (
-    <div className="flex flex-col gap-6">
-      <div>
-        <p className="text-sm">
-          <Link to={`/children/${id}`}>← {child.data?.name ?? 'Thông tin của con'}</Link>
-        </p>
-        <h1 className="mt-2 text-2xl font-bold tracking-tight text-ink sm:text-3xl">Thời gian dùng máy</h1>
-        <p className="mt-1 text-ink-muted">
-          Trẻ chỉ dùng được khi vừa còn thời gian trong giới hạn ngày, vừa đang trong khung giờ cho phép. Điều kiện nào
-          đến trước thì máy khóa. Ví dụ: lịch cả ngày và giới hạn 2 giờ vẫn chỉ cho dùng tối đa 2 giờ. Tray báo trước
-          10, 5 và 1 phút. Đang áp phiên bản {data.policy_version}.{' '}
-          <Link to={`/children/${id}/policy`}>Xem chính sách</Link>
-        </p>
-      </div>
+    <div className="flex flex-col gap-5">
+      <ChildPageHeader
+        title="Thời gian dùng máy"
+        description="Giới hạn thời lượng mỗi ngày và chọn khung giờ trẻ được phép sử dụng."
+        icon={Clock3}
+        actions={
+          <>
+            <Badge tone="brand">Phiên bản {data.policy_version}</Badge>
+            <Button variant="secondary" onClick={() => navigate(`/children/${id}/policy`)}>
+              Xem chính sách
+              <ArrowUpRight aria-hidden="true" className="size-4" />
+            </Button>
+          </>
+        }
+      />
 
       <Card
         title="Giới hạn tổng thời gian mỗi ngày"
@@ -124,23 +128,18 @@ function ScreenTime({ id }: { id: number }) {
         />
       </Card>
 
-      <Card
-        title="Ngân sách theo nhóm ứng dụng"
-        description="Mỗi nhóm có bộ đếm riêng, đặt lại vào đầu ngày. Để trống để không giới hạn."
-      >
-        {groups.error != null && <Alert tone="error">{screentimeErrorMessage(groups.error)}</Alert>}
-        {savedGroups && groups.error == null && <Alert tone="success">Đã lưu nhóm và ngân sách ứng dụng.</Alert>}
-        <AppGroupForm
-          key={`groups-${data.policy_version}`}
-          groups={data.app_groups}
-          rules={data.app_rules}
-          pending={groups.isPending}
-          onSave={(app_groups) => {
-            setSavedGroups(false)
-            groups.mutate({ app_groups }, { onSuccess: () => setSavedGroups(true) })
-          }}
-        />
-      </Card>
+      {groups.error != null && <Alert tone="error">{screentimeErrorMessage(groups.error)}</Alert>}
+      {savedGroups && groups.error == null && <Alert tone="success">Đã lưu nhóm và ngân sách ứng dụng.</Alert>}
+      <AppGroupForm
+        key={`groups-${data.policy_version}`}
+        groups={data.app_groups}
+        rules={data.app_rules}
+        pending={groups.isPending}
+        onSave={(app_groups) => {
+          setSavedGroups(false)
+          groups.mutate({ app_groups }, { onSuccess: () => setSavedGroups(true) })
+        }}
+      />
     </div>
   )
 }

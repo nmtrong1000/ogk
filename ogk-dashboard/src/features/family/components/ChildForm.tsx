@@ -1,15 +1,11 @@
 import { useState, type FormEvent, type ReactNode } from 'react'
-import { Alert, Button, Select, TextField } from '@/shared/components/index.ts'
+import { Button, Select, TextField } from '@/shared/components/index.ts'
+import { useToast } from '@/shared/components/ToastContext.ts'
+import { ToastMessage } from '@/shared/components/ToastProvider.tsx'
 import type { ChildInput } from '@/shared/types/family.ts'
-import {
-  BIRTH_YEAR_ERROR,
-  MAX_NAME_LENGTH,
-  MIN_BIRTH_YEAR,
-  NAME_ERROR,
-  errorMessage,
-  fieldError,
-} from '@/features/family/utils/messages.ts'
+import { MAX_NAME_LENGTH, MIN_BIRTH_YEAR, errorMessage, fieldError } from '@/features/family/utils/messages.ts'
 import { currentYear } from '@/features/family/utils/year.ts'
+import { childFormSchema } from '@/features/family/schemas.ts'
 
 type Props = {
   initial?: ChildInput
@@ -19,6 +15,7 @@ type Props = {
   onSubmit: (body: ChildInput) => void
   onCancel?: () => void
   secondaryAction?: ReactNode
+  inlineErrors?: boolean
 }
 
 function yearOptions() {
@@ -36,28 +33,44 @@ export default function ChildForm({
   onSubmit,
   onCancel,
   secondaryAction,
+  inlineErrors = false,
 }: Props) {
+  const showToast = useToast()
   const [name, setName] = useState(initial?.name ?? '')
   const [birthYear, setBirthYear] = useState(initial ? String(initial.birth_year) : '')
-  const [local, setLocal] = useState<{ name?: string; birthYear?: string }>({})
+  const [validationError, setValidationError] = useState<{ field: 'name' | 'birthYear'; message: string } | null>(null)
 
   function submit(event: FormEvent) {
     event.preventDefault()
-    const trimmed = name.trim()
-    const errors: typeof local = {}
-    if (!trimmed || trimmed.length > MAX_NAME_LENGTH) errors.name = NAME_ERROR
-    if (!birthYear) errors.birthYear = BIRTH_YEAR_ERROR
-    setLocal(errors)
-    if (errors.name || errors.birthYear) return
-    onSubmit({ name: trimmed, birth_year: Number(birthYear) })
+    const result = childFormSchema.safeParse({ name, birthYear })
+    if (!result.success) {
+      const issue = result.error.issues[0]
+      if (inlineErrors && (issue.path[0] === 'name' || issue.path[0] === 'birthYear')) {
+        setValidationError({ field: issue.path[0], message: issue.message })
+      } else {
+        showToast({ tone: 'error', message: issue.message })
+      }
+      return
+    }
+    setValidationError(null)
+    onSubmit(result.data)
   }
 
   const server = fieldError(error)
-  const showAlert = error != null && !server.name && !server.birthYear && !local.name && !local.birthYear
+  const showAlert = error != null && !server.name && !server.birthYear
+  const nameError = validationError?.field === 'name' ? validationError.message : server.name
+  const birthYearError = validationError?.field === 'birthYear' ? validationError.message : server.birthYear
 
   return (
     <form className="flex flex-col gap-4" onSubmit={submit} noValidate>
-      {showAlert && <Alert tone="error">{errorMessage(error)}</Alert>}
+      {showAlert &&
+        (inlineErrors ? (
+          <p role="alert" className="text-xs text-rose-700">
+            {errorMessage(error)}
+          </p>
+        ) : (
+          <ToastMessage tone="error">{errorMessage(error)}</ToastMessage>
+        ))}
       <div className="grid gap-4 sm:grid-cols-[1fr_12rem]">
         <TextField
           label="Tên con"
@@ -65,8 +78,12 @@ export default function ChildForm({
           maxLength={MAX_NAME_LENGTH}
           required
           value={name}
-          error={local.name ?? server.name}
-          onChange={(e) => setName(e.target.value)}
+          error={nameError}
+          errorMode={inlineErrors ? 'inline' : 'toast'}
+          onChange={(e) => {
+            if (validationError?.field === 'name') setValidationError(null)
+            setName(e.target.value)
+          }}
         />
         <Select
           label="Năm sinh"
@@ -74,8 +91,12 @@ export default function ChildForm({
           placeholder="Chọn năm"
           options={yearOptions()}
           value={birthYear}
-          error={local.birthYear ?? server.birthYear}
-          onChange={(e) => setBirthYear(e.target.value)}
+          error={birthYearError}
+          errorMode={inlineErrors ? 'inline' : 'toast'}
+          onChange={(e) => {
+            if (validationError?.field === 'birthYear') setValidationError(null)
+            setBirthYear(e.target.value)
+          }}
         />
       </div>
       <div className="flex flex-wrap items-center justify-end gap-2">
